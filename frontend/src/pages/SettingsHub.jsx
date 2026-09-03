@@ -27,7 +27,7 @@ export default function SettingsHub() {
   return (
     <>
       <h1>Configuración</h1>
-      <p className="subtitle">Todo lo relacionado a tu cuenta: marca, equipo y suscripción.</p>
+      <p className="subtitle">Todo lo relacionado a tu cuenta: marca, equipo, suscripción y soporte.</p>
 
       <div className="grid grid-2">
         <Link to="/mi-cuenta" className="card" style={{ display: 'block', color: 'inherit' }}>
@@ -45,6 +45,11 @@ export default function SettingsHub() {
             <span className={`badge ${STATUS_BADGE_CLASS[subscriptionStatus]}`}>{STATUS_LABELS[subscriptionStatus]}</span>
           </h3>
           <p className="muted small">Estado del plan mensual y pagos de {agency.name}.</p>
+        </Link>
+
+        <Link to="/soporte" className="card" style={{ display: 'block', color: 'inherit' }}>
+          <h3>Soporte</h3>
+          <p className="muted small">Enviá una consulta o revisá el estado de tus tickets.</p>
         </Link>
 
         {isPlatformAdmin && (

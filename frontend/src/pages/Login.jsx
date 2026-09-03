@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { api } from '../api.js';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const justRegistered = location.state?.registered === true;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -57,6 +59,12 @@ export default function Login() {
     <>
       <div className="auth-wrapper">
         <h1>Ingresar</h1>
+
+        {justRegistered && (
+          <div className="banner banner-success">
+            ¡Cuenta creada con éxito! Ingresá con tu email y contraseña.
+          </div>
+        )}
 
         {error && (
           <div className="banner banner-error">

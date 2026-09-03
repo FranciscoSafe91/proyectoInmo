@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { useAuth } from '../contexts/AuthContext.jsx';
 
 const INITIAL = {
   nombre: '', apellido: '', documento: '', email: '',
@@ -10,7 +9,6 @@ const INITIAL = {
 };
 
 export default function Register() {
-  const { refresh } = useAuth();
   const navigate = useNavigate();
   const [values, setValues] = useState(INITIAL);
   const [error, setError] = useState('');
@@ -38,8 +36,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       await api.post('/registro', values);
-      await refresh();
-      navigate('/dashboard');
+      navigate('/login', { state: { registered: true } });
     } catch (err) {
       setError(err.data?.error || 'Error al registrar. Verificá los datos e intentá de nuevo.');
     } finally {

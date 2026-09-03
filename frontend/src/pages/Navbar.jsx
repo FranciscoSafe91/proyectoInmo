@@ -20,11 +20,9 @@ export default function Navbar() {
       <Link to="/socios" className={activeExact('/socios')} onClick={() => setOpen(false)}>Socios</Link>
       <Link to="/invitaciones" className={activeExact('/invitaciones')} onClick={() => setOpen(false)}>Invitaciones</Link>
       <Link to="/alertas" className={activeExact('/alertas')} onClick={() => setOpen(false)}>Alertas</Link>
-      <Link to="/mi-web" className={activeExact('/mi-web')} onClick={() => setOpen(false)}>Mi web</Link>
-      <Link to="/soporte" className={activeExact('/soporte')} onClick={() => setOpen(false)}>Soporte</Link>
       <Link
         to="/configuracion"
-        className={['/configuracion', '/mi-cuenta', '/equipo', '/suscripcion'].includes(location.pathname) ? 'active' : ''}
+        className={['/configuracion', '/mi-cuenta', '/equipo', '/suscripcion', '/soporte'].includes(location.pathname) ? 'active' : ''}
         onClick={() => setOpen(false)}
       >Configuración</Link>
       {session.user.isPlatformAdmin && (

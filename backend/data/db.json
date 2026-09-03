@@ -1,0 +1,395 @@
+{
+  "agencies": [
+    {
+      "id": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "name": "Inmobiliaria del Centro",
+      "slug": "inmobiliaria-del-centro",
+      "email": "contacto@delcentro.com",
+      "phone": "351-555-0101",
+      "city": "Córdoba",
+      "accountType": "inmobiliaria",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "b2daa4973b6c849c2ecf55cdc5fe0b3512c862de52bb94d6",
+      "createdAt": "2026-08-28T03:56:56.570Z"
+    },
+    {
+      "id": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "name": "Norte Propiedades",
+      "slug": "norte-propiedades",
+      "email": "hola@nortepropiedades.com",
+      "phone": "351-555-0202",
+      "city": "Córdoba",
+      "accountType": "inmobiliaria",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "8aaa4de44a85b55d1a15c585d6420950151a4871c1c86375",
+      "createdAt": "2026-08-28T03:56:56.606Z"
+    },
+    {
+      "id": "bf9b45d2-40a3-457e-aa7b-307138d626e8",
+      "name": "Sur Bienes Raíces",
+      "slug": "sur-bienes-raices",
+      "email": "info@surbienesraices.com",
+      "phone": "351-555-0303",
+      "city": "Villa Carlos Paz",
+      "accountType": "inmobiliaria",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "ad9cfb68e1b22f9b894ee7590c5271f6e7fd20c42b5f05b0",
+      "createdAt": "2026-08-28T03:56:56.642Z"
+    },
+    {
+      "id": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "name": "Lucía Paz — Agente Inmobiliaria",
+      "slug": "lucia-paz-agente",
+      "email": "lucia@agente.com",
+      "phone": "351-555-0404",
+      "city": "Córdoba",
+      "accountType": "agente_independiente",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "d84666a7f75e2adccf6922e2f473dfbc6ddc1e885aa72aa4",
+      "createdAt": "2026-08-28T03:56:56.678Z"
+    },
+    {
+      "id": "50929116-7f4a-4658-be8a-5ea13377f340",
+      "name": "inmuebvles locos",
+      "slug": "inmuebvles-locos",
+      "email": "francisco.javier.safe@gmail.com",
+      "city": "granaderos 725",
+      "accountType": "inmobiliaria",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "b73d4b5409864aa41d6ee56bebae517955db2464ceccb14d",
+      "createdAt": "2026-08-31T18:43:02.506Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "15ae9ce5-99dd-4c00-a6af-126b4e3b38c1",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "name": "Marina Sosa",
+      "email": "marina@delcentro.com",
+      "passwordHash": "5d7fb1f9b1bf50b726fc41f59864d72ba6236d66665af0660aa595c4443ba0f169b29b6d90dcfd6101d708f22ec185411bf43bf1407ff9cc5cd40c0a254281c1",
+      "passwordSalt": "4200803fe25dc52f94986729101d904d",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-08-28T03:56:56.606Z"
+    },
+    {
+      "id": "3a5680df-c6bf-411e-8d21-f312840a47f8",
+      "agencyId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "name": "Julián Ferreyra",
+      "email": "julian@nortepropiedades.com",
+      "passwordHash": "52b6b4c13b86100055516c22da8b63eaaa12b4d0f899171fb0f9b2f53bf4c12d6c264aa69b4f7839be108aa19a9fd7171dbd515d7be5dba85a84c91b8a3a01d4",
+      "passwordSalt": "07cf5d5cc6ed0f21e7a30593831c98bd",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-08-28T03:56:56.641Z"
+    },
+    {
+      "id": "f3006095-567d-4126-904d-e12ffd0bc679",
+      "agencyId": "bf9b45d2-40a3-457e-aa7b-307138d626e8",
+      "name": "Camila Nuñez",
+      "email": "camila@surbienesraices.com",
+      "passwordHash": "5d556124c2e884693d580617ab82a7b3e19181319b62c2d7bfe1f16e36e870726ce79f8d351bf8551b7173b0f4a5b6df4b3551b2222e3a8ac3636c5b27abc81c",
+      "passwordSalt": "4b611f4d77a2f94126699a3c71e1c089",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-08-28T03:56:56.677Z"
+    },
+    {
+      "id": "c4342668-7f1e-446f-93c9-bcfa4fad1cfe",
+      "agencyId": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "name": "Lucía Paz",
+      "email": "lucia@agente.com",
+      "passwordHash": "6e13d593d87a0641d473d36b8468b0913c0896f7e9d9e1ae7193fd37b9a6bddce671184c9c3fd9a9527cfe8724316f3993c7980966e942f6f643f0d0ee41ea81",
+      "passwordSalt": "1d6a0533022da08d78d6fe7b62d48c15",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-08-28T03:56:56.712Z"
+    },
+    {
+      "id": "2339e46a-643b-42af-a010-7b9d4dd68f98",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "name": "Rocío Beltrán",
+      "email": "rocio@delcentro.com",
+      "passwordHash": "a115543b135852b378096a363a75a2765168693985905fb1285fc3c007a0d19e9890a9ce7a3009c4e7aa4c62d821ef35de0279eef81c5c1f1566d18ca495be6a",
+      "passwordSalt": "e7bb423e9c3cd8c2526b5258196f7499",
+      "role": "agente",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-08-28T03:56:56.746Z"
+    },
+    {
+      "id": "7e8b76ca-ad1f-4cc2-94b1-8f522ba117d9",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "name": "Safe Inmuebles (admin de la plataforma)",
+      "email": "admin@safeinmuebles.com",
+      "passwordHash": "ed9054b911a249c26bba01a1ef429e204358d4559a008333c5128c5f30bd5347108103fb539f761e4ffc151ec4ab33c28399912fe9667cd042dcf5f4e0f6cf17",
+      "passwordSalt": "f4b21a702a3e9ceedbeadd99fa189cc6",
+      "role": "admin",
+      "isPlatformAdmin": true,
+      "createdAt": "2026-08-28T03:56:56.780Z"
+    },
+    {
+      "id": "e7137dee-34d1-4177-a601-bcbf026be048",
+      "agencyId": "50929116-7f4a-4658-be8a-5ea13377f340",
+      "name": "francisco lamemelan",
+      "email": "francisco.javier.safe@gmail.com",
+      "passwordHash": "8785485fb3f313dccc99e14ff2588d294374927a80bbebbbd6fd4ecc34b84c11ba495f8adaad05ecdb93eefb72c7d27b0996d91c8616268900b571412ce949fb",
+      "passwordSalt": "9c85bbc4f5b5e6ee5c62007ca2d5c1dd",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-08-31T18:43:02.540Z"
+    }
+  ],
+  "properties": [
+    {
+      "id": "bc089b99-533c-4dec-8a04-fe44d46675aa",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "title": "Casa 3 ambientes con jardín en Nueva Córdoba",
+      "description": "Amplia casa reciclada, luminosa, a metros del Parque Sarmiento. Apta crédito.",
+      "operation": "venta",
+      "type": "casa",
+      "price": 145000,
+      "currency": "USD",
+      "address": "Av. Poeta Lugones 1234",
+      "city": "Córdoba",
+      "province": "Córdoba",
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "areaM2": 180,
+      "status": "publicada",
+      "createdAt": "2026-08-28T03:56:56.785Z",
+      "updatedAt": "2026-08-28T03:56:56.785Z"
+    },
+    {
+      "id": "360b8f3d-1770-4d0f-b098-f1e65a115fe5",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "title": "Departamento 2 ambientes a estrenar",
+      "description": "Edificio nuevo con amenities, cochera opcional.",
+      "operation": "alquiler",
+      "type": "departamento",
+      "price": 350000,
+      "currency": "ARS",
+      "address": "Bv. Chacabuco 850",
+      "city": "Córdoba",
+      "province": "Córdoba",
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "areaM2": 55,
+      "status": "publicada",
+      "createdAt": "2026-08-28T03:56:56.785Z",
+      "updatedAt": "2026-08-28T03:56:56.785Z"
+    },
+    {
+      "id": "1f8c9bcb-b91a-4fb1-8db2-3ac8c670a952",
+      "agencyId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "title": "Terreno de esquina en zona residencial",
+      "description": "Terreno de 500 m², servicios completos, ideal para desarrollo.",
+      "operation": "venta",
+      "type": "terreno",
+      "price": 60000,
+      "currency": "USD",
+      "address": "Calle Los Sauces s/n",
+      "city": "Córdoba",
+      "province": "Córdoba",
+      "bedrooms": 0,
+      "bathrooms": 0,
+      "areaM2": 500,
+      "status": "publicada",
+      "createdAt": "2026-08-28T03:56:56.786Z",
+      "updatedAt": "2026-08-28T03:56:56.786Z"
+    }
+  ],
+  "partnerships": [
+    {
+      "id": "b2a61fec-eef8-4c68-b2ba-2696ff883b8c",
+      "agencyAId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "agencyBId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "requestedBy": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "status": "aceptada",
+      "createdAt": "2026-08-28T03:56:56.783Z",
+      "respondedAt": "2026-08-28T03:56:56.783Z"
+    },
+    {
+      "id": "dbbd3fed-5e35-4e89-8619-6cff2c593cde",
+      "agencyAId": "bf9b45d2-40a3-457e-aa7b-307138d626e8",
+      "agencyBId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "requestedBy": "bf9b45d2-40a3-457e-aa7b-307138d626e8",
+      "status": "pendiente",
+      "createdAt": "2026-08-28T03:56:56.784Z",
+      "respondedAt": null
+    },
+    {
+      "id": "b5d64784-391d-4d81-bbe5-c6899d08532e",
+      "agencyAId": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "agencyBId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "requestedBy": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "status": "aceptada",
+      "createdAt": "2026-08-28T03:56:56.784Z",
+      "respondedAt": "2026-08-28T03:56:56.784Z"
+    }
+  ],
+  "propertyShares": [
+    {
+      "id": "18b4f9e7-36b2-4e6a-95c9-907054607464",
+      "propertyId": "bc089b99-533c-4dec-8a04-fe44d46675aa",
+      "ownerAgencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "targetAgencyId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "status": "aceptada",
+      "webPublishAuthorized": true,
+      "createdAt": "2026-08-28T03:56:56.786Z",
+      "respondedAt": "2026-08-28T03:56:56.787Z"
+    },
+    {
+      "id": "d8efd02d-026e-4f61-98cc-3e0240678ea8",
+      "propertyId": "bc089b99-533c-4dec-8a04-fe44d46675aa",
+      "ownerAgencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "targetAgencyId": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "status": "aceptada",
+      "webPublishAuthorized": false,
+      "createdAt": "2026-08-28T03:56:56.788Z",
+      "respondedAt": "2026-08-28T03:56:56.788Z"
+    },
+    {
+      "id": "88ddb286-2f78-4fbf-802f-4fbf230da797",
+      "propertyId": "1f8c9bcb-b91a-4fb1-8db2-3ac8c670a952",
+      "ownerAgencyId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "targetAgencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "status": "pendiente",
+      "webPublishAuthorized": false,
+      "createdAt": "2026-08-28T03:56:56.789Z",
+      "respondedAt": null
+    },
+    {
+      "id": "9634a353-a9b1-4b82-960f-2c3803a93189",
+      "propertyId": "360b8f3d-1770-4d0f-b098-f1e65a115fe5",
+      "ownerAgencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "targetAgencyId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "status": "pendiente",
+      "webPublishAuthorized": false,
+      "createdAt": "2026-08-28T18:58:27.609Z",
+      "respondedAt": null
+    },
+    {
+      "id": "f080041b-04a3-4e5a-9401-5d13f43b8f7f",
+      "propertyId": "360b8f3d-1770-4d0f-b098-f1e65a115fe5",
+      "ownerAgencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "targetAgencyId": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "status": "aceptada",
+      "webPublishAuthorized": false,
+      "createdAt": "2026-08-31T17:03:40.613Z",
+      "respondedAt": "2026-08-31T17:03:40.614Z"
+    }
+  ],
+  "searchAlerts": [
+    {
+      "id": "5556575f-33ed-47dc-8305-4b5aa4623c62",
+      "agencyId": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "title": "Depto en alquiler para cliente urgente",
+      "operation": "alquiler",
+      "type": "departamento",
+      "city": "Córdoba",
+      "currency": "ARS",
+      "minPrice": null,
+      "maxPrice": 500000,
+      "minBedrooms": null,
+      "active": true,
+      "createdAt": "2026-08-28T03:56:56.789Z"
+    },
+    {
+      "id": "6c418899-8cb0-4387-b8b1-c0d38d5ca020",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "title": "",
+      "operation": "",
+      "type": "",
+      "city": "",
+      "currency": "",
+      "minPrice": null,
+      "maxPrice": null,
+      "minBedrooms": null,
+      "active": true,
+      "createdAt": "2026-08-31T14:58:02.792Z"
+    }
+  ],
+  "plan": {
+    "name": "Plan Mensual",
+    "priceARS": 15000
+  },
+  "subscriptions": [
+    {
+      "id": "fa643f9a-0802-4d07-801f-e9f060718420",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "status": "activa",
+      "trialEndsAt": "2026-09-11T03:56:56.571Z",
+      "currentPeriodEnd": "2026-09-27T03:56:56.781Z",
+      "mpPreapprovalId": null,
+      "createdAt": "2026-08-28T03:56:56.571Z"
+    },
+    {
+      "id": "88177d49-3e08-42d2-a073-96ead67c9b4b",
+      "agencyId": "a8479c63-ca1e-469f-bd49-edb7b8b72279",
+      "status": "trial",
+      "trialEndsAt": "2026-09-11T03:56:56.607Z",
+      "currentPeriodEnd": null,
+      "mpPreapprovalId": null,
+      "createdAt": "2026-08-28T03:56:56.607Z"
+    },
+    {
+      "id": "93373400-6138-47db-b5cd-f1af93c9710f",
+      "agencyId": "bf9b45d2-40a3-457e-aa7b-307138d626e8",
+      "status": "trial",
+      "trialEndsAt": "2026-08-25T03:56:56.782Z",
+      "currentPeriodEnd": null,
+      "mpPreapprovalId": null,
+      "createdAt": "2026-08-28T03:56:56.642Z"
+    },
+    {
+      "id": "deadd9c0-4aa6-43cf-98de-d51df97cd4d9",
+      "agencyId": "1d786c42-dd91-4507-bcfc-6b537c804528",
+      "status": "cancelada",
+      "trialEndsAt": "2026-09-11T03:56:56.678Z",
+      "currentPeriodEnd": null,
+      "mpPreapprovalId": null,
+      "createdAt": "2026-08-28T03:56:56.678Z"
+    },
+    {
+      "id": "5d15003e-7241-489c-b3ef-6174dc48185d",
+      "agencyId": "50929116-7f4a-4658-be8a-5ea13377f340",
+      "status": "trial",
+      "trialEndsAt": "2026-09-14T18:43:02.507Z",
+      "currentPeriodEnd": null,
+      "mpPreapprovalId": null,
+      "createdAt": "2026-08-31T18:43:02.507Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "64c796e9-b229-44a3-a396-a60e5d208c69",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "subscriptionId": "fa643f9a-0802-4d07-801f-e9f060718420",
+      "amount": 15000,
+      "currency": "ARS",
+      "status": "aprobado",
+      "method": "simulado",
+      "mpPaymentId": null,
+      "createdAt": "2026-08-28T03:56:56.781Z"
+    },
+    {
+      "id": "e10bf5b7-b250-4cc0-8bd7-1a59110f0ffa",
+      "agencyId": "a8328903-cd39-439c-931c-0d1671b6dad0",
+      "subscriptionId": "fa643f9a-0802-4d07-801f-e9f060718420",
+      "amount": 15000,
+      "currency": "ARS",
+      "status": "aprobado",
+      "method": "manual",
+      "mpPaymentId": null,
+      "createdAt": "2026-08-28T03:56:56.782Z"
+    }
+  ],
+  "invitations": [],
+  "supportTickets": [],
+  "sessions": []
+}

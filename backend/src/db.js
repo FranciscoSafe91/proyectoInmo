@@ -43,7 +43,8 @@ function toUser(r) {
 function toProperty(r) {
   if (!r) return null;
   return {
-    id: r.id, agencyId: r.agency_id, title: r.title, description: r.description,
+    id: r.id, agencyId: r.agency_id, createdByUserId: r.created_by_user_id,
+    title: r.title, description: r.description,
     operation: r.operation, type: r.type, price: Number(r.price),
     currency: r.currency, address: r.address, city: r.city, province: r.province,
     bedrooms: r.bedrooms, bathrooms: r.bathrooms, areaM2: Number(r.area_m2),
@@ -293,10 +294,10 @@ export async function deleteSession(token) {
 export async function createProperty(data) {
   const propId = uuid();
   const { rows } = await pool.query(
-    `INSERT INTO propiedades (id,agency_id,title,description,operation,type,price,currency,address,city,province,bedrooms,bathrooms,area_m2,status,created_at,updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW(),NOW()) RETURNING *`,
+    `INSERT INTO propiedades (id,agency_id,created_by_user_id,title,description,operation,type,price,currency,address,city,province,bedrooms,bathrooms,area_m2,status,created_at,updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW(),NOW()) RETURNING *`,
     [
-      propId, data.agencyId, data.title, data.description || '',
+      propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
       data.address || '', data.city || '', data.province || '',
       Number(data.bedrooms) || 0, Number(data.bathrooms) || 0, Number(data.areaM2) || 0,
@@ -314,6 +315,14 @@ export async function getProperty(propertyId) {
 export async function listPropertiesByAgency(agencyId) {
   const { rows } = await pool.query(
     'SELECT * FROM propiedades WHERE agency_id=$1 ORDER BY created_at DESC', [agencyId]
+  );
+  return rows.map(toProperty);
+}
+
+export async function listPropertiesByUser(agencyId, userId) {
+  const { rows } = await pool.query(
+    'SELECT * FROM propiedades WHERE agency_id=$1 AND created_by_user_id=$2 ORDER BY created_at DESC',
+    [agencyId, userId]
   );
   return rows.map(toProperty);
 }

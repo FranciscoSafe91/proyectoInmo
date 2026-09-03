@@ -182,7 +182,7 @@ export function registerApiRoutes(router) {
   router.get('/api/propiedades', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
-    const properties = await db.listPropertiesByAgency(session.agency.id);
+    const properties = await db.listPropertiesByUser(session.agency.id, session.user.id);
     const sharesByProperty = {};
     await Promise.all(properties.map(async p => {
       sharesByProperty[p.id] = await db.listSharesForProperty(p.id);
@@ -195,7 +195,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const body = await parseJson(req);
     if (!body.title) return err(res, 'El título es obligatorio.');
-    const property = await db.createProperty({ ...body, agencyId: session.agency.id });
+    const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
     json(res, { property }, 201);
   });
 
@@ -204,14 +204,21 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const property = await db.getProperty(req.params.id);
     if (!property) return err(res, 'Propiedad no encontrada.', 404);
-    const isOwner = property.agencyId === session.agency.id;
+
+    const isCreator = property.agencyId === session.agency.id && property.createdByUserId === session.user.id;
     const owner = await db.getAgency(property.agencyId);
-    if (!isOwner) {
-      const shares = await db.listSharesForProperty(property.id);
-      const myShare = shares.find(s => s.targetAgencyId === session.agency.id && s.status === 'aceptada');
-      if (!myShare) return err(res, 'No tenés acceso a esta propiedad.', 403);
-      return json(res, { property, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
+
+    if (!isCreator) {
+      // Verificar si la propiedad le fue compartida (de otra agencia)
+      if (property.agencyId !== session.agency.id) {
+        const shares = await db.listSharesForProperty(property.id);
+        const myShare = shares.find(s => s.targetAgencyId === session.agency.id && s.status === 'aceptada');
+        if (!myShare) return err(res, 'No tenés acceso a esta propiedad.', 403);
+        return json(res, { property, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
+      }
+      return err(res, 'No tenés acceso a esta propiedad.', 403);
     }
+
     const shares = await db.listSharesForProperty(property.id);
     const partnerIds = await db.listPartnersOfAgency(session.agency.id);
     const partnerAgenciesList = (await Promise.all(partnerIds.map(id => db.getAgency(id)))).filter(Boolean);
@@ -223,7 +230,9 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const property = await db.getProperty(req.params.id);
-    if (!property || property.agencyId !== session.agency.id) return err(res, 'Propiedad no encontrada.', 404);
+    if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
+      return err(res, 'Propiedad no encontrada.', 404);
+    }
     const body = await parseJson(req);
     const updated = await db.updateProperty(property.id, body);
     json(res, { property: updated });
@@ -233,7 +242,9 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const property = await db.getProperty(req.params.id);
-    if (!property || property.agencyId !== session.agency.id) return err(res, 'Propiedad no encontrada.', 404);
+    if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
+      return err(res, 'Propiedad no encontrada.', 404);
+    }
     const body = await parseJson(req);
     const targetIds = toArray(body.targetAgencyIds);
     const authorizeWeb = Boolean(body.allowWebPublish);

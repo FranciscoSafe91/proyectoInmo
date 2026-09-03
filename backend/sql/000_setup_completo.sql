@@ -79,23 +79,24 @@ CREATE TABLE IF NOT EXISTS sesiones (
 -- Listados inmobiliarios de cada agencia.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS propiedades (
-  id          VARCHAR(36)  PRIMARY KEY,
-  agency_id   VARCHAR(36)  NOT NULL REFERENCES inmobiliarias(id) ON DELETE CASCADE,
-  title       VARCHAR(500) NOT NULL,
-  description TEXT         DEFAULT '',
-  operation   VARCHAR(50),                   -- 'venta' | 'alquiler' | 'alquiler_temporal'
-  type        VARCHAR(50),                   -- 'casa' | 'departamento' | 'local' | etc.
-  price       NUMERIC      DEFAULT 0,
-  currency    VARCHAR(10)  DEFAULT 'USD',    -- 'USD' | 'ARS'
-  address     VARCHAR(500) DEFAULT '',
-  city        VARCHAR(255) DEFAULT '',
-  province    VARCHAR(255) DEFAULT '',
-  bedrooms    INTEGER      DEFAULT 0,
-  bathrooms   INTEGER      DEFAULT 0,
-  area_m2     NUMERIC      DEFAULT 0,
-  status      VARCHAR(50)  DEFAULT 'publicada',  -- 'publicada' | 'pausada' | 'vendida'
-  created_at  TIMESTAMPTZ  DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ  DEFAULT NOW()
+  id                  VARCHAR(36)  PRIMARY KEY,
+  agency_id           VARCHAR(36)  NOT NULL REFERENCES inmobiliarias(id) ON DELETE CASCADE,
+  created_by_user_id  VARCHAR(36)  REFERENCES usuarios(id) ON DELETE SET NULL,
+  title               VARCHAR(500) NOT NULL,
+  description         TEXT         DEFAULT '',
+  operation           VARCHAR(50),                   -- 'venta' | 'alquiler' | 'alquiler_temporal'
+  type                VARCHAR(50),                   -- 'casa' | 'departamento' | 'local' | etc.
+  price               NUMERIC      DEFAULT 0,
+  currency            VARCHAR(10)  DEFAULT 'USD',    -- 'USD' | 'ARS'
+  address             VARCHAR(500) DEFAULT '',
+  city                VARCHAR(255) DEFAULT '',
+  province            VARCHAR(255) DEFAULT '',
+  bedrooms            INTEGER      DEFAULT 0,
+  bathrooms           INTEGER      DEFAULT 0,
+  area_m2             NUMERIC      DEFAULT 0,
+  status              VARCHAR(50)  DEFAULT 'publicada',  -- 'publicada' | 'pausada' | 'vendida'
+  created_at          TIMESTAMPTZ  DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ  DEFAULT NOW()
 );
 
 

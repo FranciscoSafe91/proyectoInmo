@@ -1,5 +1,6 @@
 // server.js — backend para el frontend React (API JSON pura)
 
+import 'dotenv/config';
 import http from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

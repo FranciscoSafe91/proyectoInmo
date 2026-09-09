@@ -52,6 +52,19 @@ function toProperty(r) {
   };
 }
 
+function toPropertyMedia(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    propertyId: r.property_id,
+    url: r.url,
+    type: r.type,
+    filename: r.filename,
+    sortOrder: r.sort_order,
+    createdAt: r.created_at,
+  };
+}
+
 function toPartnership(r) {
   if (!r) return null;
   return {
@@ -291,6 +304,20 @@ export async function deleteSession(token) {
 // ---------------------------------------------------------------------------
 // Properties (tabla: propiedades)
 // ---------------------------------------------------------------------------
+async function ensurePropertyMediaTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS propiedad_media (
+      id          VARCHAR(36) PRIMARY KEY,
+      property_id VARCHAR(36) NOT NULL REFERENCES propiedades(id) ON DELETE CASCADE,
+      url         VARCHAR(500) NOT NULL,
+      type        VARCHAR(20)  NOT NULL,
+      filename    VARCHAR(255) DEFAULT '',
+      sort_order  INTEGER      DEFAULT 0,
+      created_at  TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+}
+
 export async function createProperty(data) {
   const propId = uuid();
   const { rows } = await pool.query(
@@ -305,6 +332,25 @@ export async function createProperty(data) {
     ]
   );
   return toProperty(rows[0]);
+}
+
+export async function createPropertyMedia({ propertyId, url, type, filename, sortOrder }) {
+  await ensurePropertyMediaTable();
+  const { rows } = await pool.query(
+    `INSERT INTO propiedad_media (id,property_id,url,type,filename,sort_order,created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`,
+    [uuid(), propertyId, url, type, filename || '', Number(sortOrder) || 0]
+  );
+  return toPropertyMedia(rows[0]);
+}
+
+export async function listPropertyMedia(propertyId) {
+  await ensurePropertyMediaTable();
+  const { rows } = await pool.query(
+    'SELECT * FROM propiedad_media WHERE property_id=$1 ORDER BY sort_order ASC, created_at ASC',
+    [propertyId]
+  );
+  return rows.map(toPropertyMedia);
 }
 
 export async function getProperty(propertyId) {

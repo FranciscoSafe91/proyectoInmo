@@ -127,6 +127,288 @@
 
   .footer { text-align: center; color: #667070; font-size: 0.8rem; padding: 20px; }
 
+  .page-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .property-form-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .property-form-main {
+    display: grid;
+    gap: 16px;
+  }
+
+  .form-panel,
+  .property-media-panel {
+    border: 1px solid #e1e4e0;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 18px 20px;
+    box-shadow: 0 10px 28px rgba(16, 24, 32, 0.05);
+  }
+
+  .form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: #101820;
+  }
+
+  .form-section-title svg {
+    color: #1dbc8b;
+  }
+
+  .form-section-title h2 {
+    margin: 0;
+    font-size: 1.08rem;
+    line-height: 1.2;
+  }
+
+  .property-media-panel {
+    position: sticky;
+    top: 18px;
+    display: grid;
+    gap: 14px;
+  }
+
+  .media-uploader {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px dashed rgba(29, 188, 139, 0.38);
+    border-radius: 8px;
+    background: #f6fbf8;
+  }
+
+  .media-uploader input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .media-uploader h2 {
+    margin: 0;
+    color: #101820;
+    font-size: 1.05rem;
+  }
+
+  .media-uploader p {
+    margin: 3px 0 0;
+    color: #667070;
+    font-size: 0.85rem;
+  }
+
+  .media-uploader-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: #101820;
+    color: #1dbc8b;
+  }
+
+  .upload-preview-card,
+  .property-gallery-card {
+    overflow: hidden;
+    border: 1px solid #e1e4e0;
+    border-radius: 8px;
+    background: #ffffff;
+  }
+
+  .upload-preview-card > img,
+  .upload-preview-card > video {
+    width: 100%;
+    height: 220px;
+    display: block;
+    object-fit: cover;
+    background: #101820;
+  }
+
+  .preview-empty,
+  .property-media-empty {
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    gap: 8px;
+    background: #101820;
+    color: rgba(255, 255, 255, 0.72);
+    text-align: center;
+    padding: 20px;
+  }
+
+  .preview-empty svg,
+  .property-media-empty svg {
+    color: #1dbc8b;
+  }
+
+  .preview-card-body {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+  }
+
+  .preview-card-body span {
+    color: #667070;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .preview-card-body h3 {
+    margin: 0;
+    color: #101820;
+    font-size: 1.08rem;
+  }
+
+  .preview-card-body strong {
+    color: #101820;
+    font-size: 1rem;
+  }
+
+  .preview-card-body p {
+    margin: 0;
+    color: #667070;
+    font-size: 0.86rem;
+  }
+
+  .media-thumbs,
+  .property-gallery-thumbs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .media-thumbs button,
+  .property-gallery-thumbs button {
+    height: 58px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: #f1f1ee;
+    color: #1dbc8b;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .media-thumbs button.active,
+  .property-gallery-thumbs button.active {
+    border-color: #1dbc8b;
+  }
+
+  .media-thumbs img,
+  .property-gallery-thumbs img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .selected-media-list {
+    display: grid;
+    gap: 7px;
+  }
+
+  .selected-media-list div {
+    min-width: 0;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-radius: 8px;
+    background: #f6f7f5;
+    padding: 0 8px 0 10px;
+  }
+
+  .selected-media-list span {
+    min-width: 0;
+    overflow: hidden;
+    color: #667070;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .selected-media-list button {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 8px;
+    background: #fdecea;
+    color: #c0392b;
+    cursor: pointer;
+  }
+
+  .form-actions {
+    margin-top: 0;
+  }
+
+  .property-gallery-card {
+    margin-bottom: 16px;
+    box-shadow: 0 10px 28px rgba(16, 24, 32, 0.06);
+  }
+
+  .property-gallery-stage {
+    position: relative;
+    background: #101820;
+  }
+
+  .property-gallery-stage img,
+  .property-gallery-stage video {
+    width: 100%;
+    height: 360px;
+    display: block;
+    object-fit: cover;
+  }
+
+  .gallery-arrow {
+    position: absolute;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(16, 24, 32, 0.74);
+    color: #ffffff;
+    cursor: pointer;
+    transform: translateY(-50%);
+  }
+
+  .gallery-arrow.left {
+    left: 12px;
+  }
+
+  .gallery-arrow.right {
+    right: 12px;
+  }
+
+  .property-gallery-thumbs {
+    padding: 10px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
   .code-box {
     background: #16513e; color: #eafaf1; padding: 14px 16px; border-radius: 8px;
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -155,6 +437,28 @@
     .btn { padding: 8px 14px; font-size: 0.88rem; }
     .landing-hero { padding: 40px 16px; }
     .landing-hero h1 { font-size: 1.6rem; }
+
+    .page-heading {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .property-form-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .property-media-panel {
+      position: static;
+    }
+
+    .property-gallery-stage img,
+    .property-gallery-stage video {
+      height: 240px;
+    }
+
+    .property-gallery-thumbs {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 480px) {

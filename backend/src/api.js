@@ -6,7 +6,7 @@ import * as auth from './auth.js';
 import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
 import { randomUUID } from 'node:crypto';
-import { writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { writeFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -14,10 +14,22 @@ import { dirname } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
 const LOGOS_DIR = join(PUBLIC_DIR, 'uploads', 'logos');
+const PROPERTY_MEDIA_DIR = join(PUBLIC_DIR, 'uploads', 'properties');
 const LOGO_EXTENSIONS = {
   'image/png': '.png', 'image/jpeg': '.jpg',
   'image/webp': '.webp', 'image/svg+xml': '.svg',
 };
+const PROPERTY_MEDIA_EXTENSIONS = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+};
+
+if (!existsSync(PROPERTY_MEDIA_DIR)) mkdirSync(PROPERTY_MEDIA_DIR, { recursive: true });
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 
@@ -61,6 +73,34 @@ function baseUrlFor(req) {
 function slugify(text) {
   return text.toString().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+}
+
+async function parsePropertyRequest(req) {
+  if (!isMultipart(req)) return { fields: await parseJson(req), files: [] };
+  const parsed = await parseMultipartFormData(req, { maxBytes: 80 * 1024 * 1024 });
+  return { fields: parsed.fields, files: Object.values(parsed.files || {}) };
+}
+
+async function savePropertyMedia(propertyId, files) {
+  const accepted = files
+    .filter(file => file && PROPERTY_MEDIA_EXTENSIONS[file.contentType])
+    .slice(0, 8);
+
+  const created = [];
+  for (const [index, file] of accepted.entries()) {
+    const ext = PROPERTY_MEDIA_EXTENSIONS[file.contentType];
+    const mediaType = file.contentType.startsWith('video/') ? 'video' : 'image';
+    const filename = `${propertyId}-${randomUUID()}${ext}`;
+    writeFileSync(join(PROPERTY_MEDIA_DIR, filename), file.buffer);
+    created.push(await db.createPropertyMedia({
+      propertyId,
+      url: `/uploads/properties/${filename}`,
+      type: mediaType,
+      filename: file.filename || filename,
+      sortOrder: index,
+    }));
+  }
+  return created;
 }
 
 async function requireSession(req, res) {
@@ -193,10 +233,19 @@ export function registerApiRoutes(router) {
   router.post('/api/propiedades', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
-    const body = await parseJson(req);
+    let body;
+    let files = [];
+    try {
+      const parsed = await parsePropertyRequest(req);
+      body = parsed.fields;
+      files = parsed.files;
+    } catch {
+      return err(res, 'Error al procesar los archivos.');
+    }
     if (!body.title) return err(res, 'El título es obligatorio.');
     const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
-    json(res, { property }, 201);
+    const media = await savePropertyMedia(property.id, files);
+    json(res, { property, media }, 201);
   });
 
   router.get('/api/propiedades/:id', async (req, res) => {
@@ -207,6 +256,7 @@ export function registerApiRoutes(router) {
 
     const isCreator = property.agencyId === session.agency.id && property.createdByUserId === session.user.id;
     const owner = await db.getAgency(property.agencyId);
+    const media = await db.listPropertyMedia(property.id);
 
     if (!isCreator) {
       // Verificar si la propiedad le fue compartida (de otra agencia)
@@ -214,7 +264,7 @@ export function registerApiRoutes(router) {
         const shares = await db.listSharesForProperty(property.id);
         const myShare = shares.find(s => s.targetAgencyId === session.agency.id && s.status === 'aceptada');
         if (!myShare) return err(res, 'No tenés acceso a esta propiedad.', 403);
-        return json(res, { property, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
+        return json(res, { property, media, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
       }
       return err(res, 'No tenés acceso a esta propiedad.', 403);
     }
@@ -223,7 +273,7 @@ export function registerApiRoutes(router) {
     const partnerIds = await db.listPartnersOfAgency(session.agency.id);
     const partnerAgenciesList = (await Promise.all(partnerIds.map(id => db.getAgency(id)))).filter(Boolean);
     const byId = Object.fromEntries(partnerAgenciesList.map(a => [a.id, a]));
-    json(res, { property, owner, shares, partnerAgencies: { list: partnerAgenciesList, byId }, isOwner: true });
+    json(res, { property, media, owner, shares, partnerAgencies: { list: partnerAgenciesList, byId }, isOwner: true });
   });
 
   router.put('/api/propiedades/:id', async (req, res) => {
@@ -233,9 +283,20 @@ export function registerApiRoutes(router) {
     if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
       return err(res, 'Propiedad no encontrada.', 404);
     }
-    const body = await parseJson(req);
+    let body;
+    let files = [];
+    try {
+      const parsed = await parsePropertyRequest(req);
+      body = parsed.fields;
+      files = parsed.files;
+    } catch {
+      return err(res, 'Error al procesar los archivos.');
+    }
     const updated = await db.updateProperty(property.id, body);
-    json(res, { property: updated });
+    const media = files.length
+      ? await savePropertyMedia(property.id, files)
+      : await db.listPropertyMedia(property.id);
+    json(res, { property: updated, media });
   });
 
   router.post('/api/propiedades/:id/compartir', async (req, res) => {
@@ -742,7 +803,8 @@ export function registerApiRoutes(router) {
       const share = candidate && await db.getShareForPropertyAndTarget(property.id, viaAgencyId);
       if (candidate && share && share.status === 'aceptada' && share.webPublishAuthorized) viaAgency = candidate;
     }
-    json(res, { property, owner, viaAgency });
+    const media = await db.listPropertyMedia(property.id);
+    json(res, { property, media, owner, viaAgency });
   });
 
   // ---------------------------------------------------------------------------

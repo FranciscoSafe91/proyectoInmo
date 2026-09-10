@@ -1,10 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Camera, ChevronLeft, ChevronRight, Film } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, formatDate } from '../utils.js';
 
 function StatusBadge({ status }) {
   return <span className={`badge badge-${status}`}>{status}</span>;
+}
+
+function PropertyMediaCarousel({ media, title }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeMedia = media[activeIndex];
+
+  if (!media.length) {
+    return (
+      <div className="property-media-empty">
+        <Camera size={34} aria-hidden="true" />
+        <span>Esta propiedad todavía no tiene fotos o videos cargados.</span>
+      </div>
+    );
+  }
+
+  function move(step) {
+    setActiveIndex(current => (current + step + media.length) % media.length);
+  }
+
+  return (
+    <section className="property-gallery-card">
+      <div className="property-gallery-stage">
+        {activeMedia.type === 'video' ? (
+          <video src={activeMedia.url} controls />
+        ) : (
+          <img src={activeMedia.url} alt={title} />
+        )}
+        {media.length > 1 && (
+          <>
+            <button type="button" className="gallery-arrow left" onClick={() => move(-1)} aria-label="Ver archivo anterior">
+              <ChevronLeft size={20} aria-hidden="true" />
+            </button>
+            <button type="button" className="gallery-arrow right" onClick={() => move(1)} aria-label="Ver siguiente archivo">
+              <ChevronRight size={20} aria-hidden="true" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {media.length > 1 && (
+        <div className="property-gallery-thumbs">
+          {media.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              className={index === activeIndex ? 'active' : ''}
+              onClick={() => setActiveIndex(index)}
+              aria-label={`Ver archivo ${index + 1}`}
+            >
+              {item.type === 'video'
+                ? <Film size={17} aria-hidden="true" />
+                : <img src={item.url} alt="" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function WebPublishCell({ property, share, onUpdate }) {
@@ -51,7 +110,7 @@ export default function PropertyDetail() {
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { property, owner, shares, partnerAgencies, isOwner } = data;
+  const { property, media = [], owner, shares, partnerAgencies, isOwner } = data;
   const sharedAgencyIds = new Set(shares.filter(s => s.status !== 'rechazada').map(s => s.targetAgencyId));
   const availablePartners = (partnerAgencies?.list || []).filter(a => !sharedAgencyIds.has(a.id));
   const byId = partnerAgencies?.byId || {};
@@ -85,6 +144,8 @@ export default function PropertyDetail() {
 
       <div className="property-detail-grid">
         <div>
+          <PropertyMediaCarousel media={media} title={property.title} />
+
           <div className="card">
             <h3>{money(property.price, property.currency)}</h3>
             <p>{property.description || <span className="muted">Sin descripción.</span>}</p>

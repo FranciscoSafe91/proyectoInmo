@@ -1,5 +1,6 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { BrowserRouter, Link, Routes, Route, Navigate } from 'react-router-dom';
+import { BedDouble, ChevronLeft, ChevronRight, MapPin, Ruler, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 
 import Navbar from './pages/Navbar.jsx';
@@ -42,12 +43,125 @@ function PublicOnly({ children }) {
   return children;
 }
 
+const sharedHighlights = [
+  {
+    title: 'Departamento Lumiere',
+    location: 'Belgrano, CABA',
+    price: 'USD 215k',
+    rooms: '3 amb.',
+    area: '86 m²',
+    shares: '34 compartidos',
+    agency: 'Norte Propiedades',
+    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Casa Ombú',
+    location: 'San Isidro, Buenos Aires',
+    price: 'USD 390k',
+    rooms: '5 amb.',
+    area: '210 m²',
+    shares: '28 compartidos',
+    agency: 'Grupo Raíz',
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    title: 'Loft Distrito',
+    location: 'Palermo Soho, CABA',
+    price: 'USD 178k',
+    rooms: '2 amb.',
+    area: '72 m²',
+    shares: '21 compartidos',
+    agency: 'Nova Propiedades',
+    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80',
+  },
+];
+
+function FeaturedFooter() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeProperty = sharedHighlights[activeIndex];
+
+  const move = (step) => {
+    setActiveIndex((current) => (current + step + sharedHighlights.length) % sharedHighlights.length);
+  };
+
+  return (
+    <footer className="footer app-footer featured-footer">
+      <div className="featured-footer-copy">
+        <span>Los más compartidos</span>
+        <h2>Inmuebles que más se movieron esta semana</h2>
+      </div>
+
+      <div className="featured-carousel" aria-live="polite">
+        <button className="carousel-button" type="button" onClick={() => move(-1)} aria-label="Ver inmueble anterior">
+          <ChevronLeft size={20} aria-hidden="true" />
+        </button>
+
+        <article className="featured-property">
+          <img src={activeProperty.image} alt={activeProperty.title} />
+          <div className="featured-property-body">
+            <div className="featured-property-top">
+              <div>
+                <p>{activeProperty.agency}</p>
+                <h3>{activeProperty.title}</h3>
+              </div>
+              <strong>{activeProperty.price}</strong>
+            </div>
+
+            <div className="featured-location">
+              <MapPin size={16} aria-hidden="true" />
+              <span>{activeProperty.location}</span>
+            </div>
+
+            <div className="featured-meta">
+              <span><BedDouble size={15} aria-hidden="true" />{activeProperty.rooms}</span>
+              <span><Ruler size={15} aria-hidden="true" />{activeProperty.area}</span>
+              <span><Share2 size={15} aria-hidden="true" />{activeProperty.shares}</span>
+            </div>
+          </div>
+        </article>
+
+        <button className="carousel-button" type="button" onClick={() => move(1)} aria-label="Ver siguiente inmueble">
+          <ChevronRight size={20} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="carousel-dots" aria-label="Inmuebles destacados">
+        {sharedHighlights.map((property, index) => (
+          <button
+            key={property.title}
+            type="button"
+            className={index === activeIndex ? 'active' : ''}
+            onClick={() => setActiveIndex(index)}
+            aria-label={`Ver ${property.title}`}
+          />
+        ))}
+      </div>
+
+      <div className="footer-match-strip">
+        <div>
+          <span>Búsqueda activa</span>
+          <strong>Casa con jardín en zona norte</strong>
+        </div>
+        <div>
+          <span>Coincidencias</span>
+          <strong>7 propiedades compatibles</strong>
+        </div>
+        <div>
+          <span>Comisión</span>
+          <strong>2% a 3%</strong>
+        </div>
+        <Link className="btn btn-primary" to="/alertas">Publicar mi búsqueda</Link>
+      </div>
+    </footer>
+  );
+}
+
 function AppRoutes() {
   const { session } = useAuth();
   return (
     <>
       {session && <Navbar />}
-      <main className="container">
+      <main className={session ? 'container app-main' : 'container'}>
         <Routes>
           <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
           <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
@@ -77,7 +191,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <footer className="footer">Prototipo — Sistema Compartido de Propiedades</footer>
+      {session ? <FeaturedFooter /> : <footer className="footer">Prototipo - Sistema Compartido de Propiedades</footer>}
     </>
   );
 }

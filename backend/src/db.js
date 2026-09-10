@@ -354,13 +354,13 @@ export async function deleteSession(token) {
 async function ensurePropertyMediaTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS propiedad_media (
-      id          VARCHAR(36) PRIMARY KEY,
-      property_id VARCHAR(36) NOT NULL REFERENCES propiedades(id) ON DELETE CASCADE,
+      id          VARCHAR(36)  PRIMARY KEY,
+      property_id VARCHAR(36)  NOT NULL,
       url         VARCHAR(500) NOT NULL,
       type        VARCHAR(20)  NOT NULL,
       filename    VARCHAR(255) DEFAULT '',
-      sort_order  INTEGER      DEFAULT 0,
-      created_at  TIMESTAMPTZ  DEFAULT NOW()
+      sort_order  INT          DEFAULT 0,
+      created_at  DATETIME     DEFAULT NOW()
     )
   `);
 }
@@ -383,18 +383,20 @@ export async function createProperty(data) {
 
 export async function createPropertyMedia({ propertyId, url, type, filename, sortOrder }) {
   await ensurePropertyMediaTable();
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO propiedad_media (id,property_id,url,type,filename,sort_order,created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`,
-    [uuid(), propertyId, url, type, filename || '', Number(sortOrder) || 0]
+     VALUES (?,?,?,?,?,?,NOW())`,
+    [id, propertyId, url, type, filename || '', Number(sortOrder) || 0]
   );
+  const [rows] = await pool.query('SELECT * FROM propiedad_media WHERE id=?', [id]);
   return toPropertyMedia(rows[0]);
 }
 
 export async function listPropertyMedia(propertyId) {
   await ensurePropertyMediaTable();
-  const { rows } = await pool.query(
-    'SELECT * FROM propiedad_media WHERE property_id=$1 ORDER BY sort_order ASC, created_at ASC',
+  const [rows] = await pool.query(
+    'SELECT * FROM propiedad_media WHERE property_id=? ORDER BY sort_order ASC, created_at ASC',
     [propertyId]
   );
   return rows.map(toPropertyMedia);

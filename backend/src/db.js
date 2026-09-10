@@ -1,4 +1,4 @@
-// db.js — PostgreSQL (sin JSON)
+// db.js — MySQL (mysql2/promise)
 import pool from './pgPool.js';
 import { randomUUID, randomBytes } from 'node:crypto';
 
@@ -36,7 +36,7 @@ function toUser(r) {
     email: r.email, username: r.username,
     accountType: r.account_type, agencyName: r.agency_name, direccion: r.direccion,
     passwordHash: r.password_hash, passwordSalt: r.password_salt,
-    role: r.role, isPlatformAdmin: r.is_platform_admin, createdAt: r.created_at,
+    role: r.role, isPlatformAdmin: Boolean(r.is_platform_admin), createdAt: r.created_at,
   };
 }
 
@@ -79,7 +79,7 @@ function toShare(r) {
   return {
     id: r.id, propertyId: r.property_id,
     ownerAgencyId: r.owner_agency_id, targetAgencyId: r.target_agency_id,
-    status: r.status, webPublishAuthorized: r.web_publish_authorized,
+    status: r.status, webPublishAuthorized: Boolean(r.web_publish_authorized),
     createdAt: r.created_at, respondedAt: r.responded_at,
   };
 }
@@ -90,7 +90,7 @@ function toAlert(r) {
     id: r.id, agencyId: r.agency_id, title: r.title,
     operation: r.operation, type: r.type, city: r.city, currency: r.currency,
     minPrice: r.min_price, maxPrice: r.max_price, minBedrooms: r.min_bedrooms,
-    active: r.active, createdAt: r.created_at,
+    active: Boolean(r.active), createdAt: r.created_at,
   };
 }
 
@@ -140,44 +140,55 @@ function toSession(r) {
 }
 
 // ---------------------------------------------------------------------------
+// Reset (usado por seed.js)
+// ---------------------------------------------------------------------------
+export async function resetDatabase() {
+  await pool.query('SET FOREIGN_KEY_CHECKS=0');
+  for (const t of ['sesiones','compartidas','sociedades','alertas_busqueda',
+                    'pagos','suscripciones','invitaciones','tickets_soporte',
+                    'propiedades','usuarios','inmobiliarias','plan_suscripcion']) {
+    await pool.query(`TRUNCATE TABLE ${t}`);
+  }
+  await pool.query('SET FOREIGN_KEY_CHECKS=1');
+  await pool.query("INSERT IGNORE INTO plan_suscripcion (id,name,price_ars) VALUES (1,'Plan Mensual',15000)");
+}
+
+// ---------------------------------------------------------------------------
 // Agencies
 // ---------------------------------------------------------------------------
 export async function createAgency({ name, slug, email, phone, city, accountType }) {
   const agencyId = uuid();
   const apiKey = generateApiKey();
   const type = accountType === 'agente_independiente' ? 'agente_independiente' : 'inmobiliaria';
-  const { rows } = await pool.query(
+  await pool.query(
     `INSERT INTO inmobiliarias (id,name,slug,email,phone,city,account_type,logo_path,brand_color,api_key,created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,'#1f6f54',$8,NOW()) RETURNING *`,
+     VALUES (?,?,?,?,?,?,?,NULL,'#1f6f54',?,NOW())`,
     [agencyId, name, slug, email, phone || '', city || '', type, apiKey]
   );
-  const agency = toAgency(rows[0]);
+  const agency = await getAgency(agencyId);
   await createTrialSubscription(agencyId);
   return agency;
 }
 
 export async function getAgency(agencyId) {
-  const { rows } = await pool.query('SELECT * FROM inmobiliarias WHERE id=$1', [agencyId]);
+  const [rows] = await pool.query('SELECT * FROM inmobiliarias WHERE id=?', [agencyId]);
   return toAgency(rows[0] || null);
 }
 
 export async function updateAgency(agencyId, patch) {
   const fields = [];
   const vals = [];
-  let i = 1;
   const map = {
     name: 'name', slug: 'slug', email: 'email', phone: 'phone', city: 'city',
     accountType: 'account_type', logoPath: 'logo_path', brandColor: 'brand_color', apiKey: 'api_key',
   };
   for (const [key, col] of Object.entries(map)) {
-    if (patch[key] !== undefined) { fields.push(`${col}=$${i++}`); vals.push(patch[key]); }
+    if (patch[key] !== undefined) { fields.push(`${col}=?`); vals.push(patch[key]); }
   }
   if (fields.length === 0) return getAgency(agencyId);
   vals.push(agencyId);
-  const { rows } = await pool.query(
-    `UPDATE inmobiliarias SET ${fields.join(',')} WHERE id=$${i} RETURNING *`, vals
-  );
-  return toAgency(rows[0] || null);
+  await pool.query(`UPDATE inmobiliarias SET ${fields.join(',')} WHERE id=?`, vals);
+  return getAgency(agencyId);
 }
 
 export async function verifyAgencyApiKey(agencyId, apiKey) {
@@ -193,116 +204,108 @@ export async function verifyAgencyApiKey(agencyId, apiKey) {
 
 export async function regenerateApiKey(agencyId) {
   const newKey = generateApiKey();
-  const { rows } = await pool.query(
-    'UPDATE inmobiliarias SET api_key=$1 WHERE id=$2 RETURNING *', [newKey, agencyId]
-  );
-  return toAgency(rows[0] || null);
+  await pool.query('UPDATE inmobiliarias SET api_key=? WHERE id=?', [newKey, agencyId]);
+  return getAgency(agencyId);
 }
 
 export async function findAgencyByEmail(email) {
-  const { rows } = await pool.query(
-    'SELECT * FROM inmobiliarias WHERE LOWER(email)=LOWER($1)', [email]
-  );
+  const [rows] = await pool.query('SELECT * FROM inmobiliarias WHERE LOWER(email)=LOWER(?)', [email]);
   return toAgency(rows[0] || null);
 }
 
 export async function findAgencyBySlug(slug) {
-  const { rows } = await pool.query('SELECT * FROM inmobiliarias WHERE slug=$1', [slug]);
+  const [rows] = await pool.query('SELECT * FROM inmobiliarias WHERE slug=?', [slug]);
   return toAgency(rows[0] || null);
 }
 
 export async function listAgencies() {
-  const { rows } = await pool.query('SELECT * FROM inmobiliarias ORDER BY created_at');
+  const [rows] = await pool.query('SELECT * FROM inmobiliarias ORDER BY created_at');
   return rows.map(toAgency);
 }
 
 export async function searchAgencies(query, excludeAgencyId) {
   const q = `%${(query || '').toLowerCase().trim()}%`;
-  const { rows } = await pool.query(
-    `SELECT * FROM inmobiliarias WHERE id<>$1 AND (LOWER(name) LIKE $2 OR LOWER(city) LIKE $2)`,
-    [excludeAgencyId, q]
+  const [rows] = await pool.query(
+    `SELECT * FROM inmobiliarias WHERE id<>? AND (LOWER(name) LIKE ? OR LOWER(city) LIKE ?)`,
+    [excludeAgencyId, q, q]
   );
   return rows.map(toAgency);
 }
 
 // ---------------------------------------------------------------------------
-// Users (tabla: usuarios)
+// Users
 // ---------------------------------------------------------------------------
 export async function createUser({ agencyId, name, nombre, apellido, documento, email, username, accountType, agencyName, direccion, passwordHash, passwordSalt, role, isPlatformAdmin }) {
   const userId = uuid();
   const fullName = name || `${nombre || ''} ${apellido || ''}`.trim();
-  const { rows } = await pool.query(
+  await pool.query(
     `INSERT INTO usuarios (id,agency_id,nombre,apellido,documento,email,account_type,agency_name,direccion,username,password_hash,password_salt,role,is_platform_admin,created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW()) RETURNING *`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
     [
       userId, agencyId,
       nombre || fullName, apellido || '',
       documento || '', email,
       accountType || 'inmobiliaria', agencyName || '', direccion || '',
       username || '', passwordHash, passwordSalt,
-      role || 'admin', Boolean(isPlatformAdmin),
+      role || 'admin', isPlatformAdmin ? 1 : 0,
     ]
   );
-  return toUser(rows[0]);
+  return getUser(userId);
 }
 
 export async function findUserByEmail(email) {
-  const { rows } = await pool.query(
-    'SELECT * FROM usuarios WHERE LOWER(email)=LOWER($1)', [email]
-  );
+  const [rows] = await pool.query('SELECT * FROM usuarios WHERE LOWER(email)=LOWER(?)', [email]);
   return toUser(rows[0] || null);
 }
 
 export async function getUser(userId) {
-  const { rows } = await pool.query('SELECT * FROM usuarios WHERE id=$1', [userId]);
+  const [rows] = await pool.query('SELECT * FROM usuarios WHERE id=?', [userId]);
   return toUser(rows[0] || null);
 }
 
 export async function listUsersByAgency(agencyId) {
-  const { rows } = await pool.query('SELECT * FROM usuarios WHERE agency_id=$1', [agencyId]);
+  const [rows] = await pool.query('SELECT * FROM usuarios WHERE agency_id=?', [agencyId]);
   return rows.map(toUser);
 }
 
 export async function countAdminsInAgency(agencyId) {
-  const { rows } = await pool.query(
-    "SELECT COUNT(*) FROM usuarios WHERE agency_id=$1 AND role='admin'", [agencyId]
+  const [rows] = await pool.query(
+    "SELECT COUNT(*) as count FROM usuarios WHERE agency_id=? AND role='admin'", [agencyId]
   );
   return Number(rows[0].count);
 }
 
 export async function deleteUser(userId) {
-  await pool.query('DELETE FROM sesiones WHERE user_id=$1', [userId]);
-  await pool.query('DELETE FROM usuarios WHERE id=$1', [userId]);
+  await pool.query('DELETE FROM sesiones WHERE user_id=?', [userId]);
+  await pool.query('DELETE FROM usuarios WHERE id=?', [userId]);
 }
 
 export async function updateUserRole(userId, role) {
   const safeRole = role === 'admin' ? 'admin' : 'agente';
-  const { rows } = await pool.query(
-    'UPDATE usuarios SET role=$1 WHERE id=$2 RETURNING *', [safeRole, userId]
-  );
-  return toUser(rows[0] || null);
+  await pool.query('UPDATE usuarios SET role=? WHERE id=?', [safeRole, userId]);
+  return getUser(userId);
 }
 
 // ---------------------------------------------------------------------------
-// Sessions (tabla: sesiones)
+// Sessions
 // ---------------------------------------------------------------------------
 export async function createSession(userId) {
   const token = uuid();
-  await pool.query('INSERT INTO sesiones (token,user_id,created_at) VALUES ($1,$2,NOW())', [token, userId]);
+  await pool.query('INSERT INTO sesiones (token,user_id,created_at) VALUES (?,?,NOW())', [token, userId]);
   return token;
 }
 
 export async function getSession(token) {
-  const { rows } = await pool.query('SELECT * FROM sesiones WHERE token=$1', [token]);
+  const [rows] = await pool.query('SELECT * FROM sesiones WHERE token=?', [token]);
   return toSession(rows[0] || null);
 }
 
 export async function deleteSession(token) {
-  await pool.query('DELETE FROM sesiones WHERE token=$1', [token]);
+  await pool.query('DELETE FROM sesiones WHERE token=?', [token]);
 }
 
 // ---------------------------------------------------------------------------
-// Properties (tabla: propiedades)
+// Properties
 // ---------------------------------------------------------------------------
 async function ensurePropertyMediaTable() {
   await pool.query(`
@@ -320,9 +323,9 @@ async function ensurePropertyMediaTable() {
 
 export async function createProperty(data) {
   const propId = uuid();
-  const { rows } = await pool.query(
+  await pool.query(
     `INSERT INTO propiedades (id,agency_id,created_by_user_id,title,description,operation,type,price,currency,address,city,province,bedrooms,bathrooms,area_m2,status,created_at,updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW(),NOW()) RETURNING *`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -331,7 +334,7 @@ export async function createProperty(data) {
       data.status || 'publicada',
     ]
   );
-  return toProperty(rows[0]);
+  return getProperty(propId);
 }
 
 export async function createPropertyMedia({ propertyId, url, type, filename, sortOrder }) {
@@ -354,20 +357,20 @@ export async function listPropertyMedia(propertyId) {
 }
 
 export async function getProperty(propertyId) {
-  const { rows } = await pool.query('SELECT * FROM propiedades WHERE id=$1', [propertyId]);
+  const [rows] = await pool.query('SELECT * FROM propiedades WHERE id=?', [propertyId]);
   return toProperty(rows[0] || null);
 }
 
 export async function listPropertiesByAgency(agencyId) {
-  const { rows } = await pool.query(
-    'SELECT * FROM propiedades WHERE agency_id=$1 ORDER BY created_at DESC', [agencyId]
+  const [rows] = await pool.query(
+    'SELECT * FROM propiedades WHERE agency_id=? ORDER BY created_at DESC', [agencyId]
   );
   return rows.map(toProperty);
 }
 
 export async function listPropertiesByUser(agencyId, userId) {
-  const { rows } = await pool.query(
-    'SELECT * FROM propiedades WHERE agency_id=$1 AND created_by_user_id=$2 ORDER BY created_at DESC',
+  const [rows] = await pool.query(
+    'SELECT * FROM propiedades WHERE agency_id=? AND created_by_user_id=? ORDER BY created_at DESC',
     [agencyId, userId]
   );
   return rows.map(toProperty);
@@ -376,7 +379,6 @@ export async function listPropertiesByUser(agencyId, userId) {
 export async function updateProperty(propertyId, patch) {
   const fields = [];
   const vals = [];
-  let i = 1;
   const map = {
     title: 'title', description: 'description', operation: 'operation', type: 'type',
     price: 'price', currency: 'currency', address: 'address', city: 'city',
@@ -384,188 +386,183 @@ export async function updateProperty(propertyId, patch) {
     areaM2: 'area_m2', status: 'status',
   };
   for (const [key, col] of Object.entries(map)) {
-    if (patch[key] !== undefined) { fields.push(`${col}=$${i++}`); vals.push(patch[key]); }
+    if (patch[key] !== undefined) { fields.push(`${col}=?`); vals.push(patch[key]); }
   }
-  fields.push(`updated_at=NOW()`);
+  fields.push('updated_at=NOW()');
   vals.push(propertyId);
-  const { rows } = await pool.query(
-    `UPDATE propiedades SET ${fields.join(',')} WHERE id=$${i} RETURNING *`, vals
-  );
-  return toProperty(rows[0] || null);
+  await pool.query(`UPDATE propiedades SET ${fields.join(',')} WHERE id=?`, vals);
+  return getProperty(propertyId);
 }
 
 // ---------------------------------------------------------------------------
-// Partnerships (tabla: sociedades)
+// Partnerships
 // ---------------------------------------------------------------------------
 export async function arePartners(agencyAId, agencyBId) {
-  const { rows } = await pool.query(
+  const [rows] = await pool.query(
     `SELECT 1 FROM sociedades WHERE status='aceptada'
-     AND ((agency_a_id=$1 AND agency_b_id=$2) OR (agency_a_id=$2 AND agency_b_id=$1))`,
-    [agencyAId, agencyBId]
+     AND ((agency_a_id=? AND agency_b_id=?) OR (agency_a_id=? AND agency_b_id=?))`,
+    [agencyAId, agencyBId, agencyBId, agencyAId]
   );
   return rows.length > 0;
 }
 
 export async function findPartnership(agencyAId, agencyBId) {
-  const { rows } = await pool.query(
+  const [rows] = await pool.query(
     `SELECT * FROM sociedades
-     WHERE (agency_a_id=$1 AND agency_b_id=$2) OR (agency_a_id=$2 AND agency_b_id=$1)`,
-    [agencyAId, agencyBId]
+     WHERE (agency_a_id=? AND agency_b_id=?) OR (agency_a_id=? AND agency_b_id=?)`,
+    [agencyAId, agencyBId, agencyBId, agencyAId]
   );
   return toPartnership(rows[0] || null);
 }
 
 export async function createPartnershipRequest({ fromAgencyId, toAgencyId }) {
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO sociedades (id,agency_a_id,agency_b_id,requested_by,status,created_at)
-     VALUES ($1,$2,$3,$4,'pendiente',NOW()) RETURNING *`,
-    [uuid(), fromAgencyId, toAgencyId, fromAgencyId]
+     VALUES (?,?,?,?,'pendiente',NOW())`,
+    [id, fromAgencyId, toAgencyId, fromAgencyId]
   );
-  return toPartnership(rows[0]);
+  return getPartnership(id);
 }
 
 export async function getPartnership(partnershipId) {
-  const { rows } = await pool.query('SELECT * FROM sociedades WHERE id=$1', [partnershipId]);
+  const [rows] = await pool.query('SELECT * FROM sociedades WHERE id=?', [partnershipId]);
   return toPartnership(rows[0] || null);
 }
 
 export async function respondPartnership(partnershipId, status) {
-  const { rows } = await pool.query(
-    `UPDATE sociedades SET status=$1, responded_at=NOW() WHERE id=$2 RETURNING *`,
+  await pool.query(
+    'UPDATE sociedades SET status=?, responded_at=NOW() WHERE id=?',
     [status, partnershipId]
   );
-  return toPartnership(rows[0] || null);
+  return getPartnership(partnershipId);
 }
 
 export async function listPartnersOfAgency(agencyId) {
-  const { rows } = await pool.query(
+  const [rows] = await pool.query(
     `SELECT agency_a_id, agency_b_id FROM sociedades
-     WHERE status='aceptada' AND (agency_a_id=$1 OR agency_b_id=$1)`,
-    [agencyId]
+     WHERE status='aceptada' AND (agency_a_id=? OR agency_b_id=?)`,
+    [agencyId, agencyId]
   );
   return rows.map(r => r.agency_a_id === agencyId ? r.agency_b_id : r.agency_a_id);
 }
 
 export async function listPendingPartnershipRequestsReceived(agencyId) {
-  const { rows } = await pool.query(
-    "SELECT * FROM sociedades WHERE status='pendiente' AND agency_b_id=$1", [agencyId]
+  const [rows] = await pool.query(
+    "SELECT * FROM sociedades WHERE status='pendiente' AND agency_b_id=?", [agencyId]
   );
   return rows.map(toPartnership);
 }
 
 export async function listPendingPartnershipRequestsSent(agencyId) {
-  const { rows } = await pool.query(
-    "SELECT * FROM sociedades WHERE status='pendiente' AND agency_a_id=$1", [agencyId]
+  const [rows] = await pool.query(
+    "SELECT * FROM sociedades WHERE status='pendiente' AND agency_a_id=?", [agencyId]
   );
   return rows.map(toPartnership);
 }
 
 // ---------------------------------------------------------------------------
-// Property shares (tabla: compartidas)
+// Property shares
 // ---------------------------------------------------------------------------
 export async function createPropertyShare({ propertyId, ownerAgencyId, targetAgencyId }) {
-  const { rows: existing } = await pool.query(
-    `SELECT * FROM compartidas WHERE property_id=$1 AND target_agency_id=$2 AND status<>'rechazada'`,
+  const [existing] = await pool.query(
+    `SELECT * FROM compartidas WHERE property_id=? AND target_agency_id=? AND status<>'rechazada'`,
     [propertyId, targetAgencyId]
   );
   if (existing.length > 0) return toShare(existing[0]);
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO compartidas (id,property_id,owner_agency_id,target_agency_id,status,web_publish_authorized,created_at)
-     VALUES ($1,$2,$3,$4,'pendiente',false,NOW()) RETURNING *`,
-    [uuid(), propertyId, ownerAgencyId, targetAgencyId]
+     VALUES (?,?,?,?,'pendiente',0,NOW())`,
+    [id, propertyId, ownerAgencyId, targetAgencyId]
   );
-  return toShare(rows[0]);
+  return getPropertyShare(id);
 }
 
 export async function getPropertyShare(shareId) {
-  const { rows } = await pool.query('SELECT * FROM compartidas WHERE id=$1', [shareId]);
+  const [rows] = await pool.query('SELECT * FROM compartidas WHERE id=?', [shareId]);
   return toShare(rows[0] || null);
 }
 
 export async function getShareForPropertyAndTarget(propertyId, targetAgencyId) {
-  const { rows } = await pool.query(
-    'SELECT * FROM compartidas WHERE property_id=$1 AND target_agency_id=$2', [propertyId, targetAgencyId]
+  const [rows] = await pool.query(
+    'SELECT * FROM compartidas WHERE property_id=? AND target_agency_id=?', [propertyId, targetAgencyId]
   );
   return toShare(rows[0] || null);
 }
 
 export async function setSharePublishAuthorization(shareId, authorized) {
-  const { rows } = await pool.query(
-    'UPDATE compartidas SET web_publish_authorized=$1 WHERE id=$2 RETURNING *', [Boolean(authorized), shareId]
-  );
-  return toShare(rows[0] || null);
+  await pool.query('UPDATE compartidas SET web_publish_authorized=? WHERE id=?', [authorized ? 1 : 0, shareId]);
+  return getPropertyShare(shareId);
 }
 
 export async function respondPropertyShare(shareId, status) {
-  const { rows } = await pool.query(
-    'UPDATE compartidas SET status=$1, responded_at=NOW() WHERE id=$2 RETURNING *', [status, shareId]
-  );
-  return toShare(rows[0] || null);
+  await pool.query('UPDATE compartidas SET status=?, responded_at=NOW() WHERE id=?', [status, shareId]);
+  return getPropertyShare(shareId);
 }
 
 export async function listSharesForProperty(propertyId) {
-  const { rows } = await pool.query('SELECT * FROM compartidas WHERE property_id=$1', [propertyId]);
+  const [rows] = await pool.query('SELECT * FROM compartidas WHERE property_id=?', [propertyId]);
   return rows.map(toShare);
 }
 
 export async function listPendingSharesReceived(agencyId) {
-  const { rows } = await pool.query(
-    "SELECT * FROM compartidas WHERE status='pendiente' AND target_agency_id=$1", [agencyId]
+  const [rows] = await pool.query(
+    "SELECT * FROM compartidas WHERE status='pendiente' AND target_agency_id=?", [agencyId]
   );
   return rows.map(toShare);
 }
 
 export async function listAcceptedSharesReceived(agencyId) {
-  const { rows } = await pool.query(
-    "SELECT * FROM compartidas WHERE status='aceptada' AND target_agency_id=$1", [agencyId]
+  const [rows] = await pool.query(
+    "SELECT * FROM compartidas WHERE status='aceptada' AND target_agency_id=?", [agencyId]
   );
   return rows.map(toShare);
 }
 
 export async function listSharesByOwnerAgency(agencyId) {
-  const { rows } = await pool.query('SELECT * FROM compartidas WHERE owner_agency_id=$1', [agencyId]);
+  const [rows] = await pool.query('SELECT * FROM compartidas WHERE owner_agency_id=?', [agencyId]);
   return rows.map(toShare);
 }
 
 // ---------------------------------------------------------------------------
-// Alertas de búsqueda (tabla: alertas_busqueda)
+// Alertas de búsqueda
 // ---------------------------------------------------------------------------
 export async function createSearchAlert(data) {
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO alertas_busqueda (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,active,created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,NOW()) RETURNING *`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())`,
     [
-      uuid(), data.agencyId, data.title || '', data.operation || '', data.type || '',
+      id, data.agencyId, data.title || '', data.operation || '', data.type || '',
       (data.city || '').trim(), data.currency || '',
       data.minPrice ? Number(data.minPrice) : null,
       data.maxPrice ? Number(data.maxPrice) : null,
       data.minBedrooms ? Number(data.minBedrooms) : null,
     ]
   );
-  return toAlert(rows[0]);
+  return getSearchAlert(id);
 }
 
 export async function getSearchAlert(alertId) {
-  const { rows } = await pool.query('SELECT * FROM alertas_busqueda WHERE id=$1', [alertId]);
+  const [rows] = await pool.query('SELECT * FROM alertas_busqueda WHERE id=?', [alertId]);
   return toAlert(rows[0] || null);
 }
 
 export async function listAlertsByAgency(agencyId) {
-  const { rows } = await pool.query(
-    'SELECT * FROM alertas_busqueda WHERE agency_id=$1 ORDER BY created_at DESC', [agencyId]
+  const [rows] = await pool.query(
+    'SELECT * FROM alertas_busqueda WHERE agency_id=? ORDER BY created_at DESC', [agencyId]
   );
   return rows.map(toAlert);
 }
 
 export async function setSearchAlertActive(alertId, active) {
-  const { rows } = await pool.query(
-    'UPDATE alertas_busqueda SET active=$1 WHERE id=$2 RETURNING *', [active, alertId]
-  );
-  return toAlert(rows[0] || null);
+  await pool.query('UPDATE alertas_busqueda SET active=? WHERE id=?', [active ? 1 : 0, alertId]);
+  return getSearchAlert(alertId);
 }
 
 export async function deleteSearchAlert(alertId) {
-  await pool.query('DELETE FROM alertas_busqueda WHERE id=$1', [alertId]);
+  await pool.query('DELETE FROM alertas_busqueda WHERE id=?', [alertId]);
 }
 
 function propertyMatchesAlert(property, alert) {
@@ -589,14 +586,15 @@ export async function listAlertMatchesForOwner(ownerAgencyId) {
   const partnerIds = await listPartnersOfAgency(ownerAgencyId);
   if (partnerIds.length === 0) return [];
 
-  const { rows: alertRows } = await pool.query(
-    'SELECT * FROM alertas_busqueda WHERE active=true AND agency_id=ANY($1)', [partnerIds]
+  const placeholders = partnerIds.map(() => '?').join(',');
+  const [alertRows] = await pool.query(
+    `SELECT * FROM alertas_busqueda WHERE active=1 AND agency_id IN (${placeholders})`, partnerIds
   );
   const partnerAlerts = alertRows.map(toAlert);
   if (partnerAlerts.length === 0) return [];
 
-  const { rows: shareRows } = await pool.query(
-    `SELECT * FROM compartidas WHERE owner_agency_id=$1 AND status<>'rechazada'`, [ownerAgencyId]
+  const [shareRows] = await pool.query(
+    `SELECT * FROM compartidas WHERE owner_agency_id=? AND status<>'rechazada'`, [ownerAgencyId]
   );
   const existingShares = shareRows.map(toShare);
 
@@ -644,46 +642,45 @@ export async function listFeedPropertiesForAgency(agencyId) {
 // Plan y suscripciones
 // ---------------------------------------------------------------------------
 export async function getPlan() {
-  const { rows } = await pool.query('SELECT * FROM plan_suscripcion WHERE id=1');
+  const [rows] = await pool.query('SELECT * FROM plan_suscripcion WHERE id=1');
   return toPlan(rows[0] || { name: 'Plan Mensual', price_ars: 15000 });
 }
 
 export async function updatePlan(patch) {
-  const { rows } = await pool.query(
-    `UPDATE plan_suscripcion SET name=COALESCE($1,name), price_ars=COALESCE($2,price_ars) WHERE id=1 RETURNING *`,
+  await pool.query(
+    `UPDATE plan_suscripcion SET name=COALESCE(?,name), price_ars=COALESCE(?,price_ars) WHERE id=1`,
     [patch.name || null, patch.priceARS != null ? Number(patch.priceARS) : null]
   );
-  return toPlan(rows[0]);
+  return getPlan();
 }
 
 export async function createTrialSubscription(agencyId) {
   const trialEndsAt = addDays(now(), TRIAL_DAYS);
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO suscripciones (id,agency_id,status,trial_ends_at,created_at)
-     VALUES ($1,$2,'trial',$3,NOW()) RETURNING *`,
-    [uuid(), agencyId, trialEndsAt]
+     VALUES (?,?,'trial',?,NOW())`,
+    [id, agencyId, trialEndsAt]
   );
-  return toSubscription(rows[0]);
+  return getSubscriptionByAgency(agencyId);
 }
 
 export async function getSubscriptionByAgency(agencyId) {
-  const { rows } = await pool.query('SELECT * FROM suscripciones WHERE agency_id=$1', [agencyId]);
+  const [rows] = await pool.query('SELECT * FROM suscripciones WHERE agency_id=?', [agencyId]);
   return toSubscription(rows[0] || null);
 }
 
 export async function updateSubscription(agencyId, patch) {
   const fields = [];
   const vals = [];
-  let i = 1;
-  if (patch.status !== undefined)           { fields.push(`status=$${i++}`);             vals.push(patch.status); }
-  if (patch.currentPeriodEnd !== undefined) { fields.push(`current_period_end=$${i++}`); vals.push(patch.currentPeriodEnd); }
-  if (patch.mpPreapprovalId !== undefined)  { fields.push(`mp_preapproval_id=$${i++}`);  vals.push(patch.mpPreapprovalId); }
+  if (patch.status !== undefined)           { fields.push('status=?');             vals.push(patch.status); }
+  if (patch.trialEndsAt !== undefined)      { fields.push('trial_ends_at=?');      vals.push(patch.trialEndsAt); }
+  if (patch.currentPeriodEnd !== undefined) { fields.push('current_period_end=?'); vals.push(patch.currentPeriodEnd); }
+  if (patch.mpPreapprovalId !== undefined)  { fields.push('mp_preapproval_id=?');  vals.push(patch.mpPreapprovalId); }
   if (fields.length === 0) return getSubscriptionByAgency(agencyId);
   vals.push(agencyId);
-  const { rows } = await pool.query(
-    `UPDATE suscripciones SET ${fields.join(',')} WHERE agency_id=$${i} RETURNING *`, vals
-  );
-  return toSubscription(rows[0] || null);
+  await pool.query(`UPDATE suscripciones SET ${fields.join(',')} WHERE agency_id=?`, vals);
+  return getSubscriptionByAgency(agencyId);
 }
 
 export function effectiveSubscriptionStatus(subscription) {
@@ -715,17 +712,19 @@ export async function applySuccessfulPayment(agencyId, { amount, currency, metho
 }
 
 export async function createPayment({ agencyId, subscriptionId, amount, currency, status, method, mpPaymentId }) {
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO pagos (id,agency_id,subscription_id,amount,currency,status,method,mp_payment_id,created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
-    [uuid(), agencyId, subscriptionId || null, amount, currency || 'ARS', status || 'aprobado', method || 'simulado', mpPaymentId || null]
+     VALUES (?,?,?,?,?,?,?,?,NOW())`,
+    [id, agencyId, subscriptionId || null, amount, currency || 'ARS', status || 'aprobado', method || 'simulado', mpPaymentId || null]
   );
+  const [rows] = await pool.query('SELECT * FROM pagos WHERE id=?', [id]);
   return toPayment(rows[0]);
 }
 
 export async function listPaymentsByAgency(agencyId) {
-  const { rows } = await pool.query(
-    'SELECT * FROM pagos WHERE agency_id=$1 ORDER BY created_at DESC', [agencyId]
+  const [rows] = await pool.query(
+    'SELECT * FROM pagos WHERE agency_id=? ORDER BY created_at DESC', [agencyId]
   );
   return rows.map(toPayment);
 }
@@ -743,71 +742,69 @@ export async function listAgenciesWithSubscriptions() {
 // ---------------------------------------------------------------------------
 export async function createInvitation({ agencyId, role, note }) {
   const token = randomBytes(16).toString('hex');
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO invitaciones (id,agency_id,role,note,token,status,created_at)
-     VALUES ($1,$2,$3,$4,$5,'pendiente',NOW()) RETURNING *`,
-    [uuid(), agencyId, role === 'admin' ? 'admin' : 'agente', note || '', token]
+     VALUES (?,?,?,?,?,'pendiente',NOW())`,
+    [id, agencyId, role === 'admin' ? 'admin' : 'agente', note || '', token]
   );
-  return toInvitation(rows[0]);
+  return getInvitation(id);
 }
 
 export async function getInvitationByToken(token) {
-  const { rows } = await pool.query('SELECT * FROM invitaciones WHERE token=$1', [token]);
+  const [rows] = await pool.query('SELECT * FROM invitaciones WHERE token=?', [token]);
   return toInvitation(rows[0] || null);
 }
 
 export async function getInvitation(invitationId) {
-  const { rows } = await pool.query('SELECT * FROM invitaciones WHERE id=$1', [invitationId]);
+  const [rows] = await pool.query('SELECT * FROM invitaciones WHERE id=?', [invitationId]);
   return toInvitation(rows[0] || null);
 }
 
 export async function listPendingInvitationsByAgency(agencyId) {
-  const { rows } = await pool.query(
-    "SELECT * FROM invitaciones WHERE agency_id=$1 AND status='pendiente'", [agencyId]
+  const [rows] = await pool.query(
+    "SELECT * FROM invitaciones WHERE agency_id=? AND status='pendiente'", [agencyId]
   );
   return rows.map(toInvitation);
 }
 
 export async function cancelInvitation(invitationId) {
-  const { rows } = await pool.query(
-    "UPDATE invitaciones SET status='cancelada' WHERE id=$1 RETURNING *", [invitationId]
-  );
-  return toInvitation(rows[0] || null);
+  await pool.query("UPDATE invitaciones SET status='cancelada' WHERE id=?", [invitationId]);
+  return getInvitation(invitationId);
 }
 
 export async function acceptInvitation(invitationId) {
-  const { rows } = await pool.query(
-    "UPDATE invitaciones SET status='aceptada' WHERE id=$1 RETURNING *", [invitationId]
-  );
-  return toInvitation(rows[0] || null);
+  await pool.query("UPDATE invitaciones SET status='aceptada' WHERE id=?", [invitationId]);
+  return getInvitation(invitationId);
 }
 
 // ---------------------------------------------------------------------------
 // Soporte
 // ---------------------------------------------------------------------------
 export async function createSupportTicket({ agencyId, userId, subject, message }) {
-  const { rows } = await pool.query(
+  const id = uuid();
+  await pool.query(
     `INSERT INTO tickets_soporte (id,agency_id,user_id,subject,message,status,admin_note,created_at)
-     VALUES ($1,$2,$3,$4,$5,'abierto','',NOW()) RETURNING *`,
-    [uuid(), agencyId, userId || null, subject || '', message || '']
+     VALUES (?,?,?,?,?,'abierto','',NOW())`,
+    [id, agencyId, userId || null, subject || '', message || '']
   );
-  return toTicket(rows[0]);
+  return getSupportTicket(id);
 }
 
 export async function getSupportTicket(ticketId) {
-  const { rows } = await pool.query('SELECT * FROM tickets_soporte WHERE id=$1', [ticketId]);
+  const [rows] = await pool.query('SELECT * FROM tickets_soporte WHERE id=?', [ticketId]);
   return toTicket(rows[0] || null);
 }
 
 export async function listSupportTicketsByAgency(agencyId) {
-  const { rows } = await pool.query(
-    'SELECT * FROM tickets_soporte WHERE agency_id=$1 ORDER BY created_at ASC', [agencyId]
+  const [rows] = await pool.query(
+    'SELECT * FROM tickets_soporte WHERE agency_id=? ORDER BY created_at ASC', [agencyId]
   );
   return rows.map(toTicket);
 }
 
 export async function listAllSupportTickets() {
-  const { rows } = await pool.query(
+  const [rows] = await pool.query(
     `SELECT * FROM tickets_soporte ORDER BY
      CASE WHEN status='abierto' THEN 0 ELSE 1 END, created_at ASC`
   );
@@ -815,21 +812,21 @@ export async function listAllSupportTickets() {
 }
 
 export async function countOpenSupportTickets() {
-  const { rows } = await pool.query("SELECT COUNT(*) FROM tickets_soporte WHERE status='abierto'");
+  const [rows] = await pool.query("SELECT COUNT(*) as count FROM tickets_soporte WHERE status='abierto'");
   return Number(rows[0].count);
 }
 
 export async function resolveSupportTicket(ticketId, adminNote) {
-  const { rows } = await pool.query(
-    `UPDATE tickets_soporte SET status='resuelto', admin_note=$1, responded_at=NOW() WHERE id=$2 RETURNING *`,
+  await pool.query(
+    `UPDATE tickets_soporte SET status='resuelto', admin_note=?, responded_at=NOW() WHERE id=?`,
     [adminNote || '', ticketId]
   );
-  return toTicket(rows[0] || null);
+  return getSupportTicket(ticketId);
 }
 
 export async function reopenSupportTicket(ticketId) {
-  const { rows } = await pool.query(
-    `UPDATE tickets_soporte SET status='abierto', responded_at=NULL WHERE id=$1 RETURNING *`, [ticketId]
+  await pool.query(
+    `UPDATE tickets_soporte SET status='abierto', responded_at=NULL WHERE id=?`, [ticketId]
   );
-  return toTicket(rows[0] || null);
+  return getSupportTicket(ticketId);
 }

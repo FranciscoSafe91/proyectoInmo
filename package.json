@@ -1,14 +1,11 @@
 {
-  "name": "spiderconect",
+  "name": "spyderconnect",
   "version": "1.0.0",
-  "private": true,
   "scripts": {
-    "start:backend": "cd backend && node src/server.js",
-    "start:frontend": "cd frontend && npx vite",
-    "dev": "npm run start:backend & npm run start:frontend",
-    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
+    "start": "node backend/src/server.js"
   },
-  "dependencies": {
-    "pdfkit": "^0.20.2"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

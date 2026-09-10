@@ -1,5 +1,4 @@
-[phases.install]
-cmds = []
+providers = ["node"]
 
 [phases.build]
 cmds = ["npm run build"]

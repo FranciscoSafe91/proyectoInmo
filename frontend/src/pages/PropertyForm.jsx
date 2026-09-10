@@ -42,6 +42,7 @@ export default function PropertyForm() {
   const [mediaFiles, setMediaFiles] = useState([]);
   const [activePreview, setActivePreview] = useState(0);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const newMediaPreviews = useMemo(() => mediaFiles.map(file => ({
     id: `${file.name}-${file.lastModified}`,
@@ -100,7 +101,9 @@ export default function PropertyForm() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
     setError('');
+    setSubmitting(true);
     try {
       const body = mediaFiles.length ? buildPropertyFormData(property, mediaFiles) : property;
       if (isEdit) {
@@ -112,6 +115,7 @@ export default function PropertyForm() {
       }
     } catch (err) {
       setError(err.data?.error || 'Error al guardar.');
+      setSubmitting(false);
     }
   }
 
@@ -122,7 +126,9 @@ export default function PropertyForm() {
           <h1>{isEdit ? 'Editar propiedad' : 'Nueva propiedad'}</h1>
           <p className="subtitle">Cargá los datos clave y sumá material visual para que el match sea más rápido.</p>
         </div>
-        <Link className="btn btn-secondary" to={isEdit ? `/propiedades/${id}` : '/propiedades'}>Cancelar</Link>
+        <Link className="btn btn-secondary" to="/propiedades">
+          {isEdit ? '← Volver a propiedades' : 'Cancelar'}
+        </Link>
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
@@ -287,7 +293,9 @@ export default function PropertyForm() {
           </select>
 
           <div className="btn-row form-actions">
-            <button type="submit" className="btn">{isEdit ? 'Guardar cambios' : 'Publicar propiedad'}</button>
+            <button type="submit" className="btn" disabled={submitting}>
+              {submitting ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Publicar propiedad'}
+            </button>
           </div>
         </aside>
       </form>

@@ -7,8 +7,11 @@
     "mysql2": "^3.11.0",
     "nodemailer": "^6.9.16"
   },
+  "devDependencies": {
+    "shx": "^0.3.4"
+  },
   "scripts": {
-    "build": "cd frontend && npm install && npm run build && cp -r dist ../dist && rm -rf ../backend/public/app && cp -r dist ../backend/public/app",
+    "build": "cd frontend && npm install && npm run build && shx cp -r dist ../dist && shx rm -rf ../backend/public/app && shx cp -r dist ../backend/public/app",
     "postinstall": "npm run build",
     "start": "node backend/src/server.js"
   },

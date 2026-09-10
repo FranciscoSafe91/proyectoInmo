@@ -7,30 +7,13 @@ import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
 import { randomUUID } from 'node:crypto';
 import * as mail from './mail.js';
-import { writeFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { uploadBuffer, deleteResource } from './cloudinary.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = join(__dirname, '..', 'public');
-const LOGOS_DIR = join(PUBLIC_DIR, 'uploads', 'logos');
-const PROPERTY_MEDIA_DIR = join(PUBLIC_DIR, 'uploads', 'properties');
-const LOGO_EXTENSIONS = {
-  'image/png': '.png', 'image/jpeg': '.jpg',
-  'image/webp': '.webp', 'image/svg+xml': '.svg',
-};
-const PROPERTY_MEDIA_EXTENSIONS = {
-  'image/png': '.png',
-  'image/jpeg': '.jpg',
-  'image/webp': '.webp',
-  'image/gif': '.gif',
-  'video/mp4': '.mp4',
-  'video/webm': '.webm',
-  'video/quicktime': '.mov',
-};
-
-if (!existsSync(PROPERTY_MEDIA_DIR)) mkdirSync(PROPERTY_MEDIA_DIR, { recursive: true });
+const LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+const PROPERTY_MEDIA_CONTENT_TYPES = new Set([
+  'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+  'video/mp4', 'video/webm', 'video/quicktime',
+]);
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 
@@ -84,20 +67,19 @@ async function parsePropertyRequest(req) {
 
 async function savePropertyMedia(propertyId, files) {
   const accepted = files
-    .filter(file => file && PROPERTY_MEDIA_EXTENSIONS[file.contentType])
+    .filter(file => file && PROPERTY_MEDIA_CONTENT_TYPES.has(file.contentType))
     .slice(0, 8);
 
   const created = [];
   for (const [index, file] of accepted.entries()) {
-    const ext = PROPERTY_MEDIA_EXTENSIONS[file.contentType];
     const mediaType = file.contentType.startsWith('video/') ? 'video' : 'image';
-    const filename = `${propertyId}-${randomUUID()}${ext}`;
-    writeFileSync(join(PROPERTY_MEDIA_DIR, filename), file.buffer);
+    const publicId = `spyderconnect/properties/${propertyId}/${randomUUID()}`;
+    const result = await uploadBuffer(file.buffer, { public_id: publicId, resource_type: mediaType });
     created.push(await db.createPropertyMedia({
       propertyId,
-      url: `/uploads/properties/${filename}`,
+      url: result.secure_url,
       type: mediaType,
-      filename: file.filename || filename,
+      filename: file.filename || publicId,
       sortOrder: index,
     }));
   }
@@ -591,28 +573,21 @@ export function registerApiRoutes(router) {
     let parsed;
     try { parsed = await parseMultipartFormData(req, { maxBytes: 8 * 1024 * 1024 }); } catch { return err(res, 'Error al procesar el archivo.'); }
     const file = parsed.files.logo;
-    const ext = file && LOGO_EXTENSIONS[file.contentType];
-    if (!file || !ext) return err(res, 'Formato de imagen inválido.');
-    const previous = session.agency.logoPath;
-    const filename = `${session.agency.id}-${randomUUID()}${ext}`;
-    writeFileSync(join(LOGOS_DIR, filename), file.buffer);
-    const agency = await db.updateAgency(session.agency.id, { logoPath: `/uploads/logos/${filename}` });
-    if (previous) {
-      const prev = join(PUBLIC_DIR, previous);
-      if (prev.startsWith(LOGOS_DIR) && existsSync(prev)) { try { unlinkSync(prev); } catch {} }
-    }
+    if (!file || !LOGO_CONTENT_TYPES.has(file.contentType)) return err(res, 'Formato de imagen inválido.');
+    const result = await uploadBuffer(file.buffer, {
+      public_id: `spyderconnect/logos/${session.agency.id}`,
+      overwrite: true,
+      resource_type: 'image',
+    });
+    const agency = await db.updateAgency(session.agency.id, { logoPath: result.secure_url });
     json(res, { agency });
   });
 
   router.post('/api/mi-cuenta/logo/quitar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
-    const previous = session.agency.logoPath;
+    await deleteResource(`spyderconnect/logos/${session.agency.id}`);
     const agency = await db.updateAgency(session.agency.id, { logoPath: null });
-    if (previous) {
-      const prev = join(PUBLIC_DIR, previous);
-      if (prev.startsWith(LOGOS_DIR) && existsSync(prev)) { try { unlinkSync(prev); } catch {} }
-    }
     json(res, { agency });
   });
 

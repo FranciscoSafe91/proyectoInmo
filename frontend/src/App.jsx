@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Link, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { BedDouble, ChevronLeft, ChevronRight, MapPin, Ruler, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 
@@ -158,10 +158,12 @@ function FeaturedFooter() {
 
 function AppRoutes() {
   const { session } = useAuth();
+  const { pathname } = useLocation();
+  const isLanding = !session && pathname === '/';
   return (
     <>
       {session && <Navbar />}
-      <main className={session ? 'container app-main' : 'container'}>
+      <main className={session ? 'container app-main' : (isLanding ? '' : 'container')}>
         <Routes>
           <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
           <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
@@ -191,7 +193,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {session ? <FeaturedFooter /> : <footer className="footer">Prototipo - Sistema Compartido de Propiedades</footer>}
+      {session ? <FeaturedFooter /> : (!isLanding && <footer className="footer">Prototipo - Sistema Compartido de Propiedades</footer>)}
     </>
   );
 }

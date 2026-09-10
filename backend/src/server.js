@@ -14,7 +14,7 @@ import { registerApiRoutes } from './api.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
-const SPA_DIR   = join(PUBLIC_DIR, 'app');
+const SPA_DIR    = join(PUBLIC_DIR, 'app');
 const LOGOS_DIR = join(PUBLIC_DIR, 'uploads', 'logos');
 const PORT = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';

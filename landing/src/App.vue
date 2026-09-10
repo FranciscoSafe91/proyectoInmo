@@ -16,8 +16,8 @@
         </div>
 
         <div class="nav-actions">
-          <a href="#contacto" class="btn btn-ghost">Iniciar sesión</a>
-          <a href="#contacto" class="btn btn-primary">Solicitar acceso</a>
+          <a href="/login" class="btn btn-ghost">Iniciar sesión</a>
+          <a href="/registro" class="btn btn-primary">Solicitar acceso</a>
         </div>
 
         <button
@@ -39,7 +39,8 @@
         <a href="#comisiones" @click="menuOpen = false">Comisiones</a>
         <a href="#casos" @click="menuOpen = false">Casos</a>
         <a href="#planes" @click="menuOpen = false">Planes</a>
-        <a href="#contacto" @click="menuOpen = false">Solicitar acceso</a>
+        <a href="/login" @click="menuOpen = false">Iniciar sesión</a>
+        <a href="/registro" @click="menuOpen = false">Solicitar acceso</a>
       </div>
     </header>
 

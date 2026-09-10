@@ -14,6 +14,7 @@ import { registerApiRoutes } from './api.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
+const SPA_DIR   = join(PUBLIC_DIR, 'app');
 const LOGOS_DIR = join(PUBLIC_DIR, 'uploads', 'logos');
 const PORT = process.env.PORT || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
@@ -91,13 +92,25 @@ const MIME = {
 
 function serveStatic(req, res, pathname) {
   if (pathname === '/' || pathname.endsWith('/')) return false;
+  // Primero busca en public/ (uploads, widget.js, etc.)
   const filePath = join(PUBLIC_DIR, pathname);
-  if (!filePath.startsWith(PUBLIC_DIR) || !existsSync(filePath) || !statSync(filePath).isFile()) return false;
-  const ext = extname(filePath);
-  const content = readFileSync(filePath);
-  res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-  res.end(content);
-  return true;
+  if (filePath.startsWith(PUBLIC_DIR) && existsSync(filePath) && statSync(filePath).isFile()) {
+    const ext = extname(filePath);
+    const content = readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.end(content);
+    return true;
+  }
+  // Luego busca en public/app/ (assets del build de React)
+  const spaFile = join(SPA_DIR, pathname);
+  if (spaFile.startsWith(SPA_DIR) && existsSync(spaFile) && statSync(spaFile).isFile()) {
+    const ext = extname(spaFile);
+    const content = readFileSync(spaFile);
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.end(content);
+    return true;
+  }
+  return false;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -121,6 +134,12 @@ const server = http.createServer(async (req, res) => {
 
     const match = router.match(req.method, pathname);
     if (!match) {
+      // En producción: cualquier ruta no encontrada devuelve el index.html del SPA
+      if (req.method === 'GET' && existsSync(join(SPA_DIR, 'index.html'))) {
+        const html = readFileSync(join(SPA_DIR, 'index.html'));
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        return res.end(html);
+      }
       res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': CORS_ORIGIN });
       return res.end(JSON.stringify({ error: 'Ruta no encontrada' }));
     }

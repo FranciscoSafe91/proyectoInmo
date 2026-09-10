@@ -6,6 +6,7 @@ import * as auth from './auth.js';
 import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
 import { randomUUID } from 'node:crypto';
+import * as mail from './mail.js';
 import { writeFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -181,6 +182,9 @@ export function registerApiRoutes(router) {
     });
 
     await auth.login(res, user.id);
+    if (mail.isConfigured()) {
+      mail.sendWelcome(email, `${nombre} ${apellido}`.trim()).catch(() => {});
+    }
     json(res, { user, agency }, 201);
   });
 
@@ -194,8 +198,28 @@ export function registerApiRoutes(router) {
     const { email } = body;
     if (!email) return err(res, 'Ingresá un email.', 400);
     const user = await db.findUserByEmail(email);
-    if (user) return json(res, { ok: true });
-    return err(res, 'Email no registrado.', 404);
+    if (user && mail.isConfigured()) {
+      const token = await db.createPasswordResetToken(user.id);
+      const frontendBase = process.env.CORS_ORIGIN || baseUrlFor(req);
+      const resetUrl = `${frontendBase}/reset-password?token=${token}`;
+      mail.sendPasswordReset(user.email, resetUrl).catch(() => {});
+    }
+    // Siempre responder ok para no revelar si el email existe
+    return json(res, { ok: true });
+  });
+
+  router.post('/api/reset-password', async (req, res) => {
+    const body = await parseJson(req);
+    const { token, password } = body;
+    if (!token || !password || password.length < 6) {
+      return err(res, 'La contraseña debe tener al menos 6 caracteres.', 400);
+    }
+    const resetToken = await db.getPasswordResetToken(token);
+    if (!resetToken) return err(res, 'El enlace expiró o ya fue usado.', 400);
+    const { hash, salt } = auth.hashPassword(password);
+    await db.updateUserPassword(resetToken.userId, hash, salt);
+    await db.deletePasswordResetToken(token);
+    return json(res, { ok: true });
   });
 
   // ---------------------------------------------------------------------------

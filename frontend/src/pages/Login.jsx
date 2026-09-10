@@ -125,17 +125,17 @@ export default function Login() {
           >
             <h2 style={{ margin: '0 0 6px', fontSize: '1.2rem' }}>Recuperar contraseña</h2>
             <p style={{ color: '#667070', fontSize: '0.9rem', margin: '0 0 18px' }}>
-              Ingresá tu email y verificamos si está registrado.
+              Ingresá tu email y te enviamos un enlace para restablecer tu contraseña.
             </p>
 
             {recoveryStatus === 'ok' ? (
               <div style={{ textAlign: 'center', padding: '16px 0' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>✅</div>
                 <p style={{ fontWeight: 600, color: '#1f7a4d', margin: 0 }}>
-                  El email está registrado correctamente.
+                  ¡Email enviado!
                 </p>
                 <p style={{ color: '#667070', fontSize: '0.88rem', marginTop: 6 }}>
-                  Contactate con el administrador para restablecer tu contraseña.
+                  Si ese email está registrado, vas a recibir un enlace para restablecer tu contraseña. Revisá también la carpeta de spam.
                 </p>
                 <button className="btn" style={{ marginTop: 18 }} onClick={closeModal}>
                   Cerrar
@@ -159,7 +159,7 @@ export default function Login() {
 
                 <div className="btn-row" style={{ marginTop: 18 }}>
                   <button type="submit" className="btn" disabled={recoverySending}>
-                    {recoverySending ? 'Verificando...' : 'Verificar email'}
+                    {recoverySending ? 'Enviando...' : 'Enviar enlace'}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={closeModal}>
                     Cancelar

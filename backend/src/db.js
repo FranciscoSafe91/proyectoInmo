@@ -286,6 +286,50 @@ export async function updateUserRole(userId, role) {
   return getUser(userId);
 }
 
+export async function updateUserPassword(userId, passwordHash, passwordSalt) {
+  await pool.query('UPDATE usuarios SET password_hash=?,password_salt=? WHERE id=?', [passwordHash, passwordSalt, userId]);
+}
+
+// ---------------------------------------------------------------------------
+// Password Reset Tokens
+// ---------------------------------------------------------------------------
+async function ensurePasswordResetTokensTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token      VARCHAR(64)  PRIMARY KEY,
+      user_id    VARCHAR(36)  NOT NULL,
+      expires_at DATETIME     NOT NULL,
+      created_at DATETIME     NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+export async function createPasswordResetToken(userId) {
+  await ensurePasswordResetTokensTable();
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+  await pool.query('DELETE FROM password_reset_tokens WHERE user_id=?', [userId]);
+  await pool.query(
+    'INSERT INTO password_reset_tokens (token,user_id,expires_at,created_at) VALUES (?,?,?,NOW())',
+    [token, userId, expiresAt]
+  );
+  return token;
+}
+
+export async function getPasswordResetToken(token) {
+  await ensurePasswordResetTokensTable();
+  const [rows] = await pool.query(
+    'SELECT * FROM password_reset_tokens WHERE token=? AND expires_at > NOW()',
+    [token]
+  );
+  if (!rows[0]) return null;
+  return { token: rows[0].token, userId: rows[0].user_id, expiresAt: rows[0].expires_at };
+}
+
+export async function deletePasswordResetToken(token) {
+  await pool.query('DELETE FROM password_reset_tokens WHERE token=?', [token]);
+}
+
 // ---------------------------------------------------------------------------
 // Sessions
 // ---------------------------------------------------------------------------

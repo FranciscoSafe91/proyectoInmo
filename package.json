@@ -2,7 +2,7 @@
   "name": "spyderconnect",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend && rm -rf node_modules && npm install && npm run build && rm -rf ../backend/public/app && cp -r dist ../backend/public/app && cd ../backend && rm -rf node_modules && npm install",
+    "build": "cd frontend && rm -rf node_modules && npm install && npm run build && cp -r dist ../dist && rm -rf ../backend/public/app && cp -r dist ../backend/public/app && cd ../backend && rm -rf node_modules && npm install",
     "start": "node backend/src/server.js"
   },
   "engines": {

@@ -194,14 +194,13 @@ export default function PropertyDetail() {
                 ) : (
                   <table>
                     <thead>
-                      <tr><th>Inmobiliaria</th><th>Estado</th><th>Publicación en su web</th><th>Fecha</th></tr>
+                      <tr><th>Inmobiliaria</th><th>Estado</th><th>Fecha</th></tr>
                     </thead>
                     <tbody>
                       {shares.map(s => (
                         <tr key={s.id}>
                           <td>{byId[s.targetAgencyId]?.name || 'Inmobiliaria'}</td>
                           <td><StatusBadge status={s.status} /></td>
-                          <td><WebPublishCell property={property} share={s} onUpdate={load} /></td>
                           <td className="muted">{formatDate(s.createdAt)}</td>
                         </tr>
                       ))}

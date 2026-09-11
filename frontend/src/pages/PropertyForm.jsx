@@ -145,7 +145,7 @@ export default function PropertyForm() {
             <input type="text" id="title" name="title" required value={property.title} onChange={handleChange} placeholder="Ej: Casa 3 ambientes con jardín" />
 
             <label htmlFor="description">Descripción</label>
-            <textarea id="description" name="description" value={property.description} onChange={handleChange} placeholder="Detalles, comodidades, estado general, luminosidad..." />
+            <textarea id="description" name="description" required value={property.description} onChange={handleChange} placeholder="Detalles, comodidades, estado general, luminosidad..." />
 
             <div className="grid grid-2">
               <div>
@@ -175,7 +175,7 @@ export default function PropertyForm() {
             <div className="grid grid-2">
               <div>
                 <label htmlFor="price">Precio</label>
-                <input type="number" id="price" name="price" min="0" step="1" value={property.price} onChange={handleChange} />
+                <input type="number" id="price" name="price" min="0" step="1" required value={property.price} onChange={handleChange} />
               </div>
               <div>
                 <label htmlFor="currency">Moneda</label>
@@ -187,31 +187,31 @@ export default function PropertyForm() {
             </div>
 
             <label htmlFor="address">Dirección</label>
-            <input type="text" id="address" name="address" value={property.address} onChange={handleChange} />
+            <input type="text" id="address" name="address" required value={property.address} onChange={handleChange} />
 
             <div className="grid grid-2">
               <div>
                 <label htmlFor="city">Ciudad</label>
-                <input type="text" id="city" name="city" value={property.city} onChange={handleChange} />
+                <input type="text" id="city" name="city" required value={property.city} onChange={handleChange} />
               </div>
               <div>
                 <label htmlFor="province">Provincia</label>
-                <input type="text" id="province" name="province" value={property.province} onChange={handleChange} />
+                <input type="text" id="province" name="province" required value={property.province} onChange={handleChange} />
               </div>
             </div>
 
             <div className="grid grid-3">
               <div>
                 <label htmlFor="bedrooms">Dormitorios</label>
-                <input type="number" id="bedrooms" name="bedrooms" min="0" value={property.bedrooms} onChange={handleChange} />
+                <input type="number" id="bedrooms" name="bedrooms" min="0" required value={property.bedrooms} onChange={handleChange} />
               </div>
               <div>
                 <label htmlFor="bathrooms">Baños</label>
-                <input type="number" id="bathrooms" name="bathrooms" min="0" value={property.bathrooms} onChange={handleChange} />
+                <input type="number" id="bathrooms" name="bathrooms" min="0" required value={property.bathrooms} onChange={handleChange} />
               </div>
               <div>
                 <label htmlFor="areaM2">Superficie (m²)</label>
-                <input type="number" id="areaM2" name="areaM2" min="0" value={property.areaM2} onChange={handleChange} />
+                <input type="number" id="areaM2" name="areaM2" min="0" required value={property.areaM2} onChange={handleChange} />
               </div>
             </div>
           </div>

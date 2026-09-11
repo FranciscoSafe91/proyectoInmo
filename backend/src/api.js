@@ -305,6 +305,17 @@ export function registerApiRoutes(router) {
     json(res, { property: updated, media });
   });
 
+  router.delete('/api/propiedades/:id', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const property = await db.getProperty(req.params.id);
+    if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
+      return err(res, 'Propiedad no encontrada.', 404);
+    }
+    await db.deleteProperty(property.id);
+    json(res, { ok: true });
+  });
+
   router.post('/api/propiedades/:id/compartir', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;

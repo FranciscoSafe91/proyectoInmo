@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Camera, ChevronLeft, ChevronRight, Film } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, formatDate } from '../utils.js';
@@ -96,10 +96,24 @@ function WebPublishCell({ property, share, onUpdate }) {
 
 export default function PropertyDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [selectedPartners, setSelectedPartners] = useState([]);
   const [allowWebPublish, setAllowWebPublish] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!window.confirm('¿Seguro que querés eliminar esta propiedad? Esta acción no se puede deshacer.')) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/propiedades/${id}`);
+      navigate('/propiedades');
+    } catch (e) {
+      setError(e.data?.error || 'Error al eliminar la propiedad.');
+      setDeleting(false);
+    }
+  }
 
   function load() {
     api.get(`/propiedades/${id}`).then(setData).catch(e => setError(e.message));
@@ -161,6 +175,11 @@ export default function PropertyDetail() {
             <div className="btn-row">
               {isOwner && <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/editar`}>Editar propiedad</Link>}
               <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/ficha`} target="_blank">🖨️ Ficha para imprimir</Link>
+              {isOwner && (
+                <button className="btn btn-danger btn-small" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              )}
             </div>
           </div>
         </div>

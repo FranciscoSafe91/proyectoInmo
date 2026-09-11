@@ -422,6 +422,10 @@ export async function listPropertiesByUser(agencyId, userId) {
   return rows.map(toProperty);
 }
 
+export async function deleteProperty(propertyId) {
+  await pool.query('DELETE FROM propiedades WHERE id=?', [propertyId]);
+}
+
 export async function updateProperty(propertyId, patch) {
   const fields = [];
   const vals = [];

@@ -234,20 +234,6 @@ export default function PropertyDetail() {
                         </div>
                       ))}
                     </fieldset>
-                    <div className="checkbox-row">
-                      <input
-                        type="checkbox"
-                        id="allowWebPublish"
-                        checked={allowWebPublish}
-                        onChange={e => setAllowWebPublish(e.target.checked)}
-                      />
-                      <label htmlFor="allowWebPublish" style={{ margin: 0, fontWeight: 'normal' }}>
-                        Autorizar también a publicarla en su propia web (además de manejarla puertas adentro)
-                      </label>
-                    </div>
-                    <p className="small muted" style={{ margin: '6px 0 10px' }}>
-                      Si no marcás esto, la inmobiliaria va a poder ver y trabajar la propiedad dentro del sistema, pero no va a aparecer en el feed ni en el widget de su web hasta que se lo autorices. Podés cambiarlo después desde esta misma pantalla, por cada inmobiliaria.
-                    </p>
                     <button type="submit" className="btn btn-small" disabled={selectedPartners.length === 0}>Enviar invitación</button>
                   </form>
                 )}

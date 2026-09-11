@@ -77,6 +77,26 @@ export async function sendWelcome(to, name) {
   });
 }
 
+export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, alertTitle }) {
+  await getTransport().sendMail({
+    from: `"SpyderConnect" <${FROM_ADDRESS}>`,
+    to,
+    subject: `Nueva coincidencia: ${alertTitle || propertyTitle}`,
+    html: baseHtml(`
+      <h2 style="margin-top:0">¡Encontramos una coincidencia!</h2>
+      <p>La inmobiliaria <strong>${partnerAgencyName}</strong> tiene una propiedad que coincide con tu alerta <strong>"${alertTitle || 'sin título'}"</strong>:</p>
+      <p style="font-size:1.1rem;margin:16px 0"><strong>${propertyTitle}</strong></p>
+      <p>Entrá a SpyderConnect para pedirle que te la comparta.</p>
+      <p style="margin:24px 0">
+        <a href="https://spyderconnect.com/alertas"
+           style="background:#1f6f54;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold">
+          Ver coincidencias
+        </a>
+      </p>
+    `),
+  });
+}
+
 export function isConfigured() {
   return Boolean(SMTP_USER && SMTP_PASS);
 }

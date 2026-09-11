@@ -666,6 +666,35 @@ export async function listAlertMatchesForOwner(ownerAgencyId) {
   return matches;
 }
 
+export async function findMatchingAlertsForProperty(property, ownerAgencyId) {
+  if (property.status !== 'publicada') return [];
+  const partnerIds = await listPartnersOfAgency(ownerAgencyId);
+  if (partnerIds.length === 0) return [];
+
+  const placeholders = partnerIds.map(() => '?').join(',');
+  const [alertRows] = await pool.query(
+    `SELECT * FROM alertas_busqueda WHERE active=1 AND agency_id IN (${placeholders})`, partnerIds
+  );
+  const partnerAlerts = alertRows.map(toAlert);
+  if (partnerAlerts.length === 0) return [];
+
+  const [shareRows] = await pool.query(
+    `SELECT * FROM compartidas WHERE owner_agency_id=? AND property_id=? AND status<>'rechazada'`,
+    [ownerAgencyId, property.id]
+  );
+  const existingShares = shareRows.map(toShare);
+
+  const matches = [];
+  for (const alert of partnerAlerts) {
+    const alreadyShared = existingShares.some(s => s.targetAgencyId === alert.agencyId);
+    if (alreadyShared) continue;
+    if (propertyMatchesAlert(property, alert)) {
+      matches.push({ alert, requestingAgencyId: alert.agencyId });
+    }
+  }
+  return matches;
+}
+
 // ---------------------------------------------------------------------------
 // Feed público
 // ---------------------------------------------------------------------------

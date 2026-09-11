@@ -99,6 +99,22 @@ async function requirePlatformAdmin(req, res) {
   return session;
 }
 
+async function notifyAlertMatches(property, ownerAgency) {
+  if (!mail.isConfigured()) return;
+  try {
+    const matches = await db.findMatchingAlertsForProperty(property, ownerAgency.id);
+    for (const { alert, requestingAgencyId } of matches) {
+      const requestingAgency = await db.getAgency(requestingAgencyId);
+      if (!requestingAgency) continue;
+      mail.sendAlertMatch(requestingAgency.email, {
+        partnerAgencyName: ownerAgency.name,
+        propertyTitle: property.title,
+        alertTitle: alert.title,
+      }).catch(() => {});
+    }
+  } catch {}
+}
+
 function requireAccountAdmin(req, res, session) {
   if (session.user.role !== 'admin') {
     err(res, 'Solo un administrador de la cuenta puede acceder a esta sección.', 403);
@@ -251,6 +267,7 @@ export function registerApiRoutes(router) {
     if (!body.title) return err(res, 'El título es obligatorio.');
     const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
     const media = await savePropertyMedia(property.id, files);
+    notifyAlertMatches(property, session.agency).catch(() => {});
     json(res, { property, media }, 201);
   });
 
@@ -302,6 +319,7 @@ export function registerApiRoutes(router) {
     const media = files.length
       ? await savePropertyMedia(property.id, files)
       : await db.listPropertyMedia(property.id);
+    notifyAlertMatches(updated, session.agency).catch(() => {});
     json(res, { property: updated, media });
   });
 
@@ -407,6 +425,15 @@ export function registerApiRoutes(router) {
     const partnership = await db.getPartnership(req.params.partnershipId);
     if (partnership && partnership.agencyBId === session.agency.id && partnership.status === 'pendiente') {
       await db.respondPartnership(partnership.id, 'aceptada');
+      // Notificar coincidencias entre ambas agencias ahora que son socias
+      const agencyA = await db.getAgency(partnership.agencyAId);
+      const agencyB = session.agency;
+      if (agencyA) {
+        const propsA = await db.listPropertiesByAgency(agencyA.id);
+        for (const p of propsA) notifyAlertMatches(p, agencyA).catch(() => {});
+        const propsB = await db.listPropertiesByAgency(agencyB.id);
+        for (const p of propsB) notifyAlertMatches(p, agencyB).catch(() => {});
+      }
     }
     json(res, { ok: true });
   });

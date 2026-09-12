@@ -230,10 +230,12 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const properties = await db.listPropertiesByUser(session.agency.id, session.user.id);
     const sharesByProperty = {};
+    const coverMediaByProperty = {};
     await Promise.all(properties.map(async p => {
       sharesByProperty[p.id] = await db.listSharesForProperty(p.id);
+      coverMediaByProperty[p.id] = (await db.listPropertyMedia(p.id))[0] || null;
     }));
-    json(res, { properties, sharesByProperty });
+    json(res, { properties, sharesByProperty, coverMediaByProperty });
   });
 
   router.post('/api/propiedades', async (req, res) => {

@@ -18,7 +18,7 @@ export default function Properties() {
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { properties, sharesByProperty } = data;
+  const { properties, sharesByProperty, coverMediaByProperty = {} } = data;
 
   return (
     <>
@@ -46,11 +46,23 @@ export default function Properties() {
                 {properties.map(p => {
                   const shares = sharesByProperty[p.id] || [];
                   const sharedCount = shares.filter(s => s.status !== 'rechazada').length;
+                  const cover = coverMediaByProperty[p.id];
                   return (
                     <tr key={p.id}>
                       <td>
-                        <Link to={`/propiedades/${p.id}`}>{p.title}</Link><br />
-                        <span className="muted">{p.city}{p.city ? ', ' : ''}{p.province}</span>
+                        <div className="property-list-item">
+                          <Link className="property-list-thumb" to={`/propiedades/${p.id}`} aria-label={`Ver ${p.title}`}>
+                            {cover?.type === 'image' ? (
+                              <img src={cover.url} alt={p.title} />
+                            ) : (
+                              <span>{typeLabel(p.type).slice(0, 1) || 'P'}</span>
+                            )}
+                          </Link>
+                          <div className="property-list-copy">
+                            <Link to={`/propiedades/${p.id}`}>{p.title}</Link><br />
+                            <span className="muted">{p.city}{p.city ? ', ' : ''}{p.province}</span>
+                          </div>
+                        </div>
                       </td>
                       <td>{typeLabel(p.type)} · {operationLabel(p.operation)}</td>
                       <td>{money(p.price, p.currency)}</td>

@@ -1,6 +1,12 @@
 node_modules/
 .env
 *.env.local
+
+# Build outputs — generados automáticamente, no van en git
+dist/
 frontend/dist/
 frontend/.vite/
+backend/public/app/
+
+# Uploads de usuarios
 backend/public/uploads/

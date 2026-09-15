@@ -50,16 +50,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-2">
-        <div className="card">
+      <div className="grid grid-2 dashboard-actions">
+        <div className="card action-card">
           <h3>Publicar una propiedad nueva</h3>
           <p className="muted">Cargá una propiedad y elegí con qué socios compartirla apenas la publicás.</p>
-          <Link className="btn" to="/propiedades/nueva">+ Nueva propiedad</Link>
+          <div className="action-card-footer">
+            <Link className="btn" to="/propiedades/nueva">+ Nueva propiedad</Link>
+          </div>
         </div>
-        <div className="card">
+        <div className="card action-card">
           <h3>Sumar inmobiliarias socias</h3>
           <p className="muted">Buscá inmobiliarias y enviales una solicitud de sociedad para poder compartirles propiedades.</p>
-          <Link className="btn btn-secondary" to="/socios">Buscar socios</Link>
+          <div className="action-card-footer">
+            <Link className="btn btn-secondary" to="/socios">Buscar socios</Link>
+          </div>
         </div>
       </div>
     </>

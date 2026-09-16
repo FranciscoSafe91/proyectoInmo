@@ -10,3 +10,6 @@ backend/public/app/
 
 # Uploads de usuarios
 backend/public/uploads/
+
+# Logs del servidor (generados en runtime)
+*.log

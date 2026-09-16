@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Camera, ChevronLeft, ChevronRight, Film } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Film, Printer } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, formatDate } from '../utils.js';
 
@@ -174,7 +174,9 @@ export default function PropertyDetail() {
             </table>
             <div className="btn-row">
               {isOwner && <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/editar`}>Editar propiedad</Link>}
-              <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/ficha`} target="_blank">🖨️ Ficha para imprimir</Link>
+              <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/ficha`} target="_blank">
+                <Printer size={15} aria-hidden="true" /> Ficha para imprimir
+              </Link>
               {isOwner && (
                 <button className="btn btn-danger btn-small" onClick={handleDelete} disabled={deleting}>
                   {deleting ? 'Eliminando...' : 'Eliminar'}

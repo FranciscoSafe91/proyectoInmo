@@ -56,7 +56,7 @@ export default function Ficha() {
     <>
       <style>{styles}</style>
       <div className="print-bar">
-        <button className="print-btn" onClick={() => window.print()}>🖨️ Imprimir / Guardar como PDF</button>
+        <button className="print-btn" onClick={() => window.print()}>Imprimir / Guardar como PDF</button>
       </div>
       <div className="sheet">
         <div className="ficha-header">

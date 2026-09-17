@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronRight,
   Handshake,
+  Home,
   LogOut,
   Menu,
   Search,
@@ -31,7 +32,8 @@ export default function Navbar() {
   const closeMenu = () => setOpen(false);
 
   const primaryLinks = [
-    { to: '/dashboard', label: 'Buscar match', icon: Search, className: activeExact('/dashboard') },
+    { to: '/dashboard', label: 'Home', icon: Home, className: activeExact('/dashboard') },
+    { to: '/dashboard', label: 'Buscar match', icon: Search, className: '' },
     { to: '/propiedades', label: 'Publicadas', icon: Building2, className: active('/propiedades') },
     { to: '/compartidas', label: 'Operaciones', icon: Handshake, className: activeExact('/compartidas') },
   ];
@@ -51,7 +53,7 @@ export default function Navbar() {
   }
 
   const renderLink = ({ to, label, icon: Icon, className }) => (
-    <Link key={to} to={to} className={`sidebar-link ${className}`} onClick={closeMenu}>
+    <Link key={`${to}-${label}`} to={to} className={`sidebar-link ${className}`} onClick={closeMenu}>
       <Icon size={17} aria-hidden="true" />
       <span>{label}</span>
     </Link>

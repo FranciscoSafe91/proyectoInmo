@@ -30,6 +30,7 @@ export default function Dashboard() {
       label: 'Propiedades propias',
       value: stats.myProperties,
       hint: 'Inventario activo de tu cuenta',
+      to: '/propiedades',
       icon: Building2,
       tone: 'green',
     },
@@ -37,6 +38,7 @@ export default function Dashboard() {
       label: 'Compartidas conmigo',
       value: stats.sharedWithMe,
       hint: 'Oportunidades aceptadas de socios',
+      to: '/compartidas',
       icon: Share2,
       tone: 'orange',
     },
@@ -44,6 +46,7 @@ export default function Dashboard() {
       label: 'Inmobiliarias socias',
       value: stats.partners,
       hint: 'Red disponible para operar',
+      to: '/socios',
       icon: UsersRound,
       tone: 'ink',
     },
@@ -85,14 +88,14 @@ export default function Dashboard() {
         {healthItems.map(item => {
           const Icon = item.icon;
           return (
-            <article key={item.label} className={`metric-card metric-${item.tone}`}>
+            <Link key={item.label} to={item.to} className={`metric-card metric-${item.tone}`}>
               <div className="metric-icon"><Icon size={22} aria-hidden="true" /></div>
               <div>
                 <strong>{item.value}</strong>
                 <span>{item.label}</span>
                 <p>{item.hint}</p>
               </div>
-            </article>
+            </Link>
           );
         })}
       </div>

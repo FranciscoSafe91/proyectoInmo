@@ -203,12 +203,21 @@ export default function PropertyDetail() {
                     </thead>
                     <tbody>
                       {shares.map(s => (
-                        <tr key={s.id}>
-                          <td>{byId[s.targetAgencyId]?.name || 'Inmobiliaria'}</td>
-                          <td><StatusBadge status={s.status} /></td>
-                          <td className="muted">{s.percentage != null ? `${s.percentage}%` : '—'}</td>
-                          <td className="muted">{formatDate(s.createdAt)}</td>
-                        </tr>
+                        <>
+                          <tr key={s.id}>
+                            <td>{byId[s.targetAgencyId]?.name || 'Inmobiliaria'}</td>
+                            <td><StatusBadge status={s.status} /></td>
+                            <td className="muted">{s.percentage != null ? `${s.percentage}%` : '—'}</td>
+                            <td className="muted">{formatDate(s.createdAt)}</td>
+                          </tr>
+                          {s.status === 'rechazada' && s.rejectionReason && (
+                            <tr key={`${s.id}-reason`} className="rejection-reason-row">
+                              <td colSpan={4}>
+                                <span className="rejection-reason-label">Motivo:</span> {s.rejectionReason}
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       ))}
                     </tbody>
                   </table>

@@ -488,7 +488,8 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const share = await db.getPropertyShare(req.params.shareId);
     if (share && share.targetAgencyId === session.agency.id && share.status === 'pendiente') {
-      await db.respondPropertyShare(share.id, 'rechazada');
+      const body = await parseJson(req);
+      await db.respondPropertyShare(share.id, 'rechazada', body.reason || '');
     }
     json(res, { ok: true });
   });

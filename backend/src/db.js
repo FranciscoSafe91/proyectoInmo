@@ -52,6 +52,7 @@ function toProperty(r) {
     barrioCerrado: Boolean(r.barrio_cerrado),
     zonaGeografica: r.zona_geografica || '',
     partido: r.partido || '',
+    localidad: r.localidad || '',
     calle: r.calle || '',
     nroCalle: r.nro_calle || '',
     piso: r.piso || '',
@@ -115,8 +116,14 @@ function toShare(r) {
     ownerAgencyId: r.owner_agency_id, targetAgencyId: r.target_agency_id,
     status: r.status, webPublishAuthorized: Boolean(r.web_publish_authorized),
     percentage: r.percentage != null ? Number(r.percentage) : null,
+    rejectionReason: r.rejection_reason || null,
     createdAt: r.created_at, respondedAt: r.responded_at,
   };
+}
+
+async function ensureCompartidasColumns() {
+  await pool.query("ALTER TABLE compartidas ADD COLUMN rejection_reason TEXT DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE compartidas ADD COLUMN percentage DECIMAL(5,2) DEFAULT NULL").catch(() => {});
 }
 
 function toAlert(r) {
@@ -401,6 +408,7 @@ async function ensurePropertyLocationColumns() {
     "ALTER TABLE propiedades ADD COLUMN cerca_de VARCHAR(200) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN latitud DECIMAL(10,7) DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN longitud DECIMAL(10,7) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN localidad VARCHAR(100) NOT NULL DEFAULT ''",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -462,7 +470,7 @@ export async function createProperty(data) {
     `INSERT INTO propiedades
       (id,agency_id,created_by_user_id,title,description,operation,type,price,currency,
        address,city,province,bedrooms,bathrooms,area_m2,status,
-       barrio_cerrado,zona_geografica,partido,calle,nro_calle,piso,depto,
+       barrio_cerrado,zona_geografica,partido,localidad,calle,nro_calle,piso,depto,
        mostrar_portales,entre_calles,y_calles,cerca_de,latitud,longitud,
        ancho_terreno,largo_terreno,superficie_terreno,superficie_total,
        superficie_cubierta,superficie_descubierta,fondo_libre,
@@ -470,7 +478,7 @@ export async function createProperty(data) {
        agua_caliente,calefaccion,luminosidad,tipo_vigilancia,
        tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,
        created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -478,7 +486,7 @@ export async function createProperty(data) {
       Number(data.bedrooms) || 0, Number(data.bathrooms) || 0, Number(data.areaM2) || 0,
       data.status || 'publicada',
       data.barrioCerrado === 'true' || data.barrioCerrado === true ? 1 : 0,
-      zonaGeografica, partido, calle, nroCalle,
+      zonaGeografica, partido, data.localidad || '', calle, nroCalle,
       data.piso || '', data.depto || '',
       data.mostrarPortales || data.mostrar_portales || 'aproximada',
       data.entreCalles || data.entre_calles || '',
@@ -567,7 +575,7 @@ export async function updateProperty(propertyId, patch) {
     price: 'price', currency: 'currency', address: 'address', city: 'city',
     province: 'province', bedrooms: 'bedrooms', bathrooms: 'bathrooms',
     areaM2: 'area_m2', status: 'status',
-    zonaGeografica: 'zona_geografica', partido: 'partido',
+    zonaGeografica: 'zona_geografica', partido: 'partido', localidad: 'localidad',
     calle: 'calle', nroCalle: 'nro_calle', piso: 'piso', depto: 'depto',
     mostrarPortales: 'mostrar_portales',
     entreCalles: 'entre_calles', yCalles: 'y_calles', cercaDe: 'cerca_de',
@@ -678,6 +686,7 @@ export async function listPendingPartnershipRequestsSent(agencyId) {
 // Property shares
 // ---------------------------------------------------------------------------
 export async function createPropertyShare({ propertyId, ownerAgencyId, targetAgencyId, percentage }) {
+  await ensureCompartidasColumns();
   const [existing] = await pool.query(
     `SELECT * FROM compartidas WHERE property_id=? AND target_agency_id=? AND status<>'rechazada'`,
     [propertyId, targetAgencyId]
@@ -710,8 +719,13 @@ export async function setSharePublishAuthorization(shareId, authorized) {
   return getPropertyShare(shareId);
 }
 
-export async function respondPropertyShare(shareId, status) {
-  await pool.query('UPDATE compartidas SET status=?, responded_at=NOW() WHERE id=?', [status, shareId]);
+export async function respondPropertyShare(shareId, status, rejectionReason) {
+  await ensureCompartidasColumns();
+  if (status === 'rechazada' && rejectionReason) {
+    await pool.query('UPDATE compartidas SET status=?, rejection_reason=?, responded_at=NOW() WHERE id=?', [status, rejectionReason, shareId]);
+  } else {
+    await pool.query('UPDATE compartidas SET status=?, responded_at=NOW() WHERE id=?', [status, shareId]);
+  }
   return getPropertyShare(shareId);
 }
 

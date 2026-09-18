@@ -6,6 +6,9 @@ import { money, typeLabel, operationLabel } from '../utils.js';
 export default function Invitations() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [rejectModal, setRejectModal] = useState(null); // { shareId }
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejecting, setRejecting] = useState(false);
 
   function load() {
     api.get('/invitaciones').then(setData).catch(e => setError(e.message));
@@ -13,7 +16,22 @@ export default function Invitations() {
   useEffect(load, []);
 
   async function handleShare(shareId, action) {
+    if (action === 'rechazar') {
+      setRejectModal({ shareId });
+      setRejectReason('');
+      return;
+    }
     await api.post(`/invitaciones/compartir/${shareId}/${action}`);
+    load();
+  }
+
+  async function handleConfirmReject() {
+    if (!rejectModal) return;
+    setRejecting(true);
+    await api.post(`/invitaciones/compartir/${rejectModal.shareId}/rechazar`, { reason: rejectReason });
+    setRejectModal(null);
+    setRejectReason('');
+    setRejecting(false);
     load();
   }
 
@@ -29,6 +47,29 @@ export default function Invitations() {
 
   return (
     <>
+      {rejectModal && (
+        <div className="modal-backdrop" onClick={() => setRejectModal(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>Motivo del rechazo</h3>
+            <p className="muted">Opcional — podés dejarle saber a la inmobiliaria por qué no aceptás esta propiedad.</p>
+            <textarea
+              rows={4}
+              placeholder="Ej: La zona no coincide con nuestra cartera, precio fuera de rango, etc."
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+            />
+            <div className="btn-row">
+              <button className="btn btn-danger" onClick={handleConfirmReject} disabled={rejecting}>
+                {rejecting ? 'Rechazando...' : 'Confirmar rechazo'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setRejectModal(null)} disabled={rejecting}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1>Invitaciones</h1>
       <p className="subtitle">Acá aparecen las propiedades que te comparten y las solicitudes de sociedad que recibís.</p>
 

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Camera, Film, Home, ImagePlus, MapPin, Ruler, Trash2 } from 'lucide-react';
 import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
+import GEO_DATA from '../geoData.js';
 
 const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -112,6 +113,7 @@ const EMPTY_PROPERTY = {
   barrioCerrado: false,
   zonaGeografica: '',
   partido: '',
+  localidad: '',
   calle: '',
   nroCalle: '',
   piso: '',
@@ -203,6 +205,7 @@ export default function PropertyForm() {
         barrioCerrado: p.barrioCerrado || false,
         zonaGeografica: p.zonaGeografica || '',
         partido: p.partido || '',
+        localidad: p.localidad || '',
         calle: p.calle || '',
         nroCalle: p.nroCalle || '',
         piso: p.piso || '',
@@ -241,7 +244,14 @@ export default function PropertyForm() {
 
   function handleChange(e) {
     const { name, type, value, checked } = e.target;
-    setProperty(v => ({ ...v, [name]: type === 'checkbox' ? checked : value }));
+    const val = type === 'checkbox' ? checked : value;
+    if (name === 'zonaGeografica') {
+      setProperty(v => ({ ...v, zonaGeografica: val, partido: '', localidad: '' }));
+    } else if (name === 'partido') {
+      setProperty(v => ({ ...v, partido: val, localidad: '' }));
+    } else {
+      setProperty(v => ({ ...v, [name]: val }));
+    }
   }
 
   function handleMediaChange(e) {
@@ -348,7 +358,7 @@ export default function PropertyForm() {
               <label htmlFor="barrioCerrado" style={{ margin: 0, fontWeight: 'normal' }}>Esta propiedad pertenece a un country / barrio cerrado</label>
             </div>
 
-            <div className="grid grid-2">
+            <div className="grid grid-3">
               <div>
                 <label htmlFor="zonaGeografica">Zona Geográfica</label>
                 <select id="zonaGeografica" name="zonaGeografica" required value={property.zonaGeografica} onChange={handleChange}>
@@ -357,8 +367,34 @@ export default function PropertyForm() {
                 </select>
               </div>
               <div>
-                <label htmlFor="partido">Partido / Localidad</label>
-                <input type="text" id="partido" name="partido" required value={property.partido} onChange={handleChange} placeholder="Ej: Liniers, San Isidro..." />
+                <label htmlFor="partido">Partido</label>
+                {GEO_DATA[property.zonaGeografica] ? (
+                  <select id="partido" name="partido" required value={property.partido} onChange={handleChange}>
+                    <option value="">Seleccioná un partido</option>
+                    {GEO_DATA[property.zonaGeografica].partidos.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select id="partido" name="partido" disabled>
+                    <option value="">— Elegí una zona primero —</option>
+                  </select>
+                )}
+              </div>
+              <div>
+                <label htmlFor="localidad">Localidad</label>
+                {property.partido && GEO_DATA[property.zonaGeografica]?.localidades[property.partido] ? (
+                  <select id="localidad" name="localidad" required value={property.localidad} onChange={handleChange}>
+                    <option value="">Seleccioná una localidad</option>
+                    {GEO_DATA[property.zonaGeografica].localidades[property.partido].map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select id="localidad" name="localidad" disabled>
+                    <option value="">— Elegí un partido primero —</option>
+                  </select>
+                )}
               </div>
             </div>
 

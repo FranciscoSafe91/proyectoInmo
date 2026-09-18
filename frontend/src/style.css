@@ -149,7 +149,7 @@
   }
 
   .modal-box {
-    background: var(--app-surface);
+    background: var(--app-card);
     border: 1px solid var(--app-border);
     border-radius: 10px;
     padding: 28px;

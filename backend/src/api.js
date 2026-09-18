@@ -357,6 +357,17 @@ export function registerApiRoutes(router) {
     json(res, { ok: true });
   });
 
+  router.delete('/api/propiedades/:propertyId/compartir/:shareId', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const property = await db.getProperty(req.params.propertyId);
+    const share = await db.getPropertyShare(req.params.shareId);
+    if (property && share && property.agencyId === session.agency.id && share.propertyId === property.id) {
+      await db.cancelShare(share.id);
+    }
+    json(res, { ok: true });
+  });
+
   router.post('/api/propiedades/:propertyId/compartir/:shareId/autorizar-web', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;

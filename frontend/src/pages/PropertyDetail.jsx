@@ -199,7 +199,7 @@ export default function PropertyDetail() {
                 ) : (
                   <table>
                     <thead>
-                      <tr><th>Inmobiliaria</th><th>Estado</th><th>Porcentaje</th><th>Fecha</th></tr>
+                      <tr><th>Inmobiliaria</th><th>Estado</th><th>Porcentaje</th><th>Fecha</th><th></th></tr>
                     </thead>
                     <tbody>
                       {shares.map(s => (
@@ -209,10 +209,22 @@ export default function PropertyDetail() {
                             <td><StatusBadge status={s.status} /></td>
                             <td className="muted">{s.percentage != null ? `${s.percentage}%` : '—'}</td>
                             <td className="muted">{formatDate(s.createdAt)}</td>
+                            <td>
+                              <button
+                                className="btn btn-small btn-danger"
+                                onClick={async () => {
+                                  if (!window.confirm(`¿Dejar de compartir con ${byId[s.targetAgencyId]?.name || 'esta inmobiliaria'}? Va a perder acceso a la propiedad.`)) return;
+                                  await api.delete(`/propiedades/${property.id}/compartir/${s.id}`);
+                                  load();
+                                }}
+                              >
+                                Dejar de compartir
+                              </button>
+                            </td>
                           </tr>
                           {s.status === 'rechazada' && s.rejectionReason && (
                             <tr key={`${s.id}-reason`} className="rejection-reason-row">
-                              <td colSpan={4}>
+                              <td colSpan={5}>
                                 <span className="rejection-reason-label">Motivo:</span> {s.rejectionReason}
                               </td>
                             </tr>

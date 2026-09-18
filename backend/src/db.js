@@ -719,6 +719,10 @@ export async function setSharePublishAuthorization(shareId, authorized) {
   return getPropertyShare(shareId);
 }
 
+export async function cancelShare(shareId) {
+  await pool.query('DELETE FROM compartidas WHERE id=?', [shareId]);
+}
+
 export async function respondPropertyShare(shareId, status, rejectionReason) {
   await ensureCompartidasColumns();
   if (status === 'rechazada' && rejectionReason) {

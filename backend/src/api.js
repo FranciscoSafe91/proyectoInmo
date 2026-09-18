@@ -346,9 +346,11 @@ export function registerApiRoutes(router) {
     const body = await parseJson(req);
     const targetIds = toArray(body.targetAgencyIds);
     const authorizeWeb = Boolean(body.allowWebPublish);
+    const percentages = body.percentages || {};
     await Promise.all(targetIds.map(async targetAgencyId => {
       if (await db.arePartners(session.agency.id, targetAgencyId)) {
-        const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId });
+        const percentage = percentages[targetAgencyId] ?? null;
+        const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId, percentage });
         if (authorizeWeb) await db.setSharePublishAuthorization(share.id, true);
       }
     }));

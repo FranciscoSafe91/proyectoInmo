@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BedDouble, Building2, MapPin, Plus, Ruler, Share2 } from 'lucide-react';
+import { ArrowRight, BedDouble, Building2, MapPin, Plus, Ruler, Search, Share2 } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
@@ -24,6 +24,8 @@ function PropertyCover({ cover, property }) {
 export default function Properties() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     api.get('/propiedades').then(setData).catch(e => setError(e.message));
@@ -33,6 +35,22 @@ export default function Properties() {
   if (!data) return <p className="muted">Cargando...</p>;
 
   const { properties, sharesByProperty, coverMediaByProperty = {} } = data;
+
+  function handleSearch(e) {
+    e.preventDefault();
+    setSearchQuery(searchInput.trim());
+  }
+
+  const q = searchQuery.toLowerCase();
+  const filteredProperties = q
+    ? properties.filter(p =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.city || '').toLowerCase().includes(q) ||
+        (p.province || '').toLowerCase().includes(q) ||
+        (typeLabel(p.type) || '').toLowerCase().includes(q) ||
+        (operationLabel(p.operation) || '').toLowerCase().includes(q)
+      )
+    : properties;
 
   return (
     <>
@@ -47,7 +65,28 @@ export default function Properties() {
         </Link>
       </section>
 
-      {properties.length === 0 ? (
+      <form className="search-bar" onSubmit={handleSearch}>
+        <input
+          type="text"
+          placeholder="Buscar por título, ciudad, provincia, tipo..."
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+        />
+        <button type="submit" className="btn">
+          <Search size={16} aria-hidden="true" /> Buscar
+        </button>
+      </form>
+
+      {filteredProperties.length === 0 && properties.length > 0 ? (
+        <div className="empty-state empty-state-card">
+          <Search size={38} aria-hidden="true" />
+          <h2>Sin resultados</h2>
+          <p>No hay propiedades que coincidan con "{searchQuery}".</p>
+          <button className="btn btn-secondary" onClick={() => { setSearchInput(''); setSearchQuery(''); }}>
+            Limpiar búsqueda
+          </button>
+        </div>
+      ) : filteredProperties.length === 0 ? (
         <div className="empty-state empty-state-card">
           <Building2 size={38} aria-hidden="true" />
           <h2>Todavía no cargaste propiedades</h2>
@@ -58,7 +97,7 @@ export default function Properties() {
         </div>
       ) : (
         <div className="estate-grid">
-          {properties.map(p => {
+          {filteredProperties.map(p => {
             const shares = sharesByProperty[p.id] || [];
             const sharedCount = shares.filter(s => s.status !== 'rechazada').length;
             const cover = coverMediaByProperty[p.id];

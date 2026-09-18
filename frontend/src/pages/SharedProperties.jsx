@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BedDouble, Building2, MapPin, Ruler, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BedDouble, Building2, MapPin, Ruler, Search, ShieldCheck } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
 export default function SharedProperties() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     api.get('/compartidas').then(setData).catch(e => setError(e.message));
@@ -16,6 +18,23 @@ export default function SharedProperties() {
   if (!data) return <p className="muted">Cargando...</p>;
 
   const { items } = data;
+
+  function handleSearch(e) {
+    e.preventDefault();
+    setSearchQuery(searchInput.trim());
+  }
+
+  const q = searchQuery.toLowerCase();
+  const filteredItems = q
+    ? items.filter(({ property, ownerAgency }) =>
+        (property.title || '').toLowerCase().includes(q) ||
+        (property.city || '').toLowerCase().includes(q) ||
+        (property.province || '').toLowerCase().includes(q) ||
+        (typeLabel(property.type) || '').toLowerCase().includes(q) ||
+        (operationLabel(property.operation) || '').toLowerCase().includes(q) ||
+        (ownerAgency.name || '').toLowerCase().includes(q)
+      )
+    : items;
 
   return (
     <>
@@ -41,8 +60,30 @@ export default function SharedProperties() {
         </div>
       ) : (
         <>
+          <form className="search-bar" onSubmit={handleSearch}>
+            <input
+              type="text"
+              placeholder="Buscar por título, ciudad, provincia, inmobiliaria..."
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+            />
+            <button type="submit" className="btn">
+              <Search size={16} aria-hidden="true" /> Buscar
+            </button>
+          </form>
+
+          {filteredItems.length === 0 ? (
+            <div className="empty-state empty-state-card">
+              <Search size={38} aria-hidden="true" />
+              <h2>Sin resultados</h2>
+              <p>No hay propiedades que coincidan con "{searchQuery}".</p>
+              <button className="btn btn-secondary" onClick={() => { setSearchInput(''); setSearchQuery(''); }}>
+                Limpiar búsqueda
+              </button>
+            </div>
+          ) : (
           <div className="estate-grid">
-            {items.map(({ property, ownerAgency, webPublishAuthorized }) => (
+            {filteredItems.map(({ property, ownerAgency, webPublishAuthorized }) => (
               <article key={property.id} className="estate-card">
                 <Link className="estate-card-media" to={`/propiedades/${property.id}`} aria-label={`Ver ${property.title}`}>
                   <div className="estate-card-placeholder">
@@ -86,6 +127,7 @@ export default function SharedProperties() {
               </article>
             ))}
           </div>
+          )}
           <p className="small muted helper-note">
             "Web autorizada" significa que la inmobiliaria dueña permite que también aparezca en tu feed/widget. Si figura como uso interno, podés trabajarla dentro del sistema pero no publicarla en tu web.
           </p>

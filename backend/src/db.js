@@ -114,6 +114,7 @@ function toShare(r) {
     id: r.id, propertyId: r.property_id,
     ownerAgencyId: r.owner_agency_id, targetAgencyId: r.target_agency_id,
     status: r.status, webPublishAuthorized: Boolean(r.web_publish_authorized),
+    percentage: r.percentage != null ? Number(r.percentage) : null,
     createdAt: r.created_at, respondedAt: r.responded_at,
   };
 }
@@ -676,17 +677,18 @@ export async function listPendingPartnershipRequestsSent(agencyId) {
 // ---------------------------------------------------------------------------
 // Property shares
 // ---------------------------------------------------------------------------
-export async function createPropertyShare({ propertyId, ownerAgencyId, targetAgencyId }) {
+export async function createPropertyShare({ propertyId, ownerAgencyId, targetAgencyId, percentage }) {
   const [existing] = await pool.query(
     `SELECT * FROM compartidas WHERE property_id=? AND target_agency_id=? AND status<>'rechazada'`,
     [propertyId, targetAgencyId]
   );
   if (existing.length > 0) return toShare(existing[0]);
   const id = uuid();
+  const pct = (percentage !== undefined && percentage !== null && percentage !== '') ? Number(percentage) : null;
   await pool.query(
-    `INSERT INTO compartidas (id,property_id,owner_agency_id,target_agency_id,status,web_publish_authorized,created_at)
-     VALUES (?,?,?,?,'pendiente',0,NOW())`,
-    [id, propertyId, ownerAgencyId, targetAgencyId]
+    `INSERT INTO compartidas (id,property_id,owner_agency_id,target_agency_id,status,web_publish_authorized,percentage,created_at)
+     VALUES (?,?,?,?,'pendiente',0,?,NOW())`,
+    [id, propertyId, ownerAgencyId, targetAgencyId, pct]
   );
   return getPropertyShare(id);
 }

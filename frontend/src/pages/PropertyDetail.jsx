@@ -101,6 +101,7 @@ export default function PropertyDetail() {
   const [error, setError] = useState('');
   const [selectedPartners, setSelectedPartners] = useState([]);
   const [allowWebPublish, setAllowWebPublish] = useState(false);
+  const [percentages, setPercentages] = useState({});
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
@@ -140,9 +141,11 @@ export default function PropertyDetail() {
     await api.post(`/propiedades/${property.id}/compartir`, {
       targetAgencyIds: selectedPartners,
       allowWebPublish,
+      percentages,
     });
     setSelectedPartners([]);
     setAllowWebPublish(false);
+    setPercentages({});
     load();
   }
 
@@ -196,13 +199,14 @@ export default function PropertyDetail() {
                 ) : (
                   <table>
                     <thead>
-                      <tr><th>Inmobiliaria</th><th>Estado</th><th>Fecha</th></tr>
+                      <tr><th>Inmobiliaria</th><th>Estado</th><th>Porcentaje</th><th>Fecha</th></tr>
                     </thead>
                     <tbody>
                       {shares.map(s => (
                         <tr key={s.id}>
                           <td>{byId[s.targetAgencyId]?.name || 'Inmobiliaria'}</td>
                           <td><StatusBadge status={s.status} /></td>
+                          <td className="muted">{s.percentage != null ? `${s.percentage}%` : '—'}</td>
                           <td className="muted">{formatDate(s.createdAt)}</td>
                         </tr>
                       ))}
@@ -224,14 +228,24 @@ export default function PropertyDetail() {
                     <fieldset>
                       <legend>Elegí con quién compartir</legend>
                       {availablePartners.map(a => (
-                        <div key={a.id} className="checkbox-row">
+                        <div key={a.id} className="checkbox-row share-partner-row">
                           <input
                             type="checkbox"
                             id={`share-${a.id}`}
                             checked={selectedPartners.includes(a.id)}
                             onChange={() => togglePartner(a.id)}
                           />
-                          <label htmlFor={`share-${a.id}`} style={{ margin: 0, fontWeight: 'normal' }}>{a.name}</label>
+                          <label htmlFor={`share-${a.id}`} style={{ margin: 0, fontWeight: 'normal', flex: 1 }}>{a.name}</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="%"
+                            className="share-pct-input"
+                            value={percentages[a.id] ?? ''}
+                            onChange={e => setPercentages(prev => ({ ...prev, [a.id]: e.target.value }))}
+                          />
                         </div>
                       ))}
                     </fieldset>

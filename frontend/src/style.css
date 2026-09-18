@@ -87,6 +87,7 @@
   .grid { display: grid; gap: 16px; }
   .grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
   .grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .grid-4 { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 
   .stat-card { text-align: center; }
   .stat-number { font-size: 2rem; font-weight: 700; color: #1f6f54; }
@@ -1608,5 +1609,99 @@
     .navbar-toggle {
       display: none;
     }
+  }
+
+  .field-unit {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .field-unit input {
+    flex: 1;
+    border-radius: var(--radius) 0 0 var(--radius);
+    border-right: none;
+  }
+
+  .unit-tag {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--surface-alt, #f0f1f3);
+    border: 1px solid var(--border);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 0.82em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .medidas-terreno {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .medidas-terreno input {
+    flex: 1;
+    min-width: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+    border-right: none;
+  }
+
+  .medidas-terreno input + .unit-tag {
+    border-radius: 0;
+    border-right: none;
+  }
+
+  .medidas-terreno .unit-tag:last-of-type {
+    border-radius: 0 var(--radius) var(--radius) 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .medidas-x {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 0.85em;
+    color: var(--muted);
+    background: var(--surface-alt, #f0f1f3);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .medidas-terreno input:nth-of-type(2) {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .property-map {
+    width: 100%;
+    height: 320px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .map-placeholder {
+    width: 100%;
+    height: 180px;
+    border-radius: 10px;
+    border: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--muted);
+    background: var(--surface-alt, #f6f7f8);
+    text-align: center;
+    padding: 16px;
+  }
+
+  .map-placeholder code {
+    font-size: 0.82em;
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
   }
 }

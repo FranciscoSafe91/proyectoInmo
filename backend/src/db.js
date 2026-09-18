@@ -49,6 +49,40 @@ function toProperty(r) {
     currency: r.currency, address: r.address, city: r.city, province: r.province,
     bedrooms: r.bedrooms, bathrooms: r.bathrooms, areaM2: Number(r.area_m2),
     status: r.status, createdAt: r.created_at, updatedAt: r.updated_at,
+    barrioCerrado: Boolean(r.barrio_cerrado),
+    zonaGeografica: r.zona_geografica || '',
+    partido: r.partido || '',
+    calle: r.calle || '',
+    nroCalle: r.nro_calle || '',
+    piso: r.piso || '',
+    depto: r.depto || '',
+    mostrarPortales: r.mostrar_portales || 'aproximada',
+    entreCalles: r.entre_calles || '',
+    yCalles: r.y_calles || '',
+    cercaDe: r.cerca_de || '',
+    latitud: r.latitud ? Number(r.latitud) : null,
+    longitud: r.longitud ? Number(r.longitud) : null,
+    anchoTerreno: r.ancho_terreno ? Number(r.ancho_terreno) : null,
+    largoTerreno: r.largo_terreno ? Number(r.largo_terreno) : null,
+    superficieTerreno: r.superficie_terreno ? Number(r.superficie_terreno) : null,
+    superficieTotal: r.superficie_total ? Number(r.superficie_total) : null,
+    superficieCubierta: r.superficie_cubierta ? Number(r.superficie_cubierta) : null,
+    superficieDescubierta: r.superficie_descubierta ? Number(r.superficie_descubierta) : null,
+    fondoLibre: r.fondo_libre ? Number(r.fondo_libre) : null,
+    estadoPropiedad: r.estado_propiedad || '',
+    antiguedad: r.antiguedad != null ? Number(r.antiguedad) : null,
+    aEstrenar: Boolean(r.a_estrenar),
+    plantas: r.plantas || '',
+    orientacion: r.orientacion || '',
+    aguaCaliente: r.agua_caliente || '',
+    calefaccion: r.calefaccion || '',
+    luminosidad: r.luminosidad || '',
+    tipoVigilancia: r.tipo_vigilancia || '',
+    tipoPiso: r.tipo_piso || '',
+    tipoTecho: r.tipo_techo || '',
+    tipoCosta: r.tipo_costa || '',
+    tipoVista: r.tipo_vista || '',
+    tipoPendiente: r.tipo_pendiente || '',
   };
 }
 
@@ -351,6 +385,56 @@ export async function deleteSession(token) {
 // ---------------------------------------------------------------------------
 // Properties
 // ---------------------------------------------------------------------------
+async function ensurePropertyLocationColumns() {
+  const cols = [
+    "ALTER TABLE propiedades ADD COLUMN barrio_cerrado TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE propiedades ADD COLUMN zona_geografica VARCHAR(100) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN partido VARCHAR(100) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN calle VARCHAR(200) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN nro_calle VARCHAR(20) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN piso VARCHAR(20) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN depto VARCHAR(20) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN mostrar_portales VARCHAR(30) NOT NULL DEFAULT 'aproximada'",
+    "ALTER TABLE propiedades ADD COLUMN entre_calles VARCHAR(200) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN y_calles VARCHAR(200) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN cerca_de VARCHAR(200) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN latitud DECIMAL(10,7) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN longitud DECIMAL(10,7) DEFAULT NULL",
+  ];
+  for (const sql of cols) {
+    await pool.query(sql).catch(() => {});
+  }
+}
+
+async function ensurePropertyCharacteristicsColumns() {
+  const cols = [
+    "ALTER TABLE propiedades ADD COLUMN ancho_terreno DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN largo_terreno DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN superficie_terreno DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN superficie_total DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN superficie_cubierta DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN superficie_descubierta DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN fondo_libre DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN estado_propiedad VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN antiguedad SMALLINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN a_estrenar TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE propiedades ADD COLUMN plantas VARCHAR(20) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN orientacion VARCHAR(30) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN agua_caliente VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN calefaccion VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN luminosidad VARCHAR(30) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN tipo_vigilancia VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN tipo_piso VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN tipo_techo VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN tipo_costa VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN tipo_vista VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN tipo_pendiente VARCHAR(50) NOT NULL DEFAULT ''",
+  ];
+  for (const sql of cols) {
+    await pool.query(sql).catch(() => {});
+  }
+}
+
 async function ensurePropertyMediaTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS propiedad_media (
@@ -366,16 +450,62 @@ async function ensurePropertyMediaTable() {
 }
 
 export async function createProperty(data) {
+  await ensurePropertyLocationColumns();
+  await ensurePropertyCharacteristicsColumns();
   const propId = uuid();
+  const calle = data.calle || '';
+  const nroCalle = data.nroCalle || data.nro_calle || '';
+  const partido = data.partido || '';
+  const zonaGeografica = data.zonaGeografica || data.zona_geografica || '';
   await pool.query(
-    `INSERT INTO propiedades (id,agency_id,created_by_user_id,title,description,operation,type,price,currency,address,city,province,bedrooms,bathrooms,area_m2,status,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+    `INSERT INTO propiedades
+      (id,agency_id,created_by_user_id,title,description,operation,type,price,currency,
+       address,city,province,bedrooms,bathrooms,area_m2,status,
+       barrio_cerrado,zona_geografica,partido,calle,nro_calle,piso,depto,
+       mostrar_portales,entre_calles,y_calles,cerca_de,latitud,longitud,
+       ancho_terreno,largo_terreno,superficie_terreno,superficie_total,
+       superficie_cubierta,superficie_descubierta,fondo_libre,
+       estado_propiedad,antiguedad,a_estrenar,plantas,orientacion,
+       agua_caliente,calefaccion,luminosidad,tipo_vigilancia,
+       tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,
+       created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
-      data.address || '', data.city || '', data.province || '',
+      `${calle} ${nroCalle}`.trim(), partido, zonaGeografica,
       Number(data.bedrooms) || 0, Number(data.bathrooms) || 0, Number(data.areaM2) || 0,
       data.status || 'publicada',
+      data.barrioCerrado === 'true' || data.barrioCerrado === true ? 1 : 0,
+      zonaGeografica, partido, calle, nroCalle,
+      data.piso || '', data.depto || '',
+      data.mostrarPortales || data.mostrar_portales || 'aproximada',
+      data.entreCalles || data.entre_calles || '',
+      data.yCalles || data.y_calles || '',
+      data.cercaDe || data.cerca_de || '',
+      data.latitud ? Number(data.latitud) : null,
+      data.longitud ? Number(data.longitud) : null,
+      data.anchoTerreno ? Number(data.anchoTerreno) : null,
+      data.largoTerreno ? Number(data.largoTerreno) : null,
+      data.superficieTerreno ? Number(data.superficieTerreno) : null,
+      data.superficieTotal ? Number(data.superficieTotal) : null,
+      data.superficieCubierta ? Number(data.superficieCubierta) : null,
+      data.superficieDescubierta ? Number(data.superficieDescubierta) : null,
+      data.fondoLibre ? Number(data.fondoLibre) : null,
+      data.estadoPropiedad || '',
+      data.antiguedad ? Number(data.antiguedad) : null,
+      data.aEstrenar === 'true' || data.aEstrenar === true ? 1 : 0,
+      data.plantas || '',
+      data.orientacion || '',
+      data.aguaCaliente || '',
+      data.calefaccion || '',
+      data.luminosidad || '',
+      data.tipoVigilancia || '',
+      data.tipoPiso || '',
+      data.tipoTecho || '',
+      data.tipoCosta || '',
+      data.tipoVista || '',
+      data.tipoPendiente || '',
     ]
   );
   return getProperty(propId);
@@ -427,6 +557,8 @@ export async function deleteProperty(propertyId) {
 }
 
 export async function updateProperty(propertyId, patch) {
+  await ensurePropertyLocationColumns();
+  await ensurePropertyCharacteristicsColumns();
   const fields = [];
   const vals = [];
   const map = {
@@ -434,10 +566,40 @@ export async function updateProperty(propertyId, patch) {
     price: 'price', currency: 'currency', address: 'address', city: 'city',
     province: 'province', bedrooms: 'bedrooms', bathrooms: 'bathrooms',
     areaM2: 'area_m2', status: 'status',
+    zonaGeografica: 'zona_geografica', partido: 'partido',
+    calle: 'calle', nroCalle: 'nro_calle', piso: 'piso', depto: 'depto',
+    mostrarPortales: 'mostrar_portales',
+    entreCalles: 'entre_calles', yCalles: 'y_calles', cercaDe: 'cerca_de',
+    latitud: 'latitud', longitud: 'longitud',
+    anchoTerreno: 'ancho_terreno', largoTerreno: 'largo_terreno',
+    superficieTerreno: 'superficie_terreno', superficieTotal: 'superficie_total',
+    superficieCubierta: 'superficie_cubierta', superficieDescubierta: 'superficie_descubierta',
+    fondoLibre: 'fondo_libre', estadoPropiedad: 'estado_propiedad',
+    antiguedad: 'antiguedad', plantas: 'plantas', orientacion: 'orientacion',
+    aguaCaliente: 'agua_caliente', calefaccion: 'calefaccion',
+    luminosidad: 'luminosidad', tipoVigilancia: 'tipo_vigilancia',
+    tipoPiso: 'tipo_piso', tipoTecho: 'tipo_techo',
+    tipoCosta: 'tipo_costa', tipoVista: 'tipo_vista', tipoPendiente: 'tipo_pendiente',
   };
   for (const [key, col] of Object.entries(map)) {
     if (patch[key] !== undefined) { fields.push(`${col}=?`); vals.push(patch[key]); }
   }
+  if (patch.barrioCerrado !== undefined) {
+    fields.push('barrio_cerrado=?');
+    vals.push(patch.barrioCerrado === 'true' || patch.barrioCerrado === true ? 1 : 0);
+  }
+  if (patch.aEstrenar !== undefined) {
+    fields.push('a_estrenar=?');
+    vals.push(patch.aEstrenar === 'true' || patch.aEstrenar === true ? 1 : 0);
+  }
+  // mantener address/city/province sincronizados con los nuevos campos
+  if (patch.calle !== undefined || patch.nroCalle !== undefined) {
+    const calle = patch.calle ?? '';
+    const nro = patch.nroCalle ?? '';
+    fields.push('address=?'); vals.push(`${calle} ${nro}`.trim());
+  }
+  if (patch.partido !== undefined) { fields.push('city=?'); vals.push(patch.partido); }
+  if (patch.zonaGeografica !== undefined) { fields.push('province=?'); vals.push(patch.zonaGeografica); }
   fields.push('updated_at=NOW()');
   vals.push(propertyId);
   await pool.query(`UPDATE propiedades SET ${fields.join(',')} WHERE id=?`, vals);

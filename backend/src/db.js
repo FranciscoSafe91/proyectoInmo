@@ -84,6 +84,7 @@ function toProperty(r) {
     tipoCosta: r.tipo_costa || '',
     tipoVista: r.tipo_vista || '',
     tipoPendiente: r.tipo_pendiente || '',
+    necesitaReubicacion: Boolean(r.necesita_reubicacion),
   };
 }
 
@@ -132,6 +133,11 @@ function toAlert(r) {
     id: r.id, agencyId: r.agency_id, title: r.title,
     operation: r.operation, type: r.type, city: r.city, currency: r.currency,
     minPrice: r.min_price, maxPrice: r.max_price, minBedrooms: r.min_bedrooms,
+    zonaGeografica: r.zona_geografica || '',
+    partido: r.partido || '',
+    localidad: r.localidad || '',
+    minBathrooms: r.min_bathrooms || null,
+    minAreaM2: r.min_area_m2 ? Number(r.min_area_m2) : null,
     active: Boolean(r.active), createdAt: r.created_at,
   };
 }
@@ -438,6 +444,20 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN tipo_costa VARCHAR(50) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN tipo_vista VARCHAR(50) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN tipo_pendiente VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN necesita_reubicacion TINYINT(1) NOT NULL DEFAULT 0",
+  ];
+  for (const sql of cols) {
+    await pool.query(sql).catch(() => {});
+  }
+}
+
+async function ensureAlertasColumns() {
+  const cols = [
+    "ALTER TABLE alertas_busqueda ADD COLUMN zona_geografica VARCHAR(100) NOT NULL DEFAULT ''",
+    "ALTER TABLE alertas_busqueda ADD COLUMN partido VARCHAR(100) NOT NULL DEFAULT ''",
+    "ALTER TABLE alertas_busqueda ADD COLUMN localidad VARCHAR(100) NOT NULL DEFAULT ''",
+    "ALTER TABLE alertas_busqueda ADD COLUMN min_bathrooms TINYINT DEFAULT NULL",
+    "ALTER TABLE alertas_busqueda ADD COLUMN min_area_m2 DECIMAL(10,2) DEFAULT NULL",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -476,9 +496,9 @@ export async function createProperty(data) {
        superficie_cubierta,superficie_descubierta,fondo_libre,
        estado_propiedad,antiguedad,a_estrenar,plantas,orientacion,
        agua_caliente,calefaccion,luminosidad,tipo_vigilancia,
-       tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,
+       tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,necesita_reubicacion,
        created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -515,6 +535,7 @@ export async function createProperty(data) {
       data.tipoCosta || '',
       data.tipoVista || '',
       data.tipoPendiente || '',
+      data.necesitaReubicacion === 'true' || data.necesitaReubicacion === true ? 1 : 0,
     ]
   );
   return getProperty(propId);
@@ -590,6 +611,10 @@ export async function updateProperty(propertyId, patch) {
     tipoPiso: 'tipo_piso', tipoTecho: 'tipo_techo',
     tipoCosta: 'tipo_costa', tipoVista: 'tipo_vista', tipoPendiente: 'tipo_pendiente',
   };
+  if (patch.necesitaReubicacion !== undefined) {
+    fields.push('necesita_reubicacion=?');
+    vals.push(patch.necesitaReubicacion === 'true' || patch.necesitaReubicacion === true ? 1 : 0);
+  }
   for (const [key, col] of Object.entries(map)) {
     if (patch[key] !== undefined) { fields.push(`${col}=?`); vals.push(patch[key]); }
   }
@@ -761,16 +786,24 @@ export async function listSharesByOwnerAgency(agencyId) {
 // Alertas de búsqueda
 // ---------------------------------------------------------------------------
 export async function createSearchAlert(data) {
+  await ensureAlertasColumns();
   const id = uuid();
   await pool.query(
-    `INSERT INTO alertas_busqueda (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,active,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+    `INSERT INTO alertas_busqueda
+      (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,
+       zona_geografica,partido,localidad,min_bathrooms,min_area_m2,active,created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
     [
       id, data.agencyId, data.title || '', data.operation || '', data.type || '',
       (data.city || '').trim(), data.currency || '',
       data.minPrice ? Number(data.minPrice) : null,
       data.maxPrice ? Number(data.maxPrice) : null,
       data.minBedrooms ? Number(data.minBedrooms) : null,
+      data.zonaGeografica || '',
+      data.partido || '',
+      data.localidad || '',
+      data.minBathrooms ? Number(data.minBathrooms) : null,
+      data.minAreaM2 ? Number(data.minAreaM2) : null,
     ]
   );
   return getSearchAlert(id);
@@ -782,6 +815,7 @@ export async function getSearchAlert(alertId) {
 }
 
 export async function listAlertsByAgency(agencyId) {
+  await ensureAlertasColumns();
   const [rows] = await pool.query(
     'SELECT * FROM alertas_busqueda WHERE agency_id=? ORDER BY created_at DESC', [agencyId]
   );
@@ -801,13 +835,23 @@ function propertyMatchesAlert(property, alert) {
   if (property.status !== 'publicada') return false;
   if (alert.operation && property.operation !== alert.operation) return false;
   if (alert.type && property.type !== alert.type) return false;
-  if (alert.city && !property.city.toLowerCase().includes(alert.city.toLowerCase())) return false;
+  // location: use new structured fields if set, otherwise fall back to legacy city text
+  if (alert.zonaGeografica) {
+    if (property.zonaGeografica !== alert.zonaGeografica) return false;
+  } else if (alert.city) {
+    const haystack = [property.city, property.localidad, property.partido, property.zonaGeografica].join(' ').toLowerCase();
+    if (!haystack.includes(alert.city.toLowerCase())) return false;
+  }
+  if (alert.partido && property.partido !== alert.partido) return false;
+  if (alert.localidad && property.localidad !== alert.localidad) return false;
   if (alert.currency) {
     if (property.currency !== alert.currency) return false;
     if (alert.minPrice && property.price < alert.minPrice) return false;
     if (alert.maxPrice && property.price > alert.maxPrice) return false;
   }
   if (alert.minBedrooms && property.bedrooms < alert.minBedrooms) return false;
+  if (alert.minBathrooms && property.bathrooms < alert.minBathrooms) return false;
+  if (alert.minAreaM2 && property.areaM2 < alert.minAreaM2) return false;
   return true;
 }
 

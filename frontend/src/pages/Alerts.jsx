@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
-import { money, typeLabel, operationLabel } from '../utils.js';
+import { money, typeLabel, operationLabel, TYPE_LABELS } from '../utils.js';
+import GEO_DATA from '../geoData.js';
+
+const PROVINCIAS_AR = [
+  'Capital Federal','Buenos Aires','Catamarca','Chaco','Chubut','Córdoba',
+  'Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza',
+  'Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz',
+  'Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán',
+];
+
+const EMPTY_ALERT = {
+  title: '', operation: '', type: '', currency: '',
+  minPrice: '', maxPrice: '', minBedrooms: '', minBathrooms: '', minAreaM2: '',
+  zonaGeografica: '', partido: '', localidad: '',
+};
 
 function summarizeAlert(alert) {
   const parts = [];
   if (alert.operation) parts.push(operationLabel(alert.operation));
   if (alert.type) parts.push(typeLabel(alert.type));
-  if (alert.city) parts.push(`en ${alert.city}`);
+  if (alert.localidad) parts.push(`en ${alert.localidad}`);
+  else if (alert.partido) parts.push(`en ${alert.partido}`);
+  else if (alert.zonaGeografica) parts.push(`en ${alert.zonaGeografica}`);
+  else if (alert.city) parts.push(`en ${alert.city}`);
   if (alert.minBedrooms) parts.push(`${alert.minBedrooms}+ dorm.`);
+  if (alert.minBathrooms) parts.push(`${alert.minBathrooms}+ baños`);
+  if (alert.minAreaM2) parts.push(`${alert.minAreaM2}+ m²`);
   if (alert.currency && (alert.minPrice || alert.maxPrice)) {
     const cur = alert.currency === 'USD' ? 'U$D' : '$';
     if (alert.minPrice && alert.maxPrice) parts.push(`${cur} ${alert.minPrice}–${alert.maxPrice}`);
@@ -21,9 +40,7 @@ function summarizeAlert(alert) {
 export default function Alerts() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [newAlert, setNewAlert] = useState({
-    title: '', operation: '', type: '', city: '', currency: '', minPrice: '', maxPrice: '', minBedrooms: '',
-  });
+  const [newAlert, setNewAlert] = useState(EMPTY_ALERT);
 
   function load() {
     api.get('/alertas').then(setData).catch(e => setError(e.message));
@@ -31,13 +48,20 @@ export default function Alerts() {
   useEffect(load, []);
 
   function handleChange(e) {
-    setNewAlert(v => ({ ...v, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (name === 'zonaGeografica') {
+      setNewAlert(v => ({ ...v, zonaGeografica: value, partido: '', localidad: '' }));
+    } else if (name === 'partido') {
+      setNewAlert(v => ({ ...v, partido: value, localidad: '' }));
+    } else {
+      setNewAlert(v => ({ ...v, [name]: value }));
+    }
   }
 
   async function handleCreateAlert(e) {
     e.preventDefault();
     await api.post('/alertas', newAlert);
-    setNewAlert({ title: '', operation: '', type: '', city: '', currency: '', minPrice: '', maxPrice: '', minBedrooms: '' });
+    setNewAlert(EMPTY_ALERT);
     load();
   }
 
@@ -122,18 +146,52 @@ export default function Alerts() {
               <label htmlFor="type">Tipo de propiedad</label>
               <select id="type" name="type" value={newAlert.type} onChange={handleChange}>
                 <option value="">Cualquiera</option>
-                <option value="casa">Casa</option>
-                <option value="departamento">Departamento</option>
-                <option value="terreno">Terreno</option>
-                <option value="local">Local comercial</option>
-                <option value="oficina">Oficina</option>
-                <option value="otro">Otro</option>
+                {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
           </div>
 
-          <label htmlFor="city">Ciudad / zona</label>
-          <input type="text" id="city" name="city" value={newAlert.city} onChange={handleChange} placeholder="Ej: Nueva Córdoba" />
+          <div className="grid grid-3">
+            <div>
+              <label htmlFor="zonaGeografica">Zona geográfica</label>
+              <select id="zonaGeografica" name="zonaGeografica" value={newAlert.zonaGeografica} onChange={handleChange}>
+                <option value="">Cualquier zona</option>
+                {PROVINCIAS_AR.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="partido">Partido</label>
+              {GEO_DATA[newAlert.zonaGeografica] ? (
+                <select id="partido" name="partido" value={newAlert.partido} onChange={handleChange}>
+                  <option value="">Cualquier partido</option>
+                  {GEO_DATA[newAlert.zonaGeografica].partidos.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              ) : (
+                <select id="partido" name="partido" disabled>
+                  <option value="">— Elegí una zona primero —</option>
+                </select>
+              )}
+            </div>
+            <div>
+              <label htmlFor="localidad">Localidad</label>
+              {newAlert.partido && GEO_DATA[newAlert.zonaGeografica]?.localidades[newAlert.partido] ? (
+                <select id="localidad" name="localidad" value={newAlert.localidad} onChange={handleChange}>
+                  <option value="">Cualquier localidad</option>
+                  {GEO_DATA[newAlert.zonaGeografica].localidades[newAlert.partido].map(l => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              ) : (
+                <select id="localidad" name="localidad" disabled>
+                  <option value="">— Elegí un partido primero —</option>
+                </select>
+              )}
+            </div>
+          </div>
 
           <div className="grid grid-3">
             <div>
@@ -154,8 +212,20 @@ export default function Alerts() {
             </div>
           </div>
 
-          <label htmlFor="minBedrooms">Dormitorios mínimos</label>
-          <input type="number" id="minBedrooms" name="minBedrooms" min="0" value={newAlert.minBedrooms} onChange={handleChange} style={{ maxWidth: 160 }} />
+          <div className="grid grid-3">
+            <div>
+              <label htmlFor="minBedrooms">Dormitorios mínimos</label>
+              <input type="number" id="minBedrooms" name="minBedrooms" min="0" value={newAlert.minBedrooms} onChange={handleChange} />
+            </div>
+            <div>
+              <label htmlFor="minBathrooms">Baños mínimos</label>
+              <input type="number" id="minBathrooms" name="minBathrooms" min="0" value={newAlert.minBathrooms} onChange={handleChange} />
+            </div>
+            <div>
+              <label htmlFor="minAreaM2">Superficie mínima (m²)</label>
+              <input type="number" id="minAreaM2" name="minAreaM2" min="0" value={newAlert.minAreaM2} onChange={handleChange} />
+            </div>
+          </div>
 
           <div className="btn-row">
             <button type="submit" className="btn">Crear alerta</button>

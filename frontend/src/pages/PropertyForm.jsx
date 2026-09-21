@@ -145,6 +145,7 @@ const EMPTY_PROPERTY = {
   tipoCosta: '',
   tipoVista: '',
   tipoPendiente: '',
+  necesitaReubicacion: false,
 };
 
 function buildPropertyFormData(property, mediaFiles) {
@@ -237,6 +238,7 @@ export default function PropertyForm() {
         tipoCosta: p.tipoCosta || '',
         tipoVista: p.tipoVista || '',
         tipoPendiente: p.tipoPendiente || '',
+        necesitaReubicacion: p.necesitaReubicacion || false,
       });
       setExistingMedia(data.media || []);
     }).catch(e => setError(e.message));
@@ -345,6 +347,11 @@ export default function PropertyForm() {
 
             <label htmlFor="description">Descripción</label>
             <textarea id="description" name="description" required value={property.description} onChange={handleChange} placeholder="Detalles, comodidades, estado general, luminosidad..." />
+
+            <div className="checkbox-row">
+              <input type="checkbox" id="necesitaReubicacion" name="necesitaReubicacion" checked={property.necesitaReubicacion} onChange={handleChange} />
+              <label htmlFor="necesitaReubicacion" style={{ margin: 0, fontWeight: 'normal' }}>El propietario necesita reubicación</label>
+            </div>
           </div>
 
           <div className="form-panel">

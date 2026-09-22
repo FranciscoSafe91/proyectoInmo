@@ -86,7 +86,24 @@ function toProperty(r) {
     tipoVista: r.tipo_vista || '',
     tipoPendiente: r.tipo_pendiente || '',
     necesitaReubicacion: Boolean(r.necesita_reubicacion),
+    cocherasCubiertas: r.cocheras_cubiertas != null ? Number(r.cocheras_cubiertas) : null,
+    cocherasDescubiertas: r.cocheras_descubiertas != null ? Number(r.cocheras_descubiertas) : null,
+    cocherasSemicubiertas: r.cocheras_semicubiertas != null ? Number(r.cocheras_semicubiertas) : null,
+    servicios: r.servicios ? tryParseJson(r.servicios) : [],
+    instalaciones: r.instalaciones ? tryParseJson(r.instalaciones) : [],
   };
+}
+
+function tryParseJson(val) {
+  if (!val) return [];
+  try { return JSON.parse(val); } catch { return []; }
+}
+
+function toJsonField(val) {
+  if (!val) return null;
+  if (Array.isArray(val)) return val.length ? JSON.stringify(val) : null;
+  if (typeof val === 'string' && val.startsWith('[')) return val || null;
+  return null;
 }
 
 function toPropertyMedia(r) {
@@ -139,6 +156,9 @@ function toAlert(r) {
     localidad: r.localidad || '',
     minBathrooms: r.min_bathrooms || null,
     minAreaM2: r.min_area_m2 ? Number(r.min_area_m2) : null,
+    minCocheras: r.min_cocheras != null ? Number(r.min_cocheras) : null,
+    serviciosRequeridos: r.servicios_requeridos ? tryParseJson(r.servicios_requeridos) : [],
+    instalacionesRequeridas: r.instalaciones_requeridas ? tryParseJson(r.instalaciones_requeridas) : [],
     active: Boolean(r.active), createdAt: r.created_at,
   };
 }
@@ -446,6 +466,11 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN tipo_vista VARCHAR(50) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN tipo_pendiente VARCHAR(50) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN necesita_reubicacion TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE propiedades ADD COLUMN cocheras_cubiertas TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN cocheras_descubiertas TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN cocheras_semicubiertas TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN servicios TEXT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN instalaciones TEXT DEFAULT NULL",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -459,6 +484,9 @@ async function ensureAlertasColumns() {
     "ALTER TABLE alertas_busqueda ADD COLUMN localidad VARCHAR(100) NOT NULL DEFAULT ''",
     "ALTER TABLE alertas_busqueda ADD COLUMN min_bathrooms TINYINT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN min_area_m2 DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE alertas_busqueda ADD COLUMN min_cocheras TINYINT DEFAULT NULL",
+    "ALTER TABLE alertas_busqueda ADD COLUMN servicios_requeridos TEXT DEFAULT NULL",
+    "ALTER TABLE alertas_busqueda ADD COLUMN instalaciones_requeridas TEXT DEFAULT NULL",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -498,8 +526,10 @@ export async function createProperty(data) {
        estado_propiedad,antiguedad,a_estrenar,plantas,orientacion,
        agua_caliente,calefaccion,luminosidad,tipo_vigilancia,
        tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,necesita_reubicacion,
+       cocheras_cubiertas,cocheras_descubiertas,cocheras_semicubiertas,
+       servicios,instalaciones,
        created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -537,6 +567,11 @@ export async function createProperty(data) {
       data.tipoVista || '',
       data.tipoPendiente || '',
       data.necesitaReubicacion === 'true' || data.necesitaReubicacion === true ? 1 : 0,
+      data.cocherasCubiertas ? Number(data.cocherasCubiertas) : null,
+      data.cocherasDescubiertas ? Number(data.cocherasDescubiertas) : null,
+      data.cocherasSemicubiertas ? Number(data.cocherasSemicubiertas) : null,
+      toJsonField(data.servicios),
+      toJsonField(data.instalaciones),
     ]
   );
   return getProperty(propId);
@@ -611,7 +646,16 @@ export async function updateProperty(propertyId, patch) {
     luminosidad: 'luminosidad', tipoVigilancia: 'tipo_vigilancia',
     tipoPiso: 'tipo_piso', tipoTecho: 'tipo_techo',
     tipoCosta: 'tipo_costa', tipoVista: 'tipo_vista', tipoPendiente: 'tipo_pendiente',
+    cocherasCubiertas: 'cocheras_cubiertas',
+    cocherasDescubiertas: 'cocheras_descubiertas',
+    cocherasSemicubiertas: 'cocheras_semicubiertas',
   };
+  if (patch.servicios !== undefined) {
+    fields.push('servicios=?'); vals.push(toJsonField(patch.servicios));
+  }
+  if (patch.instalaciones !== undefined) {
+    fields.push('instalaciones=?'); vals.push(toJsonField(patch.instalaciones));
+  }
   if (patch.necesitaReubicacion !== undefined) {
     fields.push('necesita_reubicacion=?');
     vals.push(patch.necesitaReubicacion === 'true' || patch.necesitaReubicacion === true ? 1 : 0);
@@ -792,8 +836,9 @@ export async function createSearchAlert(data) {
   await pool.query(
     `INSERT INTO alertas_busqueda
       (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,
-       zona_geografica,partido,localidad,min_bathrooms,min_area_m2,active,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+       zona_geografica,partido,localidad,min_bathrooms,min_area_m2,
+       min_cocheras,servicios_requeridos,instalaciones_requeridas,active,created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
     [
       id, data.agencyId, data.title || '', data.operation || '', data.type || '',
       (data.city || '').trim(), data.currency || '',
@@ -805,6 +850,9 @@ export async function createSearchAlert(data) {
       data.localidad || '',
       data.minBathrooms ? Number(data.minBathrooms) : null,
       data.minAreaM2 ? Number(data.minAreaM2) : null,
+      data.minCocheras ? Number(data.minCocheras) : null,
+      toJsonField(data.serviciosRequeridos),
+      toJsonField(data.instalacionesRequeridas),
     ]
   );
   return getSearchAlert(id);
@@ -853,6 +901,18 @@ function propertyMatchesAlert(property, alert) {
   if (alert.minBedrooms && property.bedrooms < alert.minBedrooms) return false;
   if (alert.minBathrooms && property.bathrooms < alert.minBathrooms) return false;
   if (alert.minAreaM2 && property.areaM2 < alert.minAreaM2) return false;
+  if (alert.minCocheras) {
+    const totalCocheras = (property.cocherasCubiertas || 0) + (property.cocherasDescubiertas || 0) + (property.cocherasSemicubiertas || 0);
+    if (totalCocheras < alert.minCocheras) return false;
+  }
+  if (alert.serviciosRequeridos?.length) {
+    const propServicios = property.servicios || [];
+    if (!alert.serviciosRequeridos.every(s => propServicios.includes(s))) return false;
+  }
+  if (alert.instalacionesRequeridas?.length) {
+    const propInstalaciones = property.instalaciones || [];
+    if (!alert.instalacionesRequeridas.every(i => propInstalaciones.includes(i))) return false;
+  }
   return true;
 }
 

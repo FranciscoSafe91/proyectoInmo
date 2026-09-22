@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Camera, Film, Home, ImagePlus, MapPin, Ruler, Trash2 } from 'lucide-react';
+import { Camera, Film, Home, ImagePlus, MapPin, Ruler, Search, Trash2 } from 'lucide-react';
 import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
@@ -92,6 +92,103 @@ function PropertyMap({ latitud, longitud, onChange }) {
   return <div ref={containerRef} className="property-map" />;
 }
 
+const SERVICIOS = [
+  'ABL','Agua Corriente','Agua de pozo','Cloacas','Conmutador','Electricidad',
+  'Gas','Gas envasado','Internet','Limpieza','Pavimento','Rentas municipales',
+  'Ropa de cama','Seguridad','Teléfono','Toallas','Videocable',
+];
+
+const INSTALACIONES = [
+  'Aire acondicionado','Alarma','Amueblado','Ascensor','Balcón terraza','Baulera',
+  'Caballeriza','Calefacción','Calefacción por aire caliente','Calefacción tiro balanceado',
+  'Calefón','Cancha de básquetbol','Cancha de deportes','Cancha de fútbol','Cancha de paddle',
+  'Cancha de tenis','Cocina equipada','Dependencia','Energía solar','Extractor aire',
+  'Gimnasio','Grupo electrógeno','Hidromasaje','Hogar a leña','Jacuzzi','Jardín',
+  'Jardín delantero','Jardín trasero','Juegos para chicos','Lavadero','Microcine',
+  'Parque','Parrilla','Patio','Pileta','Piso radiante','Quincho techado','Radiadores',
+  'Reciclado','Sala de juegos','Salón de fiestas','Sauna','Solarium','Spa','Termotanque',
+  'Terraza','Toilette','Vigilancia','Vivienda multifamiliar',
+];
+
+function QtyPicker({ label, name, value, onChange, options }) {
+  function handleClick(v) {
+    const next = String(value) === String(v) ? '' : v;
+    onChange({ target: { name, value: next } });
+  }
+  return (
+    <div className="qty-picker-group">
+      <span>{label}</span>
+      <div className="qty-picker">
+        {options.map(opt => (
+          <button key={opt.value} type="button"
+            className={'qty-btn' + (String(value) === String(opt.value) ? ' active' : '')}
+            onClick={() => handleClick(opt.value)}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CheckboxSearchList({ sublabel, name, options, selected, onChange }) {
+  const [search, setSearch] = useState('');
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const allSelected = filtered.length > 0 && filtered.every(o => selected.includes(o));
+
+  function toggleAll() {
+    if (allSelected) {
+      onChange(selected.filter(s => !filtered.includes(s)));
+    } else {
+      onChange([...new Set([...selected, ...filtered])]);
+    }
+  }
+  function toggle(item) {
+    onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
+  }
+
+  return (
+    <div className="checkbox-search-section">
+      <span className="section-sublabel">{sublabel}</span>
+      <div className="checkbox-search-list">
+        <div className="checkbox-search-input-wrap">
+          <Search size={14} aria-hidden="true" />
+          <input type="text" placeholder="Buscar" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="checkbox-search-grid">
+          <div className="checkbox-row">
+            <input type="checkbox" id={`${name}-all`} checked={allSelected} onChange={toggleAll} />
+            <label htmlFor={`${name}-all`} style={{ margin: 0, fontWeight: 600 }}>Seleccionar todo</label>
+          </div>
+          {filtered.map(opt => (
+            <div key={opt} className="checkbox-row">
+              <input type="checkbox" id={`${name}-${opt}`}
+                checked={selected.includes(opt)} onChange={() => toggle(opt)} />
+              <label htmlFor={`${name}-${opt}`} style={{ margin: 0, fontWeight: 'normal' }}>{opt}</label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const COCHERAS_OPTS = [
+  { value: '1', label: '1' }, { value: '2', label: '2' },
+  { value: '3', label: '3' }, { value: '4', label: '4' },
+  { value: '5', label: '+5' },
+];
+const DORMITORIOS_OPTS = [
+  { value: '0', label: 'Monoamb.' }, { value: '1', label: '1' },
+  { value: '2', label: '2' }, { value: '3', label: '3' },
+  { value: '4', label: '4' }, { value: '5', label: '+5' },
+];
+const BANOS_OPTS = [
+  { value: '1', label: '1' }, { value: '2', label: '2' },
+  { value: '3', label: '3' }, { value: '4', label: '4' },
+  { value: '5', label: '+5' },
+];
+
 const PROVINCIAS_AR = [
   'Capital Federal','Buenos Aires','Catamarca','Chaco','Chubut','Córdoba',
   'Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza',
@@ -146,12 +243,21 @@ const EMPTY_PROPERTY = {
   tipoVista: '',
   tipoPendiente: '',
   necesitaReubicacion: false,
+  cocherasCubiertas: '',
+  cocherasDescubiertas: '',
+  cocherasSemicubiertas: '',
+  servicios: [],
+  instalaciones: [],
 };
 
 function buildPropertyFormData(property, mediaFiles) {
   const formData = new FormData();
   Object.entries(property).forEach(([key, value]) => {
-    formData.append(key, value ?? '');
+    if (Array.isArray(value)) {
+      formData.append(key, JSON.stringify(value));
+    } else {
+      formData.append(key, value ?? '');
+    }
   });
   mediaFiles.forEach((file, index) => {
     formData.append(`media${index}`, file);
@@ -239,6 +345,11 @@ export default function PropertyForm() {
         tipoVista: p.tipoVista || '',
         tipoPendiente: p.tipoPendiente || '',
         necesitaReubicacion: p.necesitaReubicacion || false,
+        cocherasCubiertas: p.cocherasCubiertas != null ? String(p.cocherasCubiertas) : '',
+        cocherasDescubiertas: p.cocherasDescubiertas != null ? String(p.cocherasDescubiertas) : '',
+        cocherasSemicubiertas: p.cocherasSemicubiertas != null ? String(p.cocherasSemicubiertas) : '',
+        servicios: Array.isArray(p.servicios) ? p.servicios : [],
+        instalaciones: Array.isArray(p.instalaciones) ? p.instalaciones : [],
       });
       setExistingMedia(data.media || []);
     }).catch(e => setError(e.message));
@@ -254,6 +365,10 @@ export default function PropertyForm() {
     } else {
       setProperty(v => ({ ...v, [name]: val }));
     }
+  }
+
+  function handleArrayChange(name, val) {
+    setProperty(v => ({ ...v, [name]: val }));
   }
 
   function handleMediaChange(e) {
@@ -467,21 +582,33 @@ export default function PropertyForm() {
               <h2>Características de la propiedad</h2>
             </div>
 
-            <div className="grid grid-3">
-              <div>
-                <label htmlFor="bedrooms">Dormitorios</label>
-                <input type="number" id="bedrooms" name="bedrooms" min="0" required value={property.bedrooms} onChange={handleChange} />
+            <div className="qty-picker-section">
+              <label>Cocheras</label>
+              <div className="qty-picker-row">
+                <QtyPicker label="Cubiertas" name="cocherasCubiertas"
+                  value={property.cocherasCubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
+                <QtyPicker label="Descubiertas" name="cocherasDescubiertas"
+                  value={property.cocherasDescubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
+                <QtyPicker label="Semicubiertas" name="cocherasSemicubiertas"
+                  value={property.cocherasSemicubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
               </div>
-              <div>
-                <label htmlFor="bathrooms">Baños</label>
-                <input type="number" id="bathrooms" name="bathrooms" min="0" required value={property.bathrooms} onChange={handleChange} />
+            </div>
+
+            <div className="qty-picker-section">
+              <label>Ambientes de la propiedad</label>
+              <div className="qty-picker-row">
+                <QtyPicker label="Dormitorios" name="bedrooms"
+                  value={property.bedrooms} onChange={handleChange} options={DORMITORIOS_OPTS} />
+                <QtyPicker label="Baños" name="bathrooms"
+                  value={property.bathrooms} onChange={handleChange} options={BANOS_OPTS} />
               </div>
-              <div>
-                <label htmlFor="areaM2">Superficie (m²)</label>
-                <div className="field-unit">
-                  <input type="number" id="areaM2" name="areaM2" min="0" required value={property.areaM2} onChange={handleChange} />
-                  <span className="unit-tag">m²</span>
-                </div>
+            </div>
+
+            <div>
+              <label htmlFor="areaM2">Superficie (m²)</label>
+              <div className="field-unit" style={{ maxWidth: 200 }}>
+                <input type="number" id="areaM2" name="areaM2" min="0" required value={property.areaM2} onChange={handleChange} />
+                <span className="unit-tag">m²</span>
               </div>
             </div>
 
@@ -681,6 +808,22 @@ export default function PropertyForm() {
                 </select>
               </div>
             </div>
+
+            <CheckboxSearchList
+              sublabel="Servicios de la propiedad"
+              name="servicios"
+              options={SERVICIOS}
+              selected={property.servicios}
+              onChange={val => handleArrayChange('servicios', val)}
+            />
+
+            <CheckboxSearchList
+              sublabel="Instalaciones de la propiedad"
+              name="instalaciones"
+              options={INSTALACIONES}
+              selected={property.instalaciones}
+              onChange={val => handleArrayChange('instalaciones', val)}
+            />
 
           </div>
         </section>

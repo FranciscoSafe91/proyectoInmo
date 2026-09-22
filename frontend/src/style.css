@@ -211,6 +211,48 @@
     .modal-preview-media { border-right: none; border-bottom: 1px solid var(--app-border); }
   }
 
+  /* ── Qty Picker (dormitorios, baños, cocheras) ── */
+  .qty-picker-section { margin: 16px 0; }
+  .qty-picker-section > legend, .qty-picker-section > label { font-size: 0.82rem; font-weight: 600; color: #667070; text-transform: uppercase; margin-bottom: 12px; display: block; }
+  .qty-picker-row { display: flex; flex-wrap: wrap; gap: 20px 32px; }
+  .qty-picker-group { display: flex; flex-direction: column; gap: 6px; }
+  .qty-picker-group > span { font-size: 0.82rem; font-weight: 600; color: var(--app-ink); }
+  .qty-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qty-btn {
+    padding: 6px 14px; border: 1px solid #d0d5d0; border-radius: 6px;
+    background: white; font-size: 0.88rem; cursor: pointer; color: var(--app-ink);
+    transition: border-color .15s, background .15s;
+  }
+  .qty-btn:hover { border-color: var(--app-green); }
+  .qty-btn.active { background: var(--app-green); border-color: var(--app-green); color: white; font-weight: 600; }
+
+  /* ── Checkbox search list (servicios, instalaciones) ── */
+  .checkbox-search-section { margin: 16px 0; }
+  .checkbox-search-section > .section-sublabel { font-size: 0.82rem; font-weight: 600; color: #667070; text-transform: uppercase; margin-bottom: 10px; display: block; }
+  .checkbox-search-list { border: 1px solid #e1e4e0; border-radius: 8px; overflow: hidden; }
+  .checkbox-search-input-wrap {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid #e1e4e0; background: #fafafa;
+  }
+  .checkbox-search-input-wrap input {
+    border: none; background: transparent; padding: 2px 0; font-size: 0.88rem; flex: 1;
+    outline: none; width: auto;
+  }
+  .checkbox-search-input-wrap svg { color: var(--app-muted); flex-shrink: 0; }
+  .checkbox-search-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    padding: 10px 14px;
+    max-height: 260px; overflow-y: auto;
+  }
+  .checkbox-search-grid .checkbox-row { margin: 3px 0; gap: 6px; }
+  .checkbox-search-grid label { font-size: 0.82rem; }
+  @media (max-width: 700px) {
+    .checkbox-search-grid { grid-template-columns: repeat(2, 1fr); }
+    .qty-picker-row { gap: 14px 20px; }
+  }
+
   .rejection-reason-row td {
     background: #fff5f5;
     color: #7a2c2c;

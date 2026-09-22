@@ -1,8 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, TYPE_LABELS } from '../utils.js';
 import GEO_DATA from '../geoData.js';
+
+const SERVICIOS = [
+  'ABL','Agua Corriente','Agua de pozo','Cloacas','Conmutador','Electricidad',
+  'Gas','Gas envasado','Internet','Limpieza','Pavimento','Rentas municipales',
+  'Ropa de cama','Seguridad','Teléfono','Toallas','Videocable',
+];
+
+const INSTALACIONES = [
+  'Aire acondicionado','Alarma','Amueblado','Ascensor','Balcón terraza','Baulera',
+  'Caballeriza','Calefacción','Calefacción por aire caliente','Calefacción tiro balanceado',
+  'Calefón','Cancha de básquetbol','Cancha de deportes','Cancha de fútbol','Cancha de paddle',
+  'Cancha de tenis','Cocina equipada','Dependencia','Energía solar','Extractor aire',
+  'Gimnasio','Grupo electrógeno','Hidromasaje','Hogar a leña','Jacuzzi','Jardín',
+  'Jardín delantero','Jardín trasero','Juegos para chicos','Lavadero','Microcine',
+  'Parque','Parrilla','Patio','Pileta','Piso radiante','Quincho techado','Radiadores',
+  'Reciclado','Sala de juegos','Salón de fiestas','Sauna','Solarium','Spa','Termotanque',
+  'Terraza','Toilette','Vigilancia','Vivienda multifamiliar',
+];
+
+function CheckboxSearchList({ sublabel, name, options, selected, onChange }) {
+  const [search, setSearch] = useState('');
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const allSelected = filtered.length > 0 && filtered.every(o => selected.includes(o));
+  function toggleAll() {
+    if (allSelected) onChange(selected.filter(s => !filtered.includes(s)));
+    else onChange([...new Set([...selected, ...filtered])]);
+  }
+  function toggle(item) {
+    onChange(selected.includes(item) ? selected.filter(s => s !== item) : [...selected, item]);
+  }
+  return (
+    <div className="checkbox-search-section">
+      <span className="section-sublabel">{sublabel}</span>
+      <div className="checkbox-search-list">
+        <div className="checkbox-search-input-wrap">
+          <Search size={14} aria-hidden="true" />
+          <input type="text" placeholder="Buscar" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="checkbox-search-grid">
+          <div className="checkbox-row">
+            <input type="checkbox" id={`${name}-all`} checked={allSelected} onChange={toggleAll} />
+            <label htmlFor={`${name}-all`} style={{ margin: 0, fontWeight: 600 }}>Seleccionar todo</label>
+          </div>
+          {filtered.map(opt => (
+            <div key={opt} className="checkbox-row">
+              <input type="checkbox" id={`${name}-${opt}`}
+                checked={selected.includes(opt)} onChange={() => toggle(opt)} />
+              <label htmlFor={`${name}-${opt}`} style={{ margin: 0, fontWeight: 'normal' }}>{opt}</label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PROVINCIAS_AR = [
   'Capital Federal','Buenos Aires','Catamarca','Chaco','Chubut','Córdoba',
@@ -15,6 +71,9 @@ const EMPTY_ALERT = {
   title: '', operation: '', type: '', currency: '',
   minPrice: '', maxPrice: '', minBedrooms: '', minBathrooms: '', minAreaM2: '',
   zonaGeografica: '', partido: '', localidad: '',
+  minCocheras: '',
+  serviciosRequeridos: [],
+  instalacionesRequeridas: [],
 };
 
 function summarizeAlert(alert) {
@@ -56,6 +115,10 @@ export default function Alerts() {
     } else {
       setNewAlert(v => ({ ...v, [name]: value }));
     }
+  }
+
+  function handleArrayChange(name, val) {
+    setNewAlert(v => ({ ...v, [name]: val }));
   }
 
   async function handleCreateAlert(e) {
@@ -226,6 +289,34 @@ export default function Alerts() {
               <input type="number" id="minAreaM2" name="minAreaM2" min="0" value={newAlert.minAreaM2} onChange={handleChange} />
             </div>
           </div>
+
+          <div>
+            <label htmlFor="minCocheras">Cocheras mínimas</label>
+            <select id="minCocheras" name="minCocheras" value={newAlert.minCocheras} onChange={handleChange} style={{ maxWidth: 200 }}>
+              <option value="">Sin filtro</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5 o más</option>
+            </select>
+          </div>
+
+          <CheckboxSearchList
+            sublabel="Servicios requeridos"
+            name="alert-servicios"
+            options={SERVICIOS}
+            selected={newAlert.serviciosRequeridos}
+            onChange={val => handleArrayChange('serviciosRequeridos', val)}
+          />
+
+          <CheckboxSearchList
+            sublabel="Instalaciones requeridas"
+            name="alert-instalaciones"
+            options={INSTALACIONES}
+            selected={newAlert.instalacionesRequeridas}
+            onChange={val => handleArrayChange('instalacionesRequeridas', val)}
+          />
 
           <div className="btn-row">
             <button type="submit" className="btn">Crear alerta</button>

@@ -421,14 +421,6 @@ export default function PropertyForm() {
                 <label htmlFor="depto">Depto</label>
                 <input type="text" id="depto" name="depto" value={property.depto} onChange={handleChange} placeholder="B" />
               </div>
-              <div>
-                <label htmlFor="mostrarPortales">Mostrar en portales</label>
-                <select id="mostrarPortales" name="mostrarPortales" value={property.mostrarPortales} onChange={handleChange}>
-                  <option value="exacta">Dirección exacta</option>
-                  <option value="aproximada">Dirección aproximada</option>
-                  <option value="zona">Solo zona</option>
-                </select>
-              </div>
             </div>
 
             <div className="grid grid-3">
@@ -690,17 +682,6 @@ export default function PropertyForm() {
               </div>
             </div>
 
-            <div className="grid grid-4">
-              <div>
-                <label htmlFor="tipoPendiente">Tipo de pendiente</label>
-                <select id="tipoPendiente" name="tipoPendiente" value={property.tipoPendiente} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="sin_pendiente">Sin pendiente</option>
-                  <option value="suave">Suave</option>
-                  <option value="pronunciada">Pronunciada</option>
-                </select>
-              </div>
-            </div>
           </div>
         </section>
 

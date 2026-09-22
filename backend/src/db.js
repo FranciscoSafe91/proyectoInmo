@@ -6,11 +6,12 @@ const TRIAL_DAYS = 14;
 const BILLING_PERIOD_DAYS = 30;
 
 function uuid() { return randomUUID(); }
-function now() { return new Date().toISOString(); }
+function toMySQLDate(d) { return d.toISOString().replace('T', ' ').slice(0, 19); }
+function now() { return toMySQLDate(new Date()); }
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
-  return d.toISOString();
+  return toMySQLDate(d);
 }
 function generateApiKey() { return randomBytes(24).toString('hex'); }
 

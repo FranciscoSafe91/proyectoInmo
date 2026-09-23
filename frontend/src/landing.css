@@ -16,7 +16,10 @@
 }
 
 .landing-page {
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--lp-paper);
   color: var(--lp-ink);
   font-family: 'Inter', sans-serif;
@@ -28,6 +31,15 @@
 
 .landing-page a { color: inherit; text-decoration: none; }
 .landing-page button, .landing-page input { font: inherit; }
+.landing-page img,
+.landing-page svg {
+  max-width: 100%;
+}
+
+.landing-page * {
+  min-width: 0;
+}
+
 .landing-page :focus-visible {
   outline: 3px solid rgba(29, 188, 139, .45);
   outline-offset: 3px;
@@ -45,6 +57,7 @@
 }
 
 .landing-page .nav {
+  width: 100%;
   max-width: 1200px;
   height: 70px;
   margin: 0 auto;
@@ -157,6 +170,7 @@
 /* ---- Menú móvil ---- */
 .landing-page .menu-button {
   display: none;
+  flex: 0 0 40px;
   width: 40px;
   height: 40px;
   border: 1px solid var(--lp-border);
@@ -191,6 +205,7 @@
 
 /* ---- Hero ---- */
 .landing-page .hero {
+  max-width: 100vw;
   min-height: 100vh;
   padding: 120px 2rem 4rem;
   background:
@@ -201,6 +216,7 @@
 }
 
 .landing-page .hero-grid {
+  width: 100%;
   max-width: 1200px;
   min-height: calc(100vh - 190px);
   margin: 0 auto;
@@ -210,7 +226,10 @@
   gap: 4rem;
 }
 
-.landing-page .hero-copy { color: #ffffff; }
+.landing-page .hero-copy {
+  max-width: 100%;
+  color: #ffffff;
+}
 
 .landing-page .eyebrow {
   display: inline-flex;
@@ -240,6 +259,7 @@
   color: #ffffff;
   font-size: 4.5rem;
   line-height: 1.03;
+  overflow-wrap: anywhere;
 }
 
 .landing-page .hero-copy > p {
@@ -248,6 +268,7 @@
   color: rgba(255, 255, 255, .72);
   font-size: 1.08rem;
   line-height: 1.75;
+  overflow-wrap: anywhere;
 }
 
 .landing-page .hero-actions {
@@ -290,7 +311,10 @@
 }
 
 /* ---- Product preview ---- */
-.landing-page .product-preview { position: relative; }
+.landing-page .product-preview {
+  position: relative;
+  max-width: 100%;
+}
 
 .landing-page .product-preview::before {
   content: '';
@@ -305,6 +329,8 @@
   position: relative;
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) 180px;
+  width: 100%;
+  max-width: 100%;
   min-height: 520px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, .18);
@@ -560,6 +586,7 @@
 .landing-page .section-paper { background: var(--lp-paper); }
 
 .landing-page .section-container {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 5.5rem 2rem;
@@ -1160,11 +1187,15 @@
 @media (max-width: 1100px) {
   .landing-page .hero-grid,
   .landing-page .commission-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
   }
 
   .landing-page .product-preview { max-width: 760px; }
+
+  .landing-page .hero h1 {
+    font-size: clamp(3rem, 8vw, 4.2rem);
+  }
 
   .landing-page .usecase-grid,
   .landing-page .footer-grid {
@@ -1201,6 +1232,25 @@
   .landing-page .preview-sidebar,
   .landing-page .deal-panel { display: none; }
 
+  .landing-page .hero {
+    min-height: 0;
+    padding-bottom: 3rem;
+  }
+
+  .landing-page .hero-grid {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .landing-page .hero h1 {
+    font-size: clamp(2.6rem, 8vw, 3.55rem);
+  }
+
+  .landing-page .product-preview {
+    width: 100%;
+  }
+
   .landing-page .step-card,
   .landing-page .usecase-card { min-height: auto; }
 
@@ -1209,10 +1259,45 @@
 
 @media (max-width: 640px) {
   .landing-page .nav { padding: 0 1rem; }
+  .landing-page .logo { min-width: 0; }
+  .landing-page .menu-button {
+    position: absolute;
+    right: 1rem;
+    top: 15px;
+    margin-left: 0;
+  }
+  .landing-page .logo-text { font-size: 1.08rem; }
 
   .landing-page .hero { padding: 102px 1rem 2.5rem; }
-  .landing-page .hero-grid { min-height: 0; }
-  .landing-page .hero h1 { font-size: 2.45rem; }
+  .landing-page .hero-grid {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: calc(100vw - 2rem);
+  }
+  .landing-page .hero-copy,
+  .landing-page .hero h1,
+  .landing-page .hero-copy > p,
+  .landing-page .hero-actions,
+  .landing-page .hero-metrics,
+  .landing-page .product-preview,
+  .landing-page .preview-shell {
+    width: 100%;
+    max-width: calc(100vw - 2rem);
+  }
+  .landing-page .hero-copy,
+  .landing-page .hero h1,
+  .landing-page .hero-copy > p,
+  .landing-page .hero-actions,
+  .landing-page .hero-metrics {
+    max-width: min(100%, 340px);
+  }
+  .landing-page .product-preview,
+  .landing-page .preview-shell {
+    max-width: min(100%, 340px);
+  }
+  .landing-page .hero h1 { font-size: 2rem; }
   .landing-page .hero-copy > p { font-size: .98rem; }
 
   .landing-page .hero-actions {
@@ -1229,7 +1314,22 @@
   }
 
   .landing-page .preview-shell { min-height: 0; }
+  .landing-page .preview-main { padding: .8rem; }
   .landing-page .preview-header { flex-direction: column; }
+  .landing-page .filter-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .landing-page .filter-bar div {
+    justify-content: flex-start;
+  }
+  .landing-page .property-top {
+    flex-direction: column;
+    gap: .35rem;
+  }
+  .landing-page .property-top span {
+    white-space: normal;
+  }
   .landing-page .property-card img { height: 120px; }
 
   .landing-page .section-container { padding: 3.5rem 1rem; }
@@ -1251,6 +1351,16 @@
   .landing-page .contact-form,
   .landing-page .footer-bottom { flex-direction: column; }
 
+  .landing-page .commission-split {
+    gap: .85rem;
+  }
+
+  .landing-page .match-strip .btn,
+  .landing-page .commission-card .btn,
+  .landing-page .plan-card .btn {
+    width: 100%;
+  }
+
   .landing-page .contact-section { padding: 3.5rem 1rem; }
   .landing-page .contact-box { padding: 3rem 1rem; }
   .landing-page .contact-box h2 { font-size: 1.85rem; }
@@ -1263,4 +1373,66 @@
   }
 
   .landing-page .footer-bottom { align-items: flex-start; }
+}
+
+@media (max-width: 430px) {
+  .landing-page .hero h1 {
+    font-size: 2.18rem;
+  }
+
+  .landing-page .hero-copy > p {
+    line-height: 1.62;
+  }
+
+  .landing-page .eyebrow {
+    align-items: flex-start;
+    border-radius: 8px;
+    line-height: 1.35;
+  }
+
+  .landing-page .hero-metrics,
+  .landing-page .filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-page .preview-shell {
+    border-radius: 8px;
+  }
+
+  .landing-page .preview-header h2 {
+    font-size: 1rem;
+  }
+
+  .landing-page .property-meta span,
+  .landing-page .property-meta strong {
+    width: 100%;
+  }
+
+  .landing-page .value-card,
+  .landing-page .step-card,
+  .landing-page .usecase-card,
+  .landing-page .plan-card {
+    padding: 1.15rem;
+  }
+
+  .landing-page .contact-box h2,
+  .landing-page .section-header h2,
+  .landing-page .commission-copy h2 {
+    font-size: 1.65rem;
+  }
+
+  .landing-page .footer-bottom div {
+    flex-direction: column;
+    gap: .55rem;
+  }
+}
+
+@media (max-width: 880px) {
+  .landing-page .topbar .menu-button {
+    position: fixed;
+    top: 15px;
+    right: 16px;
+    z-index: 140;
+    display: inline-flex !important;
+  }
 }

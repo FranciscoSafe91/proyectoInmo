@@ -33,7 +33,7 @@ export default function Navbar() {
 
   const primaryLinks = [
     { to: '/dashboard', label: 'Home', icon: Home, className: activeExact('/dashboard') },
-    { to: '/dashboard', label: 'Buscar match', icon: Search, className: '' },
+    { to: '/alertas/nueva', label: 'Buscar match', icon: Search, className: active('/alertas/nueva') },
     { to: '/propiedades', label: 'Publicadas', icon: Building2, className: active('/propiedades') },
     { to: '/compartidas', label: 'Operaciones', icon: Handshake, className: activeExact('/compartidas') },
   ];

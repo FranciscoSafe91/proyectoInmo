@@ -63,6 +63,19 @@
       "brandColor": "#1f6f54",
       "apiKey": "b73d4b5409864aa41d6ee56bebae517955db2464ceccb14d",
       "createdAt": "2026-08-31T18:43:02.506Z"
+    },
+    {
+      "id": "fcac059f-93be-45cf-931e-249e9e2ad8bb",
+      "name": "Inmobiliaria Local",
+      "slug": "inmobiliaria-local",
+      "email": "lucia.local@test.com",
+      "phone": "",
+      "city": "Localhost",
+      "accountType": "inmobiliaria",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "ee3f38d7b7dd678deb3b8a425c7344c7c27b0a2a2b80f528",
+      "createdAt": "2026-09-22T22:12:28.350Z"
     }
   ],
   "users": [
@@ -142,6 +155,24 @@
       "role": "admin",
       "isPlatformAdmin": false,
       "createdAt": "2026-08-31T18:43:02.540Z"
+    },
+    {
+      "id": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "agencyId": "fcac059f-93be-45cf-931e-249e9e2ad8bb",
+      "name": "Lucia Local",
+      "nombre": "Lucia",
+      "apellido": "Local",
+      "documento": "",
+      "email": "lucia.local@test.com",
+      "username": "lucialocal",
+      "accountType": "inmobiliaria",
+      "agencyName": "Inmobiliaria Local",
+      "direccion": "Localhost",
+      "passwordHash": "e4b28a94947af1aee1d51a6e25c05f8e4fcee1b19f2d6332c5e73f0e7cac707f20b97a249d22c9d092fa86a99a269016ef2443e96b2aabb74811a9fbf28e5764",
+      "passwordSalt": "900254ddc965a27168331769b6bb754b",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-09-22T22:12:28.492Z"
     }
   ],
   "properties": [
@@ -201,6 +232,31 @@
       "status": "publicada",
       "createdAt": "2026-08-28T03:56:56.786Z",
       "updatedAt": "2026-08-28T03:56:56.786Z"
+    },
+    {
+      "id": "6e89d2fc-39ab-421f-9bba-55466fc43e8c",
+      "agencyId": "fcac059f-93be-45cf-931e-249e9e2ad8bb",
+      "createdByUserId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "title": "Departamento demo responsive",
+      "description": "Unidad luminosa para probar el layout en celular, tablet y escritorio.",
+      "operation": "venta",
+      "type": "departamento",
+      "price": 145000,
+      "currency": "USD",
+      "address": "",
+      "city": "La Plata",
+      "province": "Buenos Aires",
+      "bedrooms": 2,
+      "bathrooms": 1,
+      "areaM2": 72,
+      "status": "publicada",
+      "partido": "La Plata",
+      "localidad": "La Plata",
+      "calle": "Calle 12",
+      "zonaGeografica": "Buenos Aires",
+      "nroCalle": "345",
+      "createdAt": "2026-09-23T00:17:00.239Z",
+      "updatedAt": "2026-09-23T00:17:00.239Z"
     }
   ],
   "partnerships": [
@@ -363,6 +419,15 @@
       "currentPeriodEnd": null,
       "mpPreapprovalId": null,
       "createdAt": "2026-08-31T18:43:02.507Z"
+    },
+    {
+      "id": "368687ba-ddc4-4b46-a48b-abb90e6b4443",
+      "agencyId": "fcac059f-93be-45cf-931e-249e9e2ad8bb",
+      "status": "trial",
+      "trialEndsAt": "2026-10-06T22:12:28.354Z",
+      "currentPeriodEnd": null,
+      "mpPreapprovalId": null,
+      "createdAt": "2026-09-22T22:12:28.354Z"
     }
   ],
   "payments": [
@@ -391,5 +456,38 @@
   ],
   "invitations": [],
   "supportTickets": [],
-  "sessions": []
+  "sessions": [
+    {
+      "token": "ce5a47f6-d059-4c17-b54e-4eae18d81449",
+      "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "createdAt": "2026-09-22T22:12:28.572Z"
+    },
+    {
+      "token": "ee5f8edf-41d4-4c10-a8de-2a044e3806a8",
+      "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "createdAt": "2026-09-22T22:12:38.765Z"
+    },
+    {
+      "token": "6555dcb6-b944-4698-8aed-a5987d6b94ad",
+      "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "createdAt": "2026-09-22T22:14:39.941Z"
+    },
+    {
+      "token": "eb47d7de-b0af-405e-a620-57c3350d0a96",
+      "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "createdAt": "2026-09-23T00:17:00.117Z"
+    },
+    {
+      "token": "62df9b59-0d2b-436b-91df-a65f53666739",
+      "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "createdAt": "2026-09-23T00:17:33.467Z"
+    },
+    {
+      "token": "6a977ba2-c4c9-4b1c-9420-e1409bd266bc",
+      "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
+      "createdAt": "2026-09-23T00:18:02.356Z"
+    }
+  ],
+  "propertyMedia": [],
+  "passwordResetTokens": []
 }

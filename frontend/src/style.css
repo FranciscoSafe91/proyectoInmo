@@ -17,8 +17,13 @@
     --app-muted: #66727c;
     --app-border: rgba(16, 24, 32, 0.12);
     --app-shadow: 0 18px 50px rgba(7, 16, 24, 0.10);
+    --border: var(--app-border);
+    --muted: var(--app-muted);
+    --radius: 8px;
+    --surface-alt: #f0f1f3;
   }
   * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
   body { background-color: var(--app-bg); color: #22292b; line-height: 1.5; font-family: 'Inter', sans-serif; }
   h1, h2, h3, .navbar-brand, .stat-number { font-family: 'Poppins', sans-serif; }
   h1 { color: var(--app-ink); font-size: 1.8rem; line-height: 1.08; margin: 0 0 6px; }
@@ -1855,5 +1860,365 @@
     background: var(--border);
     padding: 2px 6px;
     border-radius: 4px;
+  }
+
+  /* Responsive hardening across the app */
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  .container,
+  .app-main,
+  .card,
+  .form-panel,
+  .property-media-panel,
+  .estate-card,
+  .modal-box,
+  .featured-property,
+  .task-row,
+  .metric-card,
+  .action-card {
+    min-width: 0;
+  }
+
+  .card > table,
+  .property-detail-grid table,
+  .modal-preview-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap {
+    border-radius: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table {
+    min-width: 620px;
+  }
+
+  .btn,
+  .badge,
+  .sidebar-link,
+  .link-button {
+    max-width: 100%;
+  }
+
+  .btn {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .property-form-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  }
+
+  .property-media-panel {
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--grid-min, 220px)), 1fr));
+  }
+
+  .grid-2 { --grid-min: 240px; }
+  .grid-3 { --grid-min: 190px; }
+  .grid-4 { --grid-min: 150px; }
+
+  .page-heading > .btn,
+  .page-hero > .btn {
+    flex-shrink: 0;
+  }
+
+  .code-box {
+    max-width: 100%;
+  }
+
+  @media (max-width: 1180px) {
+    .property-form-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .property-media-panel {
+      position: static;
+      max-height: none;
+      order: -1;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .container {
+      width: 100%;
+      padding-inline: 14px;
+    }
+
+    .app-main {
+      padding: 76px 14px 18px;
+    }
+
+    .page-heading,
+    .page-hero,
+    .card-heading,
+    .estate-card-top,
+    .featured-property-top,
+    .commission-card-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .page-heading > .btn,
+    .page-hero > .btn,
+    .search-bar .btn,
+    .btn-row .btn,
+    .estate-card-actions .btn,
+    .modal-preview-actions .btn,
+    .form-actions .btn {
+      width: 100%;
+    }
+
+    .search-bar,
+    .btn-row,
+    .modal-preview-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .metric-card,
+    .task-row {
+      min-height: auto;
+    }
+
+    .action-card {
+      min-height: 0;
+    }
+
+    .auth-wrapper {
+      width: 100%;
+      margin-block: 22px;
+    }
+
+    .property-detail-grid {
+      gap: 14px;
+    }
+
+    .property-gallery-stage img,
+    .property-gallery-stage video,
+    .upload-preview-card > img,
+    .upload-preview-card > video {
+      height: min(62vw, 260px);
+      min-height: 190px;
+    }
+
+    .property-gallery-thumbs,
+    .media-thumbs {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .qty-picker-row {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .qty-picker {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+    }
+
+    .qty-btn {
+      min-height: 38px;
+      padding-inline: 8px;
+    }
+
+    .checkbox-search-grid {
+      grid-template-columns: 1fr;
+      max-height: 320px;
+    }
+
+    .share-partner-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px 10px;
+      align-items: center;
+    }
+
+    .share-pct-input {
+      grid-column: 1 / -1;
+      width: 100%;
+      text-align: left;
+    }
+
+    .modal-backdrop {
+      align-items: flex-start;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .modal-box {
+      padding: 20px;
+      max-height: none;
+    }
+
+    .modal-preview-header,
+    .modal-preview-actions {
+      padding: 14px;
+    }
+
+    .modal-preview-info {
+      padding: 16px;
+    }
+
+    .featured-footer {
+      gap: 14px;
+    }
+
+    .featured-carousel {
+      grid-template-columns: 36px minmax(0, 1fr) 36px;
+    }
+
+    .footer-match-strip strong,
+    .featured-property-top strong {
+      white-space: normal;
+    }
+
+    .sidebar {
+      width: min(82vw, 300px);
+      max-width: 100%;
+      overflow-y: auto;
+    }
+  }
+
+  @media (max-width: 520px) {
+    h1 {
+      font-size: 1.45rem;
+    }
+
+    h2 {
+      font-size: 1.12rem;
+    }
+
+    .card,
+    .form-panel,
+    .property-media-panel {
+      padding: 14px;
+    }
+
+    .compact-hero,
+    .dashboard-hero {
+      padding: 16px;
+    }
+
+    .hero-status-card {
+      padding: 14px;
+    }
+
+    .metric-card {
+      grid-template-columns: 42px minmax(0, 1fr);
+      padding: 14px;
+    }
+
+    .metric-card strong {
+      font-size: 1.75rem;
+    }
+
+    .task-row {
+      grid-template-columns: 40px minmax(0, 1fr);
+      padding: 10px;
+    }
+
+    .task-row > span {
+      width: 38px;
+      height: 38px;
+    }
+
+    .estate-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .estate-card-media {
+      height: 180px;
+    }
+
+    .estate-card-body {
+      padding: 14px;
+    }
+
+    .estate-meta span,
+    .featured-meta span {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .medidas-terreno {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0;
+    }
+
+    .medidas-terreno input,
+    .medidas-terreno input:nth-of-type(2) {
+      border-radius: 8px 0 0 8px;
+      border: 1px solid var(--app-border);
+      border-right: none;
+    }
+
+    .medidas-terreno input:nth-of-type(2) {
+      grid-column: 1;
+      grid-row: 2;
+      border-top: none;
+    }
+
+    .medidas-terreno .unit-tag {
+      border-color: var(--app-border);
+    }
+
+    .medidas-terreno input + .unit-tag {
+      grid-column: 2;
+      border-radius: 0 8px 0 0;
+      border-right: 1px solid var(--app-border);
+    }
+
+    .medidas-terreno .unit-tag:last-of-type {
+      grid-column: 2;
+      grid-row: 2;
+      border-top: none;
+      border-radius: 0 0 8px 0;
+    }
+
+    .medidas-x {
+      display: none;
+    }
+
+    .field-unit input {
+      min-width: 0;
+    }
+
+    .property-map,
+    .map-placeholder {
+      height: 220px;
+    }
+
+    .featured-footer {
+      padding-inline: 12px;
+    }
+
+    .featured-property img {
+      height: 128px;
+    }
+
+    .carousel-dots {
+      grid-column: 1 / -1;
+    }
+
+    .code-box {
+      font-size: 0.74rem;
+    }
   }
 }

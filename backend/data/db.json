@@ -76,6 +76,19 @@
       "brandColor": "#1f6f54",
       "apiKey": "ee3f38d7b7dd678deb3b8a425c7344c7c27b0a2a2b80f528",
       "createdAt": "2026-09-22T22:12:28.350Z"
+    },
+    {
+      "id": "d7876088-ae0a-408c-b2ef-6bd371b1ee80",
+      "name": "Inmobiliaria Demo",
+      "slug": "inmobiliaria-demo",
+      "email": "demo@spyder.local",
+      "phone": "",
+      "city": "Buenos Aires",
+      "accountType": "inmobiliaria",
+      "logoPath": null,
+      "brandColor": "#1f6f54",
+      "apiKey": "b41b7b536db2a37f25800f4de574dc1fd2843484ab5db160",
+      "createdAt": "2026-09-24T23:32:41.619Z"
     }
   ],
   "users": [
@@ -173,6 +186,24 @@
       "role": "admin",
       "isPlatformAdmin": false,
       "createdAt": "2026-09-22T22:12:28.492Z"
+    },
+    {
+      "id": "2fba8b9d-59f3-4416-9d9f-413c39a47113",
+      "agencyId": "d7876088-ae0a-408c-b2ef-6bd371b1ee80",
+      "name": "Usuario Demo",
+      "nombre": "Usuario",
+      "apellido": "Demo",
+      "documento": "",
+      "email": "demo@spyder.local",
+      "username": "demo",
+      "accountType": "inmobiliaria",
+      "agencyName": "Inmobiliaria Demo",
+      "direccion": "",
+      "passwordHash": "f052e294b61d4ccd685dfdc1ffe6e2181db8c04ba1f57c64a85d5380eab40f9af0cbfd623fc22241d268292ceb6b9ca1ea07d13a64e2d98756c8484c105f178c",
+      "passwordSalt": "1465eab758cd6b462c03472ea8d57d61",
+      "role": "admin",
+      "isPlatformAdmin": false,
+      "createdAt": "2026-09-24T23:32:41.622Z"
     }
   ],
   "properties": [
@@ -428,6 +459,15 @@
       "currentPeriodEnd": null,
       "mpPreapprovalId": null,
       "createdAt": "2026-09-22T22:12:28.354Z"
+    },
+    {
+      "id": "9a2383d2-0cae-4eac-a684-7266fd330682",
+      "agencyId": "d7876088-ae0a-408c-b2ef-6bd371b1ee80",
+      "status": "trial",
+      "trialEndsAt": "2026-10-08T23:32:41.620Z",
+      "currentPeriodEnd": null,
+      "mpPreapprovalId": null,
+      "createdAt": "2026-09-24T23:32:41.620Z"
     }
   ],
   "payments": [
@@ -486,6 +526,16 @@
       "token": "6a977ba2-c4c9-4b1c-9420-e1409bd266bc",
       "userId": "9eb1de0d-9508-4341-9a82-88d7b6d9b823",
       "createdAt": "2026-09-23T00:18:02.356Z"
+    },
+    {
+      "token": "a2cb3a03-770f-48a0-9b46-6af09ab046b0",
+      "userId": "2fba8b9d-59f3-4416-9d9f-413c39a47113",
+      "createdAt": "2026-09-24T23:33:21.436Z"
+    },
+    {
+      "token": "93921af2-8747-4d19-b054-67a582e3c776",
+      "userId": "2fba8b9d-59f3-4416-9d9f-413c39a47113",
+      "createdAt": "2026-09-24T23:33:37.704Z"
     }
   ],
   "propertyMedia": [],

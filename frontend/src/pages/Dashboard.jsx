@@ -8,6 +8,7 @@ import {
   Plus,
   Search,
   Share2,
+  Sparkles,
   UsersRound,
 } from 'lucide-react';
 import { api } from '../api.js';
@@ -27,12 +28,20 @@ export default function Dashboard() {
   const pendingTotal = stats.pendingShares + stats.pendingPartnerships;
   const healthItems = [
     {
-      label: 'Propiedades propias',
+      label: 'Mis propiedades',
       value: stats.myProperties,
       hint: 'Inventario activo de tu cuenta',
       to: '/propiedades',
       icon: Building2,
       tone: 'green',
+    },
+    {
+      label: 'Matcheadas',
+      value: stats.myAlertMatchCount ?? 0,
+      hint: 'Propiedades de socios que coinciden con tus alertas',
+      to: '/matcheadas',
+      icon: Sparkles,
+      tone: 'violet',
     },
     {
       label: 'Compartidas conmigo',

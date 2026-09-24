@@ -234,6 +234,7 @@ export function registerApiRoutes(router) {
       pendingShares:       (await db.listPendingSharesReceived(agency.id)).length,
       pendingPartnerships: (await db.listPendingPartnershipRequestsReceived(agency.id)).length,
       alertMatches:        (await db.listAlertMatchesForOwner(agency.id)).length,
+      myAlertMatchCount:   (await db.listAlertsWithMatchCounts(agency.id)).reduce((s, a) => s + a.matchCount, 0),
     };
     json(res, { agency, stats });
   });
@@ -526,6 +527,31 @@ export function registerApiRoutes(router) {
     const body = await parseJson(req);
     const alert = await db.createSearchAlert({ ...body, agencyId: session.agency.id });
     json(res, { alert }, 201);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Matcheadas
+  // ---------------------------------------------------------------------------
+  router.get('/api/matcheadas', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const alerts = await db.listAlertsWithMatchCounts(session.agency.id);
+    json(res, { alerts });
+  });
+
+  router.get('/api/matcheadas/:alertId', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const alert = await db.getSearchAlert(req.params.alertId);
+    if (!alert || alert.agencyId !== session.agency.id) return json(res, { alert: null, properties: [] });
+    const raw = await db.findMatchingPropertiesForAlert(req.params.alertId, session.agency.id);
+    const properties = (await Promise.all(
+      raw.map(async ({ property, ownerAgencyId }) => ({
+        property,
+        ownerAgency: await db.getAgency(ownerAgencyId),
+      }))
+    )).filter(e => e.ownerAgency);
+    json(res, { alert, properties });
   });
 
   router.post('/api/alertas/:id/pausar', async (req, res) => {

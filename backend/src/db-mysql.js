@@ -880,6 +880,39 @@ export async function deleteSearchAlert(alertId) {
   await pool.query('DELETE FROM alertas_busqueda WHERE id=?', [alertId]);
 }
 
+export async function listAlertsWithMatchCounts(agencyId) {
+  const alerts = await listAlertsByAgency(agencyId);
+  if (alerts.length === 0) return [];
+  const partnerIds = await listPartnersOfAgency(agencyId);
+  if (partnerIds.length === 0) return alerts.map(a => ({ ...a, matchCount: 0 }));
+  const allPartnerProps = [];
+  for (const partnerId of partnerIds) {
+    const props = (await listPropertiesByAgency(partnerId)).filter(p => p.status === 'publicada');
+    allPartnerProps.push(...props);
+  }
+  return alerts.map(alert => ({
+    ...alert,
+    matchCount: allPartnerProps.filter(p => propertyMatchesAlert(p, alert)).length,
+  }));
+}
+
+export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId) {
+  const alert = await getSearchAlert(alertId);
+  if (!alert || alert.agencyId !== requestingAgencyId) return [];
+  const partnerIds = await listPartnersOfAgency(requestingAgencyId);
+  if (partnerIds.length === 0) return [];
+  const results = [];
+  for (const partnerId of partnerIds) {
+    const props = (await listPropertiesByAgency(partnerId)).filter(p => p.status === 'publicada');
+    for (const property of props) {
+      if (propertyMatchesAlert(property, alert)) {
+        results.push({ property, ownerAgencyId: partnerId });
+      }
+    }
+  }
+  return results;
+}
+
 function propertyMatchesAlert(property, alert) {
   if (property.status !== 'publicada') return false;
   if (alert.operation && property.operation !== alert.operation) return false;

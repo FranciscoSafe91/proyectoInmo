@@ -471,6 +471,37 @@ export async function setSearchAlertActive(alertId, active) {
   return clone(alert);
 }
 
+export async function listAlertsWithMatchCounts(agencyId) {
+  const alerts = await listAlertsByAgency(agencyId);
+  if (alerts.length === 0) return [];
+  const partnerIds = await listPartnersOfAgency(agencyId);
+  if (partnerIds.length === 0) return alerts.map(a => ({ ...a, matchCount: 0 }));
+  const db = readDb();
+  const allPartnerProps = db.properties.filter(p => partnerIds.includes(p.agencyId) && p.status === 'publicada');
+  return alerts.map(alert => ({
+    ...alert,
+    matchCount: allPartnerProps.filter(p => propertyMatchesAlert(p, alert)).length,
+  }));
+}
+
+export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId) {
+  const alert = await getSearchAlert(alertId);
+  if (!alert || alert.agencyId !== requestingAgencyId) return [];
+  const partnerIds = await listPartnersOfAgency(requestingAgencyId);
+  if (partnerIds.length === 0) return [];
+  const db = readDb();
+  const results = [];
+  for (const partnerId of partnerIds) {
+    const props = db.properties.filter(p => p.agencyId === partnerId && p.status === 'publicada');
+    for (const property of props) {
+      if (propertyMatchesAlert(property, alert)) {
+        results.push({ property: clone(property), ownerAgencyId: partnerId });
+      }
+    }
+  }
+  return results;
+}
+
 export async function deleteSearchAlert(alertId) {
   const db = readDb();
   db.searchAlerts = db.searchAlerts.filter(a => a.id !== alertId);

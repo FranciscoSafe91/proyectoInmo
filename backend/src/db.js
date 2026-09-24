@@ -60,6 +60,8 @@ export const setSearchAlertActive = (...args) => impl.setSearchAlertActive(...ar
 export const deleteSearchAlert = (...args) => impl.deleteSearchAlert(...args);
 export const listAlertMatchesForOwner = (...args) => impl.listAlertMatchesForOwner(...args);
 export const findMatchingAlertsForProperty = (...args) => impl.findMatchingAlertsForProperty(...args);
+export const listAlertsWithMatchCounts = (...args) => impl.listAlertsWithMatchCounts(...args);
+export const findMatchingPropertiesForAlert = (...args) => impl.findMatchingPropertiesForAlert(...args);
 export const listFeedPropertiesForAgency = (...args) => impl.listFeedPropertiesForAgency(...args);
 export const getPlan = (...args) => impl.getPlan(...args);
 export const updatePlan = (...args) => impl.updatePlan(...args);

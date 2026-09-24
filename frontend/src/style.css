@@ -1862,6 +1862,31 @@
     border-radius: 4px;
   }
 
+  .geocode-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  .geocode-msg {
+    font-size: 0.82em;
+    color: var(--success, #22c55e);
+  }
+
+  .geocode-msg--error {
+    color: var(--danger, #ef4444);
+  }
+
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
   /* Responsive hardening across the app */
   img,
   video,

@@ -277,6 +277,8 @@ export default function PropertyForm() {
   const [activePreview, setActivePreview] = useState(0);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState('');
 
   const newMediaPreviews = useMemo(() => mediaFiles.map(file => ({
     id: `${file.name}-${file.lastModified}`,
@@ -369,6 +371,64 @@ export default function PropertyForm() {
 
   function handleArrayChange(name, val) {
     setProperty(v => ({ ...v, [name]: val }));
+  }
+
+  async function geocodeAddress() {
+    if (!GMAPS_KEY) return;
+    const parts = [
+      property.calle && property.nroCalle
+        ? `${property.calle} ${property.nroCalle}`
+        : property.calle,
+      property.localidad || property.partido,
+      property.zonaGeografica,
+      'Argentina',
+    ].filter(Boolean);
+    if (parts.length < 2) {
+      setGeocodeMsg('Completá al menos calle y localidad o partido.');
+      return;
+    }
+    setGeocoding(true);
+    setGeocodeMsg('');
+    try {
+      await new Promise((resolve, reject) => {
+        function runGeocode() {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ address: parts.join(', ') }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+              const loc = results[0].geometry.location;
+              setProperty(v => ({
+                ...v,
+                latitud: loc.lat().toFixed(7),
+                longitud: loc.lng().toFixed(7),
+              }));
+              setGeocodeMsg(`Encontrado: ${results[0].formatted_address}`);
+              resolve();
+            } else {
+              reject(new Error(status));
+            }
+          });
+        }
+        if (window.google?.maps) {
+          runGeocode();
+        } else {
+          const existing = document.getElementById('gmaps-script');
+          if (existing) {
+            existing.addEventListener('load', runGeocode, { once: true });
+          } else {
+            const script = document.createElement('script');
+            script.id = 'gmaps-script';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}`;
+            script.async = true;
+            script.onload = runGeocode;
+            document.head.appendChild(script);
+          }
+        }
+      });
+    } catch {
+      setGeocodeMsg('No se encontró la dirección. Verificá los datos o ubicá el pin manualmente.');
+    } finally {
+      setGeocoding(false);
+    }
   }
 
   function handleMediaChange(e) {
@@ -552,6 +612,20 @@ export default function PropertyForm() {
                 <input type="text" id="cercaDe" name="cercaDe" value={property.cercaDe} onChange={handleChange} placeholder="Ej: estación, hospital..." />
               </div>
             </div>
+
+            {GMAPS_KEY && (
+              <div className="geocode-row">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={geocodeAddress} disabled={geocoding}>
+                  <MapPin size={15} aria-hidden="true" />
+                  {geocoding ? 'Buscando...' : 'Buscar dirección en el mapa'}
+                </button>
+                {geocodeMsg && (
+                  <span className={'geocode-msg' + (geocodeMsg.startsWith('No') || geocodeMsg.startsWith('Completá') ? ' geocode-msg--error' : '')}>
+                    {geocodeMsg}
+                  </span>
+                )}
+              </div>
+            )}
 
             <PropertyMap
               latitud={property.latitud}

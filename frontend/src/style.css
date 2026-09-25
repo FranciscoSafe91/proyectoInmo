@@ -845,6 +845,16 @@
     object-fit: cover;
   }
 
+  .featured-property-placeholder {
+    width: 170px;
+    min-width: 170px;
+    height: 104px;
+    display: grid;
+    place-items: center;
+    background: #1a2a22;
+    color: #1dbc8b;
+  }
+
   .featured-property-body {
     min-width: 0;
     display: grid;

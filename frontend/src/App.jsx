@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { BedDouble, ChevronLeft, ChevronRight, Home, MapPin, Ruler, Share2 } from 'lucide-react';
+import { BedDouble, Building2, ChevronLeft, ChevronRight, Home, MapPin, Ruler, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { api } from './api.js';
 import { typeLabel, money } from './utils.js';
@@ -136,17 +136,44 @@ function MatchBar() {
 
 function FeaturedFooter() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const activeProperty = sharedHighlights[activeIndex];
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    api.get('/propiedades').then(data => {
+      const { properties, coverMediaByProperty = {}, sharesByProperty = {} } = data;
+      const active = properties
+        .filter(p => p.status === 'publicada')
+        .slice(-3)
+        .reverse()
+        .map(p => ({
+          id: p.id,
+          title: p.title,
+          location: [p.localidad, p.ciudad || p.city, p.province].filter(Boolean).join(', '),
+          price: money(p.price, p.currency),
+          rooms: p.bedrooms ? `${p.bedrooms} amb.` : typeLabel(p.type),
+          area: p.areaM2 ? `${p.areaM2} m²` : '',
+          shares: `${(sharesByProperty[p.id] || []).length} compartidos`,
+          cover: coverMediaByProperty[p.id] || null,
+        }));
+      setItems(active);
+    }).catch(() => {});
+  }, []);
+
+  const list = items.length ? items : sharedHighlights;
+  const isReal = items.length > 0;
+  const activeItem = list[activeIndex] || list[0];
+
+  if (!activeItem) return null;
 
   const move = (step) => {
-    setActiveIndex((current) => (current + step + sharedHighlights.length) % sharedHighlights.length);
+    setActiveIndex(current => (current + step + list.length) % list.length);
   };
 
   return (
     <footer className="footer app-footer featured-footer">
       <div className="featured-footer-copy">
-        <span>Los más compartidos</span>
-        <h2>Inmuebles que más se movieron esta semana</h2>
+        <span>{isReal ? 'Tus últimas publicadas' : 'Los más compartidos'}</span>
+        <h2>{isReal ? 'Tus propiedades activas recientes' : 'Inmuebles que más se movieron esta semana'}</h2>
       </div>
 
       <div className="featured-carousel" aria-live="polite">
@@ -155,25 +182,33 @@ function FeaturedFooter() {
         </button>
 
         <article className="featured-property">
-          <img src={activeProperty.image} alt={activeProperty.title} />
+          {isReal ? (
+            activeItem.cover?.type === 'image'
+              ? <img src={activeItem.cover.url} alt={activeItem.title} />
+              : <div className="featured-property-placeholder"><Building2 size={28} aria-hidden="true" /></div>
+          ) : (
+            <img src={activeItem.image} alt={activeItem.title} />
+          )}
           <div className="featured-property-body">
             <div className="featured-property-top">
               <div>
-                <p>{activeProperty.agency}</p>
-                <h3>{activeProperty.title}</h3>
+                <p>{isReal ? '' : activeItem.agency}</p>
+                <h3>{activeItem.title}</h3>
               </div>
-              <strong>{activeProperty.price}</strong>
+              <strong>{activeItem.price}</strong>
             </div>
 
-            <div className="featured-location">
-              <MapPin size={16} aria-hidden="true" />
-              <span>{activeProperty.location}</span>
-            </div>
+            {activeItem.location && (
+              <div className="featured-location">
+                <MapPin size={16} aria-hidden="true" />
+                <span>{activeItem.location}</span>
+              </div>
+            )}
 
             <div className="featured-meta">
-              <span><BedDouble size={15} aria-hidden="true" />{activeProperty.rooms}</span>
-              <span><Ruler size={15} aria-hidden="true" />{activeProperty.area}</span>
-              <span><Share2 size={15} aria-hidden="true" />{activeProperty.shares}</span>
+              {activeItem.rooms && <span><BedDouble size={15} aria-hidden="true" />{activeItem.rooms}</span>}
+              {activeItem.area && <span><Ruler size={15} aria-hidden="true" />{activeItem.area}</span>}
+              <span><Share2 size={15} aria-hidden="true" />{activeItem.shares}</span>
             </div>
           </div>
         </article>
@@ -184,13 +219,13 @@ function FeaturedFooter() {
       </div>
 
       <div className="carousel-dots" aria-label="Inmuebles destacados">
-        {sharedHighlights.map((property, index) => (
+        {list.map((item, index) => (
           <button
-            key={property.title}
+            key={item.id || item.title}
             type="button"
             className={index === activeIndex ? 'active' : ''}
             onClick={() => setActiveIndex(index)}
-            aria-label={`Ver ${property.title}`}
+            aria-label={`Ver ${item.title}`}
           />
         ))}
       </div>

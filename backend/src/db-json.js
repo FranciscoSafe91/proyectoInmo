@@ -510,20 +510,18 @@ export async function deleteSearchAlert(alertId) {
 
 function propertyMatchesAlert(property, alert) {
   if (property.status !== 'publicada') return false;
+  // Tipo de operación
   if (alert.operation && property.operation !== alert.operation) return false;
-  if (alert.type && property.type !== alert.type) return false;
-  if (alert.zonaGeografica && property.zonaGeografica !== alert.zonaGeografica) return false;
+  // Partido
   if (alert.partido && property.partido !== alert.partido) return false;
-  if (alert.localidad && property.localidad !== alert.localidad) return false;
-  if (!alert.zonaGeografica && alert.city && !normalize(`${property.city} ${property.localidad} ${property.partido} ${property.zonaGeografica}`).includes(normalize(alert.city))) return false;
+  // Moneda y rango de precio
   if (alert.currency) {
     if (property.currency !== alert.currency) return false;
-    if (alert.minPrice && property.price < alert.minPrice) return false;
-    if (alert.maxPrice && property.price > alert.maxPrice) return false;
+    if (alert.minPrice && Number(property.price) < Number(alert.minPrice)) return false;
+    if (alert.maxPrice && Number(property.price) > Number(alert.maxPrice)) return false;
   }
-  if (alert.minBedrooms && property.bedrooms < alert.minBedrooms) return false;
-  if (alert.minBathrooms && property.bathrooms < alert.minBathrooms) return false;
-  if (alert.minAreaM2 && property.areaM2 < alert.minAreaM2) return false;
+  // Cantidad de ambientes (dormitorios)
+  if (alert.minBedrooms && Number(property.bedrooms) < Number(alert.minBedrooms)) return false;
   return true;
 }
 

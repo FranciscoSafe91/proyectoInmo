@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Camera, Film, Home, ImagePlus, MapPin, Ruler, Search, Trash2 } from 'lucide-react';
 import { api } from '../api.js';
@@ -108,6 +108,21 @@ const INSTALACIONES = [
   'Parque','Parrilla','Patio','Pileta','Piso radiante','Quincho techado','Radiadores',
   'Reciclado','Sala de juegos','Salón de fiestas','Sauna','Solarium','Spa','Termotanque',
   'Terraza','Toilette','Vigilancia','Vivienda multifamiliar',
+];
+
+const SERVICIOS_EDIFICIO = [
+  'Internet','Seguridad','Teléfono','Videocable',
+];
+
+const AMENITIES_EDIFICIO = [
+  'Ascensor','Baulera','Bicicletero','Caldera','Cancha de básquetbol','Cancha de deportes',
+  'Cancha de paddle','Cancha de tenis','Coworking','Energía solar','Espacios verdes',
+  'Estacionamiento de cortesía','Gimnasio','Grupo electrógeno','Hidromasaje','Jacuzzi',
+  'Jardín','Juegos para chicos','Lavadero','Lobby','Microcine','Parrilla','Pileta',
+  'Piscina climatizada','Piscina para niños','Portero visor','Quincho techado','Recepción',
+  'Roof garden','Rooftop pool','SUM','Sala de juegos','Sala de masajes','Sala de relax',
+  'Salón de fiestas','Sauna','Sistema contra incendio','Solarium','Spa',
+  'Terraza del Edificio','Vestuario','Vigilancia','Vivienda encargado',
 ];
 
 function QtyPicker({ label, name, value, onChange, options }) {
@@ -248,9 +263,11 @@ const EMPTY_PROPERTY = {
   cocherasSemicubiertas: '',
   servicios: [],
   instalaciones: [],
+  serviciosEdificio: [],
+  amenitiesEdificio: [],
 };
 
-function buildPropertyFormData(property, mediaFiles) {
+function buildPropertyFormData(property, orderedFiles) {
   const formData = new FormData();
   Object.entries(property).forEach(([key, value]) => {
     if (Array.isArray(value)) {
@@ -259,7 +276,7 @@ function buildPropertyFormData(property, mediaFiles) {
       formData.append(key, value ?? '');
     }
   });
-  mediaFiles.forEach((file, index) => {
+  orderedFiles.forEach((file, index) => {
     formData.append(`media${index}`, file);
   });
   return formData;
@@ -272,29 +289,16 @@ export default function PropertyForm() {
   const isEdit = Boolean(id) && !location.pathname.endsWith('/nueva');
 
   const [property, setProperty] = useState(EMPTY_PROPERTY);
-  const [existingMedia, setExistingMedia] = useState([]);
-  const [mediaFiles, setMediaFiles] = useState([]);
+  const [allMedia, setAllMedia] = useState([]);
   const [activePreview, setActivePreview] = useState(0);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeMsg, setGeocodeMsg] = useState('');
+  const [dragOver, setDragOver] = useState(null);
+  const dragIndexRef = useRef(null);
 
-  const newMediaPreviews = useMemo(() => mediaFiles.map(file => ({
-    id: `${file.name}-${file.lastModified}`,
-    type: file.type.startsWith('video/') ? 'video' : 'image',
-    url: URL.createObjectURL(file),
-    filename: file.name,
-  })), [mediaFiles]);
-
-  const previewMedia = [...existingMedia, ...newMediaPreviews];
-  const activeMedia = previewMedia[activePreview] || null;
-
-  useEffect(() => {
-    return () => {
-      newMediaPreviews.forEach(item => URL.revokeObjectURL(item.url));
-    };
-  }, [newMediaPreviews]);
+  const activeMedia = allMedia[activePreview] || null;
 
   useEffect(() => {
     if (!isEdit) return;
@@ -352,8 +356,16 @@ export default function PropertyForm() {
         cocherasSemicubiertas: p.cocherasSemicubiertas != null ? String(p.cocherasSemicubiertas) : '',
         servicios: Array.isArray(p.servicios) ? p.servicios : [],
         instalaciones: Array.isArray(p.instalaciones) ? p.instalaciones : [],
+        serviciosEdificio: Array.isArray(p.serviciosEdificio) ? p.serviciosEdificio : [],
+        amenitiesEdificio: Array.isArray(p.amenitiesEdificio) ? p.amenitiesEdificio : [],
       });
-      setExistingMedia(data.media || []);
+      setAllMedia((data.media || []).map(m => ({
+        id: m.id,
+        type: m.type,
+        url: m.url,
+        filename: m.filename || '',
+        isNew: false,
+      })));
     }).catch(e => setError(e.message));
   }, [id, isEdit]);
 
@@ -433,14 +445,59 @@ export default function PropertyForm() {
 
   function handleMediaChange(e) {
     const files = Array.from(e.target.files || []);
-    setMediaFiles(files.slice(0, 8));
-    setActivePreview(existingMedia.length ? 0 : 0);
+    const existingCount = allMedia.filter(m => !m.isNew).length;
+    const newItems = files.slice(0, 8 - existingCount).map(file => ({
+      id: `${file.name}-${file.lastModified}-${Date.now()}`,
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+      url: URL.createObjectURL(file),
+      filename: file.name,
+      isNew: true,
+      file,
+    }));
+    setAllMedia(prev => {
+      const existing = prev.filter(m => !m.isNew);
+      return [...existing, ...newItems].slice(0, 8);
+    });
+    setActivePreview(0);
   }
 
-  function removeNewMedia(indexToRemove) {
-    const next = mediaFiles.filter((_, index) => index !== indexToRemove);
-    setMediaFiles(next);
+  function removeMedia(id) {
+    setAllMedia(prev => {
+      const item = prev.find(m => m.id === id);
+      if (item?.isNew) URL.revokeObjectURL(item.url);
+      return prev.filter(m => m.id !== id);
+    });
     setActivePreview(0);
+  }
+
+  function handleThumbDragStart(index) {
+    dragIndexRef.current = index;
+  }
+
+  function handleThumbDragOver(e, index) {
+    e.preventDefault();
+    setDragOver(index);
+  }
+
+  function handleThumbDrop(e, index) {
+    e.preventDefault();
+    const from = dragIndexRef.current;
+    if (from !== null && from !== index) {
+      setAllMedia(prev => {
+        const next = [...prev];
+        const [moved] = next.splice(from, 1);
+        next.splice(index, 0, moved);
+        return next;
+      });
+      setActivePreview(index);
+    }
+    dragIndexRef.current = null;
+    setDragOver(null);
+  }
+
+  function handleThumbDragEnd() {
+    dragIndexRef.current = null;
+    setDragOver(null);
   }
 
   async function handleSubmit(e) {
@@ -449,7 +506,8 @@ export default function PropertyForm() {
     setError('');
     setSubmitting(true);
     try {
-      const body = mediaFiles.length ? buildPropertyFormData(property, mediaFiles) : property;
+      const orderedFiles = allMedia.filter(m => m.isNew).map(m => m.file);
+      const body = orderedFiles.length ? buildPropertyFormData(property, orderedFiles) : property;
       if (isEdit) {
         await api.put(`/propiedades/${id}`, body);
         navigate(`/propiedades/${id}`);
@@ -899,6 +957,22 @@ export default function PropertyForm() {
               onChange={val => handleArrayChange('instalaciones', val)}
             />
 
+            <CheckboxSearchList
+              sublabel="Servicios del edificio"
+              name="serviciosEdificio"
+              options={SERVICIOS_EDIFICIO}
+              selected={property.serviciosEdificio}
+              onChange={val => handleArrayChange('serviciosEdificio', val)}
+            />
+
+            <CheckboxSearchList
+              sublabel="Amenities del edificio"
+              name="amenitiesEdificio"
+              options={AMENITIES_EDIFICIO}
+              selected={property.amenitiesEdificio}
+              onChange={val => handleArrayChange('amenitiesEdificio', val)}
+            />
+
           </div>
         </section>
 
@@ -939,30 +1013,42 @@ export default function PropertyForm() {
             </div>
           </article>
 
-          {previewMedia.length > 0 && (
-            <div className="media-thumbs">
-              {previewMedia.map((item, index) => (
-                <button
-                  key={item.id || item.url}
-                  type="button"
-                  className={index === activePreview ? 'active' : ''}
-                  onClick={() => setActivePreview(index)}
-                  aria-label={`Ver archivo ${index + 1}`}
-                >
-                  {item.type === 'video'
-                    ? <Film size={16} aria-hidden="true" />
-                    : <img src={item.url} alt="" />}
-                </button>
-              ))}
-            </div>
+          {allMedia.length > 0 && (
+            <>
+              <p className="media-thumbs-hint">Arrastrá las miniaturas para cambiar el orden.</p>
+              <div className="media-thumbs">
+                {allMedia.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={[
+                      index === activePreview ? 'active' : '',
+                      dragOver === index ? 'drag-over' : '',
+                    ].filter(Boolean).join(' ')}
+                    draggable
+                    onDragStart={() => handleThumbDragStart(index)}
+                    onDragOver={e => handleThumbDragOver(e, index)}
+                    onDrop={e => handleThumbDrop(e, index)}
+                    onDragEnd={handleThumbDragEnd}
+                    onClick={() => setActivePreview(index)}
+                    aria-label={`Ver archivo ${index + 1}`}
+                  >
+                    {item.type === 'video'
+                      ? <Film size={16} aria-hidden="true" />
+                      : <img src={item.url} alt="" />}
+                    <span className="thumb-order">{index + 1}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
-          {mediaFiles.length > 0 && (
+          {allMedia.some(m => m.isNew) && (
             <div className="selected-media-list">
-              {mediaFiles.map((file, index) => (
-                <div key={`${file.name}-${file.lastModified}`}>
-                  <span>{file.name}</span>
-                  <button type="button" onClick={() => removeNewMedia(index)} aria-label={`Quitar ${file.name}`}>
+              {allMedia.filter(m => m.isNew).map(item => (
+                <div key={item.id}>
+                  <span>{item.filename}</span>
+                  <button type="button" onClick={() => removeMedia(item.id)} aria-label={`Quitar ${item.filename}`}>
                     <Trash2 size={15} aria-hidden="true" />
                   </button>
                 </div>

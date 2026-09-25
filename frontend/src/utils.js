@@ -1,6 +1,7 @@
 export const TYPE_LABELS = {
   casa: 'Casa',
   departamento: 'Departamento',
+  ph: 'PH',
   terreno: 'Terreno',
   local: 'Local comercial',
   oficina: 'Oficina',

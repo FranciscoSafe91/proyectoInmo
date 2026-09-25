@@ -481,6 +481,42 @@
     border-color: #1dbc8b;
   }
 
+  .media-thumbs button[draggable] {
+    cursor: grab;
+    position: relative;
+  }
+
+  .media-thumbs button[draggable]:active {
+    cursor: grabbing;
+  }
+
+  .media-thumbs button.drag-over {
+    border-color: #1dbc8b;
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+
+  .thumb-order {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .media-thumbs-hint {
+    font-size: 12px;
+    color: var(--app-muted);
+    margin: 0 0 4px;
+    text-align: center;
+  }
+
   .media-thumbs img,
   .property-gallery-thumbs img {
     width: 100%;
@@ -1614,6 +1650,78 @@
   .search-bar .btn {
     flex-shrink: 0;
     white-space: nowrap;
+  }
+
+  .property-filters {
+    margin-bottom: 20px;
+  }
+
+  .property-filters-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .property-filters-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--app-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--app-muted);
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .btn-link:hover {
+    color: var(--app-text);
+  }
+
+  .property-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .property-filters-row select {
+    min-width: 150px;
+    flex: 1 1 150px;
+    max-width: 220px;
+  }
+
+  .filter-price-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 240px;
+    max-width: 320px;
+  }
+
+  .filter-price-range input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .filter-price-sep {
+    color: var(--app-muted);
+    font-size: 14px;
+    flex-shrink: 0;
   }
 
   .estate-grid {

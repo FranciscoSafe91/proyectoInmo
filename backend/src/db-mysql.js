@@ -91,6 +91,8 @@ function toProperty(r) {
     cocherasSemicubiertas: r.cocheras_semicubiertas != null ? Number(r.cocheras_semicubiertas) : null,
     servicios: r.servicios ? tryParseJson(r.servicios) : [],
     instalaciones: r.instalaciones ? tryParseJson(r.instalaciones) : [],
+    serviciosEdificio: r.servicios_edificio ? tryParseJson(r.servicios_edificio) : [],
+    amenitiesEdificio: r.amenities_edificio ? tryParseJson(r.amenities_edificio) : [],
   };
 }
 
@@ -471,6 +473,8 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN cocheras_semicubiertas TINYINT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN servicios TEXT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN instalaciones TEXT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN servicios_edificio TEXT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN amenities_edificio TEXT DEFAULT NULL",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -527,9 +531,9 @@ export async function createProperty(data) {
        agua_caliente,calefaccion,luminosidad,tipo_vigilancia,
        tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,necesita_reubicacion,
        cocheras_cubiertas,cocheras_descubiertas,cocheras_semicubiertas,
-       servicios,instalaciones,
+       servicios,instalaciones,servicios_edificio,amenities_edificio,
        created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -572,6 +576,8 @@ export async function createProperty(data) {
       data.cocherasSemicubiertas ? Number(data.cocherasSemicubiertas) : null,
       toJsonField(data.servicios),
       toJsonField(data.instalaciones),
+      toJsonField(data.serviciosEdificio),
+      toJsonField(data.amenitiesEdificio),
     ]
   );
   return getProperty(propId);
@@ -655,6 +661,12 @@ export async function updateProperty(propertyId, patch) {
   }
   if (patch.instalaciones !== undefined) {
     fields.push('instalaciones=?'); vals.push(toJsonField(patch.instalaciones));
+  }
+  if (patch.serviciosEdificio !== undefined) {
+    fields.push('servicios_edificio=?'); vals.push(toJsonField(patch.serviciosEdificio));
+  }
+  if (patch.amenitiesEdificio !== undefined) {
+    fields.push('amenities_edificio=?'); vals.push(toJsonField(patch.amenitiesEdificio));
   }
   if (patch.necesitaReubicacion !== undefined) {
     fields.push('necesita_reubicacion=?');
@@ -915,37 +927,18 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
 
 function propertyMatchesAlert(property, alert) {
   if (property.status !== 'publicada') return false;
+  // Tipo de operación
   if (alert.operation && property.operation !== alert.operation) return false;
-  if (alert.type && property.type !== alert.type) return false;
-  // location: use new structured fields if set, otherwise fall back to legacy city text
-  if (alert.zonaGeografica) {
-    if (property.zonaGeografica !== alert.zonaGeografica) return false;
-  } else if (alert.city) {
-    const haystack = [property.city, property.localidad, property.partido, property.zonaGeografica].join(' ').toLowerCase();
-    if (!haystack.includes(alert.city.toLowerCase())) return false;
-  }
+  // Partido
   if (alert.partido && property.partido !== alert.partido) return false;
-  if (alert.localidad && property.localidad !== alert.localidad) return false;
+  // Moneda y rango de precio
   if (alert.currency) {
     if (property.currency !== alert.currency) return false;
-    if (alert.minPrice && property.price < alert.minPrice) return false;
-    if (alert.maxPrice && property.price > alert.maxPrice) return false;
+    if (alert.minPrice && Number(property.price) < Number(alert.minPrice)) return false;
+    if (alert.maxPrice && Number(property.price) > Number(alert.maxPrice)) return false;
   }
-  if (alert.minBedrooms && property.bedrooms < alert.minBedrooms) return false;
-  if (alert.minBathrooms && property.bathrooms < alert.minBathrooms) return false;
-  if (alert.minAreaM2 && property.areaM2 < alert.minAreaM2) return false;
-  if (alert.minCocheras) {
-    const totalCocheras = (property.cocherasCubiertas || 0) + (property.cocherasDescubiertas || 0) + (property.cocherasSemicubiertas || 0);
-    if (totalCocheras < alert.minCocheras) return false;
-  }
-  if (alert.serviciosRequeridos?.length) {
-    const propServicios = property.servicios || [];
-    if (!alert.serviciosRequeridos.every(s => propServicios.includes(s))) return false;
-  }
-  if (alert.instalacionesRequeridas?.length) {
-    const propInstalaciones = property.instalaciones || [];
-    if (!alert.instalacionesRequeridas.every(i => propInstalaciones.includes(i))) return false;
-  }
+  // Cantidad de ambientes (dormitorios)
+  if (alert.minBedrooms && Number(property.bedrooms) < Number(alert.minBedrooms)) return false;
   return true;
 }
 

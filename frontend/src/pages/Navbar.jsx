@@ -154,17 +154,20 @@ export default function Navbar() {
 
         {renderSection({ id: 'platform', label: 'Plataforma', links: primaryLinks })}
         {networkLinks.length > 0 && renderSection({ id: 'network', label: 'Red', links: networkLinks })}
-        {renderSection({ id: 'account', label: 'Cuenta', links: accountLinks })}
+        {renderSection({
+          id: 'account',
+          label: 'Cuenta',
+          links: [
+            ...accountLinks,
+            { label: 'Salir', icon: LogOut, onClick: logout },
+          ],
+        })}
 
         <div className="sidebar-user">
           <div>
             <span>Sesión activa</span>
             <strong>{session.user.name}</strong>
           </div>
-          <button className="link-button" type="button" onClick={() => { closeMenu(); logout(); }}>
-            <LogOut size={16} aria-hidden="true" />
-            Salir
-          </button>
         </div>
       </aside>
     </>

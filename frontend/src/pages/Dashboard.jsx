@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
   Bell,
@@ -16,6 +16,7 @@ import { api } from '../api.js';
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const location = useLocation();
 
   useEffect(() => {
     api.get('/dashboard').then(setData).catch(e => setError(e.message));
@@ -96,8 +97,13 @@ export default function Dashboard() {
       <div className="metric-grid">
         {healthItems.map(item => {
           const Icon = item.icon;
+          const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
           return (
-            <Link key={item.label} to={item.to} className={`metric-card metric-${item.tone}`}>
+            <Link
+              key={item.label}
+              to={item.to}
+              className={`metric-card metric-${item.tone}${isActive ? ' metric-card-active' : ''}`}
+            >
               <div className="metric-icon"><Icon size={22} aria-hidden="true" /></div>
               <div>
                 <strong>{item.value}</strong>

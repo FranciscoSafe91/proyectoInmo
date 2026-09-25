@@ -1003,12 +1003,14 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: 14px;
     padding: 20px 16px;
     overflow: hidden;
     background: #101820;
     color: #f6f8f7;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
   }
 
   .sidebar-head {
@@ -1056,32 +1058,68 @@
     gap: 8px;
   }
 
-  .sidebar-label {
-    padding: 0 10px;
+  .sidebar-section-trigger {
+    min-height: 28px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
     color: rgba(255, 255, 255, 0.42);
+    padding: 0 10px;
+    cursor: pointer;
+    font-family: inherit;
     font-size: 0.72rem;
     font-weight: 800;
+    letter-spacing: 0;
+    text-align: left;
     text-transform: uppercase;
+    transition: background 0.18s ease, color 0.18s ease;
+  }
+
+  .sidebar-section-trigger:hover,
+  .sidebar-section-trigger:focus-visible {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.76);
+  }
+
+  .sidebar-section-trigger svg {
+    flex: 0 0 auto;
+    color: #1dbc8b;
+    transition: transform 0.18s ease;
+  }
+
+  .sidebar-section-trigger[aria-expanded="false"] svg {
+    transform: rotate(-90deg);
   }
 
   .sidebar .navbar-links {
     display: grid;
     gap: 6px;
     margin-left: 0;
+    width: 100%;
   }
 
   .navbar-links .sidebar-link,
   .sidebar-link {
+    width: 100%;
     min-height: 40px;
     display: flex;
     align-items: center;
     gap: 10px;
     border: 1px solid transparent;
     border-radius: 8px;
+    background: transparent;
     padding: 0 11px;
     color: rgba(255, 255, 255, 0.66);
+    cursor: pointer;
+    font-family: inherit;
     font-size: 0.9rem;
     font-weight: 700;
+    text-align: left;
     text-decoration: none;
     opacity: 1;
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
@@ -1101,7 +1139,7 @@
   }
 
   .sidebar-user {
-    display: grid;
+    display: none;
     gap: 10px;
     margin-top: auto;
     padding: 12px;
@@ -1130,7 +1168,7 @@
     min-height: 38px;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
@@ -1264,18 +1302,18 @@
 
   .metric-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
     margin-bottom: 18px;
   }
 
   .metric-card {
-    min-height: 150px;
+    min-height: 118px;
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 10px;
     align-items: start;
-    padding: 18px;
+    padding: 13px;
     border: 1px solid var(--app-border);
     border-radius: 8px;
     background: #ffffff;
@@ -1286,16 +1324,22 @@
   }
 
   .metric-card:hover,
-  .metric-card:focus-visible {
-    border-color: rgba(29, 188, 139, 0.36);
-    box-shadow: 0 16px 36px rgba(16, 24, 32, 0.1);
+  .metric-card:focus-visible,
+  .metric-card:active,
+  .metric-card-active {
+    border-color: rgba(29, 188, 139, 0.45);
+    background:
+      linear-gradient(135deg, rgba(29, 188, 139, 0.16), transparent 42%),
+      #16513e;
+    box-shadow: 0 16px 36px rgba(16, 24, 32, 0.14);
+    color: #ffffff;
     text-decoration: none;
     transform: translateY(-2px);
   }
 
   .metric-icon {
-    width: 46px;
-    height: 46px;
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
     border-radius: 8px;
@@ -1307,21 +1351,49 @@
     display: block;
     color: var(--app-ink);
     font-family: 'Poppins', sans-serif;
-    font-size: 2.2rem;
+    font-size: 1.75rem;
     line-height: 1;
   }
 
   .metric-card span {
     display: block;
-    margin-top: 4px;
+    margin-top: 3px;
     color: var(--app-ink);
+    font-size: 0.86rem;
     font-weight: 900;
   }
 
   .metric-card p {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     color: var(--app-muted);
-    font-size: 0.84rem;
+    font-size: 0.76rem;
+    line-height: 1.28;
+  }
+
+  .metric-card:hover .metric-icon,
+  .metric-card:focus-visible .metric-icon,
+  .metric-card:active .metric-icon,
+  .metric-card-active .metric-icon {
+    background: rgba(29, 188, 139, 0.18);
+    color: var(--app-green);
+  }
+
+  .metric-card:hover strong,
+  .metric-card:hover span,
+  .metric-card:focus-visible strong,
+  .metric-card:focus-visible span,
+  .metric-card:active strong,
+  .metric-card:active span,
+  .metric-card-active strong,
+  .metric-card-active span {
+    color: #ffffff;
+  }
+
+  .metric-card:hover p,
+  .metric-card:focus-visible p,
+  .metric-card:active p,
+  .metric-card-active p {
+    color: rgba(255, 255, 255, 0.68);
   }
 
   .metric-orange .metric-icon {
@@ -1908,9 +1980,12 @@
     .dashboard-hero,
     .compact-hero,
     .operations-grid,
-    .action-grid,
-    .metric-grid {
+    .action-grid {
       grid-template-columns: 1fr;
+    }
+
+    .metric-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .hero-status-card {
@@ -2397,6 +2472,10 @@
     .metric-card {
       grid-template-columns: 42px minmax(0, 1fr);
       padding: 14px;
+    }
+
+    .metric-grid {
+      grid-template-columns: 1fr;
     }
 
     .metric-card strong {

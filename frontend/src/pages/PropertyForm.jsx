@@ -5,7 +5,26 @@ import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
 
-const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+function loadLeaflet(cb) {
+  if (window.L) { cb(); return; }
+  if (!document.getElementById('leaflet-css')) {
+    const link = document.createElement('link');
+    link.id = 'leaflet-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(link);
+  }
+  if (!document.getElementById('leaflet-js')) {
+    const script = document.createElement('script');
+    script.id = 'leaflet-js';
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    script.async = true;
+    script.onload = cb;
+    document.head.appendChild(script);
+  } else {
+    document.getElementById('leaflet-js').addEventListener('load', cb, { once: true });
+  }
+}
 
 function PropertyMap({ latitud, longitud, onChange }) {
   const containerRef = useRef(null);
@@ -15,79 +34,63 @@ function PropertyMap({ latitud, longitud, onChange }) {
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    if (!GMAPS_KEY || !containerRef.current) return;
-
-    function setupMap() {
+    if (!containerRef.current) return;
+    loadLeaflet(() => {
       if (mapRef.current) return;
+      const L = window.L;
       const hasCoords = latitud && longitud;
-      const center = hasCoords
-        ? { lat: Number(latitud), lng: Number(longitud) }
-        : { lat: -34.6037, lng: -58.3816 };
-
-      const map = new window.google.maps.Map(containerRef.current, {
-        center,
-        zoom: hasCoords ? 15 : 12,
-      });
+      const center = hasCoords ? [Number(latitud), Number(longitud)] : [-34.6037, -58.3816];
+      const map = L.map(containerRef.current).setView(center, hasCoords ? 15 : 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
       mapRef.current = map;
 
       if (hasCoords) {
-        markerRef.current = new window.google.maps.Marker({ position: center, map, draggable: true });
-        markerRef.current.addListener('dragend', e =>
-          onChangeRef.current(e.latLng.lat(), e.latLng.lng())
-        );
+        const m = L.marker(center, { draggable: true }).addTo(map);
+        markerRef.current = m;
+        m.on('dragend', () => {
+          const { lat, lng } = m.getLatLng();
+          onChangeRef.current(lat, lng);
+        });
       }
 
-      map.addListener('click', e => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
+      map.on('click', e => {
+        const { lat, lng } = e.latlng;
         if (!markerRef.current) {
-          markerRef.current = new window.google.maps.Marker({ position: { lat, lng }, map, draggable: true });
-          markerRef.current.addListener('dragend', ev =>
-            onChangeRef.current(ev.latLng.lat(), ev.latLng.lng())
-          );
+          const m = L.marker([lat, lng], { draggable: true }).addTo(map);
+          markerRef.current = m;
+          m.on('dragend', () => {
+            const p = m.getLatLng();
+            onChangeRef.current(p.lat, p.lng);
+          });
         } else {
-          markerRef.current.setPosition({ lat, lng });
+          markerRef.current.setLatLng([lat, lng]);
         }
         onChangeRef.current(lat, lng);
       });
-    }
+    });
 
-    if (window.google?.maps) {
-      setupMap();
-    } else if (!document.getElementById('gmaps-script')) {
-      const script = document.createElement('script');
-      script.id = 'gmaps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}`;
-      script.async = true;
-      script.onload = setupMap;
-      document.head.appendChild(script);
-    } else {
-      document.getElementById('gmaps-script').addEventListener('load', setupMap);
-    }
+    return () => {
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null; }
+    };
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !window.google?.maps || !latitud || !longitud) return;
-    const pos = { lat: Number(latitud), lng: Number(longitud) };
+    if (!mapRef.current || !window.L || !latitud || !longitud) return;
+    const pos = [Number(latitud), Number(longitud)];
     if (markerRef.current) {
-      markerRef.current.setPosition(pos);
+      markerRef.current.setLatLng(pos);
     } else {
-      markerRef.current = new window.google.maps.Marker({ position: pos, map: mapRef.current, draggable: true });
-      markerRef.current.addListener('dragend', e =>
-        onChangeRef.current(e.latLng.lat(), e.latLng.lng())
-      );
+      const m = window.L.marker(pos, { draggable: true }).addTo(mapRef.current);
+      markerRef.current = m;
+      m.on('dragend', () => {
+        const p = m.getLatLng();
+        onChangeRef.current(p.lat, p.lng);
+      });
     }
     mapRef.current.panTo(pos);
   }, [latitud, longitud]);
-
-  if (!GMAPS_KEY) {
-    return (
-      <div className="map-placeholder">
-        <MapPin size={22} aria-hidden="true" />
-        <p>Para activar el mapa agregá <code>VITE_GOOGLE_MAPS_API_KEY</code> en <code>frontend/.env.local</code></p>
-      </div>
-    );
-  }
 
   return <div ref={containerRef} className="property-map" />;
 }
@@ -386,7 +389,6 @@ export default function PropertyForm() {
   }
 
   async function geocodeAddress() {
-    if (!GMAPS_KEY) return;
     const parts = [
       property.calle && property.nroCalle
         ? `${property.calle} ${property.nroCalle}`
@@ -402,42 +404,21 @@ export default function PropertyForm() {
     setGeocoding(true);
     setGeocodeMsg('');
     try {
-      await new Promise((resolve, reject) => {
-        function runGeocode() {
-          const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ address: parts.join(', ') }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-              const loc = results[0].geometry.location;
-              setProperty(v => ({
-                ...v,
-                latitud: loc.lat().toFixed(7),
-                longitud: loc.lng().toFixed(7),
-              }));
-              setGeocodeMsg(`Encontrado: ${results[0].formatted_address}`);
-              resolve();
-            } else {
-              reject(new Error(status));
-            }
-          });
-        }
-        if (window.google?.maps) {
-          runGeocode();
-        } else {
-          const existing = document.getElementById('gmaps-script');
-          if (existing) {
-            existing.addEventListener('load', runGeocode, { once: true });
-          } else {
-            const script = document.createElement('script');
-            script.id = 'gmaps-script';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}`;
-            script.async = true;
-            script.onload = runGeocode;
-            document.head.appendChild(script);
-          }
-        }
-      });
+      const q = encodeURIComponent(parts.join(', '));
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=ar`,
+        { headers: { 'Accept-Language': 'es' } }
+      );
+      const data = await res.json();
+      if (data.length > 0) {
+        const { lat, lon, display_name } = data[0];
+        setProperty(v => ({ ...v, latitud: Number(lat).toFixed(7), longitud: Number(lon).toFixed(7) }));
+        setGeocodeMsg(`Encontrado: ${display_name}`);
+      } else {
+        setGeocodeMsg('No se encontró la dirección. Verificá los datos o ubicá el pin manualmente.');
+      }
     } catch {
-      setGeocodeMsg('No se encontró la dirección. Verificá los datos o ubicá el pin manualmente.');
+      setGeocodeMsg('Error al buscar la dirección. Intentá de nuevo.');
     } finally {
       setGeocoding(false);
     }

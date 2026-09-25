@@ -753,12 +753,11 @@
     width: calc(100% - 280px);
     max-width: none;
     margin: 0 0 0 280px;
-    padding: 24px clamp(24px, 4vw, 48px) 18px;
+    padding: 72px clamp(24px, 4vw, 48px) 18px;
   }
 
   .app-footer {
     margin-left: 280px;
-    padding-bottom: 60px;
   }
 
   .featured-footer {
@@ -983,10 +982,10 @@
     text-align: center;
   }
 
-  /* ── Barra de alerta flotante ── */
+  /* ── Barra de alerta — top fija después del sidebar ── */
   .match-bar {
     position: fixed;
-    bottom: 25%;
+    top: 0;
     left: 280px;
     right: 0;
     z-index: 300;
@@ -996,9 +995,8 @@
     padding: 10px 20px;
     background: linear-gradient(135deg, rgba(29, 188, 139, 0.14), transparent 40%), #101820;
     color: #ffffff;
-    box-shadow: 0 8px 32px rgba(16, 24, 32, 0.32);
-    border-top: 1px solid rgba(29, 188, 139, 0.22);
-    border-bottom: 1px solid rgba(29, 188, 139, 0.12);
+    box-shadow: 0 4px 20px rgba(16, 24, 32, 0.22);
+    border-bottom: 1px solid rgba(29, 188, 139, 0.22);
   }
 
   .match-bar-icon {
@@ -2117,7 +2115,12 @@
     }
 
     .match-bar {
+      top: 58px;
       left: 0;
+    }
+
+    .app-main {
+      padding-top: 126px;
     }
 
     .featured-footer {

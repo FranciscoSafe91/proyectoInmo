@@ -30,6 +30,8 @@ function toAgency(r) {
 
 function toUser(r) {
   if (!r) return null;
+  let menuPermisos = null;
+  if (r.menu_permisos) { try { menuPermisos = JSON.parse(r.menu_permisos); } catch {} }
   return {
     id: r.id, agencyId: r.agency_id,
     name: r.name || `${r.nombre || ''} ${r.apellido || ''}`.trim(),
@@ -38,6 +40,7 @@ function toUser(r) {
     accountType: r.account_type, agencyName: r.agency_name, direccion: r.direccion,
     passwordHash: r.password_hash, passwordSalt: r.password_salt,
     role: r.role, isPlatformAdmin: Boolean(r.is_platform_admin), createdAt: r.created_at,
+    menuPermisos,
   };
 }
 
@@ -330,13 +333,21 @@ export async function findUserByEmail(email) {
 }
 
 export async function getUser(userId) {
+  await ensureUsuariosColumns();
   const [rows] = await pool.query('SELECT * FROM usuarios WHERE id=?', [userId]);
   return toUser(rows[0] || null);
 }
 
 export async function listUsersByAgency(agencyId) {
-  const [rows] = await pool.query('SELECT * FROM usuarios WHERE agency_id=?', [agencyId]);
+  await ensureUsuariosColumns();
+  const [rows] = await pool.query('SELECT * FROM usuarios WHERE agency_id=? ORDER BY created_at', [agencyId]);
   return rows.map(toUser);
+}
+
+export async function updateUserMenuPermisos(userId, permisos) {
+  const val = permisos === null ? null : JSON.stringify(permisos);
+  await pool.query('UPDATE usuarios SET menu_permisos=? WHERE id=?', [val, userId]);
+  return getUser(userId);
 }
 
 export async function countAdminsInAgency(agencyId) {
@@ -479,6 +490,13 @@ async function ensurePropertyCharacteristicsColumns() {
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
   }
+}
+
+let _usuariosColumnsMigrated = false;
+async function ensureUsuariosColumns() {
+  if (_usuariosColumnsMigrated) return;
+  await pool.query("ALTER TABLE usuarios ADD COLUMN menu_permisos TEXT DEFAULT NULL").catch(() => {});
+  _usuariosColumnsMigrated = true;
 }
 
 async function ensureAlertasColumns() {
@@ -895,30 +913,32 @@ export async function deleteSearchAlert(alertId) {
 export async function listAlertsWithMatchCounts(agencyId) {
   const alerts = await listAlertsByAgency(agencyId);
   if (alerts.length === 0) return [];
-  const partnerIds = await listPartnersOfAgency(agencyId);
-  if (partnerIds.length === 0) return alerts.map(a => ({ ...a, matchCount: 0 }));
-  const allPartnerProps = [];
-  for (const partnerId of partnerIds) {
-    const props = (await listPropertiesByAgency(partnerId)).filter(p => p.status === 'publicada');
-    allPartnerProps.push(...props);
+  const allAgencies = await listAgencies();
+  const otherIds = allAgencies.map(a => a.id).filter(id => id !== agencyId);
+  if (otherIds.length === 0) return alerts.map(a => ({ ...a, matchCount: 0 }));
+  const allOtherProps = [];
+  for (const otherId of otherIds) {
+    const props = (await listPropertiesByAgency(otherId)).filter(p => p.status === 'publicada');
+    allOtherProps.push(...props);
   }
   return alerts.map(alert => ({
     ...alert,
-    matchCount: allPartnerProps.filter(p => propertyMatchesAlert(p, alert)).length,
+    matchCount: allOtherProps.filter(p => propertyMatchesAlert(p, alert)).length,
   }));
 }
 
 export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId) {
   const alert = await getSearchAlert(alertId);
   if (!alert || alert.agencyId !== requestingAgencyId) return [];
-  const partnerIds = await listPartnersOfAgency(requestingAgencyId);
-  if (partnerIds.length === 0) return [];
+  const allAgencies = await listAgencies();
+  const otherIds = allAgencies.map(a => a.id).filter(id => id !== requestingAgencyId);
+  if (otherIds.length === 0) return [];
   const results = [];
-  for (const partnerId of partnerIds) {
-    const props = (await listPropertiesByAgency(partnerId)).filter(p => p.status === 'publicada');
+  for (const otherId of otherIds) {
+    const props = (await listPropertiesByAgency(otherId)).filter(p => p.status === 'publicada');
     for (const property of props) {
       if (propertyMatchesAlert(property, alert)) {
-        results.push({ property, ownerAgencyId: partnerId });
+        results.push({ property, ownerAgencyId: otherId });
       }
     }
   }
@@ -981,15 +1001,16 @@ export async function listAlertMatchesForOwner(ownerAgencyId) {
 
 export async function findMatchingAlertsForProperty(property, ownerAgencyId) {
   if (property.status !== 'publicada') return [];
-  const partnerIds = await listPartnersOfAgency(ownerAgencyId);
-  if (partnerIds.length === 0) return [];
+  const allAgencies = await listAgencies();
+  const otherIds = allAgencies.map(a => a.id).filter(id => id !== ownerAgencyId);
+  if (otherIds.length === 0) return [];
 
-  const placeholders = partnerIds.map(() => '?').join(',');
+  const placeholders = otherIds.map(() => '?').join(',');
   const [alertRows] = await pool.query(
-    `SELECT * FROM alertas_busqueda WHERE active=1 AND agency_id IN (${placeholders})`, partnerIds
+    `SELECT * FROM alertas_busqueda WHERE active=1 AND agency_id IN (${placeholders})`, otherIds
   );
-  const partnerAlerts = alertRows.map(toAlert);
-  if (partnerAlerts.length === 0) return [];
+  const otherAlerts = alertRows.map(toAlert);
+  if (otherAlerts.length === 0) return [];
 
   const [shareRows] = await pool.query(
     `SELECT * FROM compartidas WHERE owner_agency_id=? AND property_id=? AND status<>'rechazada'`,
@@ -998,7 +1019,7 @@ export async function findMatchingAlertsForProperty(property, ownerAgencyId) {
   const existingShares = shareRows.map(toShare);
 
   const matches = [];
-  for (const alert of partnerAlerts) {
+  for (const alert of otherAlerts) {
     const alreadyShared = existingShares.some(s => s.targetAgencyId === alert.agencyId);
     if (alreadyShared) continue;
     if (propertyMatchesAlert(property, alert)) {

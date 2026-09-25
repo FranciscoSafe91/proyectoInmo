@@ -285,12 +285,13 @@ export function registerApiRoutes(router) {
     const media = await db.listPropertyMedia(property.id);
 
     if (!isCreator) {
-      // Verificar si la propiedad le fue compartida (de otra agencia)
       if (property.agencyId !== session.agency.id) {
         const shares = await db.listSharesForProperty(property.id);
         const myShare = shares.find(s => s.targetAgencyId === session.agency.id && s.status === 'aceptada');
-        if (!myShare) return err(res, 'No tenés acceso a esta propiedad.', 403);
-        return json(res, { property, media, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
+        if (myShare) return json(res, { property, media, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
+        // Cualquier usuario logueado puede ver propiedades publicadas (solo lectura)
+        if (property.status === 'publicada') return json(res, { property, media, owner, shares: [], partnerAgencies: { list: [], byId: {} }, isOwner: false });
+        return err(res, 'No tenés acceso a esta propiedad.', 403);
       }
       return err(res, 'No tenés acceso a esta propiedad.', 403);
     }
@@ -622,6 +623,7 @@ export function registerApiRoutes(router) {
       subscriptionStatus: db.effectiveSubscriptionStatus(subscription),
       teamSize: (await db.listUsersByAgency(session.agency.id)).length,
       isPlatformAdmin: session.user.isPlatformAdmin,
+      isAccountAdmin: session.user.role === 'admin',
     });
   });
 
@@ -729,6 +731,19 @@ export function registerApiRoutes(router) {
       }
     }
     json(res, { ok: true });
+  });
+
+  router.put('/api/equipo/usuarios/:id/permisos', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    if (!requireAccountAdmin(req, res, session)) return;
+    const target = await db.getUser(req.params.id);
+    if (!target || target.agencyId !== session.agency.id) return err(res, 'Usuario no encontrado.', 404);
+    if (target.role === 'admin') return err(res, 'Los administradores siempre tienen acceso completo.', 400);
+    const body = await parseJson(req);
+    const permisos = Array.isArray(body.permisos) ? body.permisos : null;
+    const updated = await db.updateUserMenuPermisos(target.id, permisos);
+    json(res, { user: updated });
   });
 
   // ---------------------------------------------------------------------------

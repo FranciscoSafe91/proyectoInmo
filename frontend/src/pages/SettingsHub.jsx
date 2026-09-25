@@ -22,7 +22,7 @@ export default function SettingsHub() {
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { agency, subscriptionStatus, teamSize, isPlatformAdmin } = data;
+  const { agency, subscriptionStatus, teamSize, isPlatformAdmin, isAccountAdmin } = data;
 
   return (
     <>
@@ -34,6 +34,13 @@ export default function SettingsHub() {
           <h3>Mi cuenta</h3>
           <p className="muted small">Logo, color de marca y datos de contacto de {agency.name}.</p>
         </Link>
+
+        {isAccountAdmin && (
+          <Link to="/usuarios" className="card" style={{ display: 'block', color: 'inherit' }}>
+            <h3>Usuarios</h3>
+            <p className="muted small">{teamSize} persona{teamSize === 1 ? '' : 's'} con acceso. Gestioná roles y secciones visibles.</p>
+          </Link>
+        )}
 
         <Link to="/equipo" className="card" style={{ display: 'block', color: 'inherit' }}>
           <h3>Mi equipo</h3>

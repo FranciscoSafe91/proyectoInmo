@@ -26,25 +26,33 @@ export default function Navbar() {
 
   const active = (path) => location.pathname.startsWith(path) ? 'active' : '';
   const activeExact = (path) => location.pathname === path ? 'active' : '';
-  const settingsActive = ['/configuracion', '/mi-cuenta', '/equipo', '/suscripcion', '/soporte'].includes(location.pathname)
+  const settingsActive = ['/configuracion', '/mi-cuenta', '/equipo', '/usuarios', '/suscripcion', '/soporte'].includes(location.pathname)
     ? 'active'
     : '';
 
   const closeMenu = () => setOpen(false);
 
+  const isAdmin = session.user.role === 'admin';
+  const permisos = session.user.menuPermisos; // null = todo visible; array = solo esos
+  function canSee(key) {
+    if (isAdmin) return true;
+    if (!permisos) return true;
+    return permisos.includes(key);
+  }
+
   const primaryLinks = [
     { to: '/dashboard', label: 'Home', icon: Home, className: activeExact('/dashboard') },
-    { to: '/alertas/nueva', label: 'Buscar match', icon: Search, className: active('/alertas/nueva') },
-    { to: '/matcheadas', label: 'Matcheadas', icon: Sparkles, className: active('/matcheadas') },
-    { to: '/propiedades', label: 'Publicadas', icon: Building2, className: active('/propiedades') },
-    { to: '/compartidas', label: 'Carpeta compartida', icon: Handshake, className: activeExact('/compartidas') },
-  ];
+    canSee('buscar_match') && { to: '/alertas/nueva', label: 'Buscar match', icon: Search, className: active('/alertas/nueva') },
+    canSee('matcheadas')   && { to: '/matcheadas',   label: 'Matcheadas',      icon: Sparkles, className: active('/matcheadas') },
+    canSee('propiedades')  && { to: '/propiedades',  label: 'Publicadas',      icon: Building2, className: active('/propiedades') },
+    canSee('compartidas')  && { to: '/compartidas',  label: 'Carpeta compartida', icon: Handshake, className: activeExact('/compartidas') },
+  ].filter(Boolean);
 
   const networkLinks = [
-    { to: '/socios', label: 'Socios', icon: UsersRound, className: activeExact('/socios') },
-    { to: '/invitaciones', label: 'Invitaciones', icon: ChevronRight, className: activeExact('/invitaciones') },
-    { to: '/alertas', label: 'Alertas', icon: Bell, className: activeExact('/alertas') },
-  ];
+    canSee('socios')       && { to: '/socios',       label: 'Socios',       icon: UsersRound, className: activeExact('/socios') },
+    canSee('invitaciones') && { to: '/invitaciones', label: 'Invitaciones', icon: ChevronRight, className: activeExact('/invitaciones') },
+    canSee('alertas')      && { to: '/alertas',      label: 'Alertas',      icon: Bell, className: activeExact('/alertas') },
+  ].filter(Boolean);
 
   const accountLinks = [
     { to: '/configuracion', label: 'Configuración', icon: Settings, className: settingsActive },
@@ -96,10 +104,12 @@ export default function Navbar() {
           <div className="navbar-links">{primaryLinks.map(renderLink)}</div>
         </div>
 
-        <div className="sidebar-section">
-          <span className="sidebar-label">Red</span>
-          <div className="navbar-links">{networkLinks.map(renderLink)}</div>
-        </div>
+        {networkLinks.length > 0 && (
+          <div className="sidebar-section">
+            <span className="sidebar-label">Red</span>
+            <div className="navbar-links">{networkLinks.map(renderLink)}</div>
+          </div>
+        )}
 
         <div className="sidebar-section">
           <span className="sidebar-label">Cuenta</span>

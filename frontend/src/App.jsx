@@ -22,6 +22,7 @@ import MiWeb from './pages/MiWeb.jsx';
 import SettingsHub from './pages/SettingsHub.jsx';
 import MiCuenta from './pages/MiCuenta.jsx';
 import Team from './pages/Team.jsx';
+import Usuarios from './pages/Usuarios.jsx';
 import Subscription from './pages/Subscription.jsx';
 import Support from './pages/Support.jsx';
 import Admin from './pages/Admin.jsx';
@@ -191,6 +192,7 @@ function AppRoutes() {
           <Route path="/configuracion" element={<PrivateRoute><SettingsHub /></PrivateRoute>} />
           <Route path="/mi-cuenta" element={<PrivateRoute><MiCuenta /></PrivateRoute>} />
           <Route path="/equipo" element={<PrivateRoute><Team /></PrivateRoute>} />
+          <Route path="/usuarios" element={<PrivateRoute><Usuarios /></PrivateRoute>} />
           <Route path="/suscripcion" element={<PrivateRoute><Subscription /></PrivateRoute>} />
           <Route path="/soporte" element={<PrivateRoute><Support /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />

@@ -21,7 +21,7 @@ function summarizeAlert(alert) {
     else if (alert.minPrice) parts.push(`desde ${cur} ${alert.minPrice}`);
     else parts.push(`hasta ${cur} ${alert.maxPrice}`);
   }
-  return parts.length ? parts.join(' · ') : 'Cualquier propiedad de socios';
+  return parts.length ? parts.join(' · ') : 'Cualquier propiedad de la red';
 }
 
 function AlertsList() {
@@ -43,7 +43,7 @@ function AlertsList() {
         <div>
           <span className="section-kicker">Resultados de tus búsquedas</span>
           <h1>Matcheadas</h1>
-          <p className="subtitle">Propiedades de tus socios que coinciden con las alertas que creaste.</p>
+          <p className="subtitle">Propiedades de toda la red que coinciden con las alertas que creaste.</p>
         </div>
         <Link className="btn" to="/alertas/nueva">
           <Sparkles size={17} aria-hidden="true" /> Nueva alerta
@@ -55,7 +55,7 @@ function AlertsList() {
           <div className="empty-state">
             <Bell size={38} aria-hidden="true" />
             <h2>Todavía no creaste ninguna alerta</h2>
-            <p>Creá una alerta para buscar propiedades entre tus socios y ver los resultados acá.</p>
+            <p>Creá una alerta para buscar propiedades en toda la red y ver los resultados acá.</p>
             <Link className="btn" to="/alertas/nueva">
               <Sparkles size={17} aria-hidden="true" /> Crear alerta
             </Link>
@@ -95,7 +95,7 @@ function AlertsList() {
 function PropertyCard({ property, ownerAgency }) {
   const thumb = property.coverUrl || null;
   return (
-    <article className="matcheadas-property-card">
+    <Link to={`/propiedades/${property.id}`} className="matcheadas-property-card">
       <div className="matcheadas-property-thumb">
         {thumb
           ? <img src={thumb} alt={property.title} />
@@ -112,7 +112,7 @@ function PropertyCard({ property, ownerAgency }) {
         )}
         <span className="muted small">Publicada por: {ownerAgency.name}</span>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -161,8 +161,8 @@ function AlertDetail({ alertId }) {
           <>
             <p className="muted small" style={{ marginBottom: 16 }}>
               {properties.length === 1
-                ? '1 propiedad de tus socios coincide con esta alerta.'
-                : `${properties.length} propiedades de tus socios coinciden con esta alerta.`}
+                ? '1 propiedad de la red coincide con esta alerta.'
+                : `${properties.length} propiedades de la red coinciden con esta alerta.`}
             </p>
             <div className="matcheadas-property-list">
               {properties.map(({ property, ownerAgency }) => (

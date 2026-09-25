@@ -1339,6 +1339,33 @@
     color: #6d28d9;
   }
 
+  /* Permisos de usuario */
+  .permisos-editor {
+    padding: 4px 0;
+  }
+
+  .permisos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 6px 16px;
+  }
+
+  .permisos-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    margin: 0;
+    font-weight: normal;
+  }
+
+  .permisos-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
+
   /* Matcheadas */
   .matcheadas-grid {
     display: grid;
@@ -1433,6 +1460,15 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--app-bg);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .matcheadas-property-card:hover,
+  .matcheadas-property-card:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   }
 
   .matcheadas-property-thumb {

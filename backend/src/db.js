@@ -1,7 +1,6 @@
 import * as mysqlDb from './db-mysql.js';
-import * as jsonDb from './db-json.js';
 
-const impl = process.env.USE_LOCAL_JSON_DB === 'true' ? jsonDb : mysqlDb;
+const impl = mysqlDb;
 
 export const resetDatabase = (...args) => impl.resetDatabase(...args);
 export const createAgency = (...args) => impl.createAgency(...args);
@@ -20,6 +19,7 @@ export const listUsersByAgency = (...args) => impl.listUsersByAgency(...args);
 export const countAdminsInAgency = (...args) => impl.countAdminsInAgency(...args);
 export const deleteUser = (...args) => impl.deleteUser(...args);
 export const updateUserRole = (...args) => impl.updateUserRole(...args);
+export const updateUserMenuPermisos = (...args) => impl.updateUserMenuPermisos(...args);
 export const updateUserPassword = (...args) => impl.updateUserPassword(...args);
 export const createPasswordResetToken = (...args) => impl.createPasswordResetToken(...args);
 export const getPasswordResetToken = (...args) => impl.getPasswordResetToken(...args);

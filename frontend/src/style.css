@@ -761,10 +761,6 @@
     padding-bottom: 60px;
   }
 
-  .match-bar {
-    left: 280px;
-  }
-
   .featured-footer {
     display: grid;
     grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
@@ -987,11 +983,11 @@
     text-align: center;
   }
 
-  /* ── Barra de alerta fija en la parte inferior ── */
+  /* ── Barra de alerta flotante ── */
   .match-bar {
     position: fixed;
-    bottom: 0;
-    left: 0;
+    bottom: 25%;
+    left: 280px;
     right: 0;
     z-index: 300;
     display: flex;
@@ -1000,8 +996,9 @@
     padding: 10px 20px;
     background: linear-gradient(135deg, rgba(29, 188, 139, 0.14), transparent 40%), #101820;
     color: #ffffff;
-    box-shadow: 0 -4px 24px rgba(16, 24, 32, 0.28);
+    box-shadow: 0 8px 32px rgba(16, 24, 32, 0.32);
     border-top: 1px solid rgba(29, 188, 139, 0.22);
+    border-bottom: 1px solid rgba(29, 188, 139, 0.12);
   }
 
   .match-bar-icon {
@@ -2117,6 +2114,10 @@
 
     .app-footer {
       margin-left: 0;
+    }
+
+    .match-bar {
+      left: 0;
     }
 
     .featured-footer {

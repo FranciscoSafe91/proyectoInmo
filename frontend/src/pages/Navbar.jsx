@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Bell,
   Building2,
+  ChevronDown,
   ChevronRight,
   Handshake,
   Home,
@@ -21,6 +22,11 @@ export default function Navbar() {
   const { session, logout } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [openSections, setOpenSections] = useState({
+    platform: true,
+    network: true,
+    account: true,
+  });
 
   if (!session) return null;
 
@@ -31,6 +37,9 @@ export default function Navbar() {
     : '';
 
   const closeMenu = () => setOpen(false);
+  const toggleSection = (section) => {
+    setOpenSections(current => ({ ...current, [section]: !current[section] }));
+  };
 
   const isAdmin = session.user.role === 'admin';
   const permisos = session.user.menuPermisos; // null = todo visible; array = solo esos
@@ -62,12 +71,56 @@ export default function Navbar() {
     accountLinks.push({ to: '/admin', label: 'Admin', icon: ShieldCheck, className: active('/admin') });
   }
 
-  const renderLink = ({ to, label, icon: Icon, className }) => (
-    <Link key={`${to}-${label}`} to={to} className={`sidebar-link ${className}`} onClick={closeMenu}>
-      <Icon size={17} aria-hidden="true" />
-      <span>{label}</span>
-    </Link>
-  );
+  const renderLink = ({ to, label, icon: Icon, className = '', onClick }) => {
+    if (onClick) {
+      return (
+        <button
+          key={`action-${label}`}
+          type="button"
+          className={`sidebar-link ${className}`}
+          onClick={() => {
+            closeMenu();
+            onClick();
+          }}
+        >
+          <Icon size={17} aria-hidden="true" />
+          <span>{label}</span>
+        </button>
+      );
+    }
+
+    return (
+      <Link key={`${to}-${label}`} to={to} className={`sidebar-link ${className}`} onClick={closeMenu}>
+        <Icon size={17} aria-hidden="true" />
+        <span>{label}</span>
+      </Link>
+    );
+  };
+
+  const renderSection = ({ id, label, links }) => {
+    const sectionOpen = openSections[id];
+    const contentId = `sidebar-section-${id}`;
+
+    return (
+      <div className="sidebar-section">
+        <button
+          className="sidebar-section-trigger"
+          type="button"
+          onClick={() => toggleSection(id)}
+          aria-expanded={sectionOpen}
+          aria-controls={contentId}
+        >
+          <span>{label}</span>
+          <ChevronDown size={15} aria-hidden="true" />
+        </button>
+        {sectionOpen && (
+          <div id={contentId} className="navbar-links">
+            {links.map(renderLink)}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -99,22 +152,9 @@ export default function Navbar() {
           <div className="navbar-agency">{session.agency.name}</div>
         </div>
 
-        <div className="sidebar-section">
-          <span className="sidebar-label">Plataforma</span>
-          <div className="navbar-links">{primaryLinks.map(renderLink)}</div>
-        </div>
-
-        {networkLinks.length > 0 && (
-          <div className="sidebar-section">
-            <span className="sidebar-label">Red</span>
-            <div className="navbar-links">{networkLinks.map(renderLink)}</div>
-          </div>
-        )}
-
-        <div className="sidebar-section">
-          <span className="sidebar-label">Cuenta</span>
-          <div className="navbar-links">{accountLinks.map(renderLink)}</div>
-        </div>
+        {renderSection({ id: 'platform', label: 'Plataforma', links: primaryLinks })}
+        {networkLinks.length > 0 && renderSection({ id: 'network', label: 'Red', links: networkLinks })}
+        {renderSection({ id: 'account', label: 'Cuenta', links: accountLinks })}
 
         <div className="sidebar-user">
           <div>

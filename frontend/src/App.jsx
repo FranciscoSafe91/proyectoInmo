@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { BedDouble, ChevronLeft, ChevronRight, MapPin, Ruler, Share2 } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, Home, MapPin, Ruler, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { api } from './api.js';
+import { typeLabel, money } from './utils.js';
 
 import Navbar from './pages/Navbar.jsx';
 import Landing from './pages/Landing.jsx';
@@ -80,6 +82,58 @@ const sharedHighlights = [
   },
 ];
 
+function MatchBar() {
+  const [matches, setMatches] = useState([]);
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    api.get('/alertas').then(data => setMatches(data.matches || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (matches.length <= 1) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % matches.length), 6000);
+    return () => clearInterval(t);
+  }, [matches.length]);
+
+  if (!matches.length) return null;
+
+  const { property } = matches[idx];
+  const barrio = property.localidad || property.partido || property.zonaGeografica || property.city || '';
+
+  return (
+    <div className="match-bar" role="status" aria-label="Alerta disponible">
+      <div className="match-bar-icon">
+        <Home size={20} aria-hidden="true" />
+      </div>
+      <div className="match-bar-cell match-bar-title">
+        <span>Alerta disponible</span>
+        <strong>{property.title}</strong>
+      </div>
+      <div className="match-bar-cell">
+        <span>Tipo</span>
+        <strong>{typeLabel(property.type)}</strong>
+      </div>
+      <div className="match-bar-cell">
+        <span>Precio</span>
+        <strong>{money(property.price, property.currency)}</strong>
+      </div>
+      {barrio && (
+        <div className="match-bar-cell">
+          <span>Barrio</span>
+          <strong>{barrio}</strong>
+        </div>
+      )}
+      <Link to="/alertas" className="btn btn-primary match-bar-btn">
+        <Share2 size={14} aria-hidden="true" /> Compartir
+      </Link>
+      {matches.length > 1 && (
+        <span className="match-bar-counter">{idx + 1}/{matches.length}</span>
+      )}
+    </div>
+  );
+}
+
 function FeaturedFooter() {
   const [activeIndex, setActiveIndex] = useState(0);
   const activeProperty = sharedHighlights[activeIndex];
@@ -141,21 +195,6 @@ function FeaturedFooter() {
         ))}
       </div>
 
-      <div className="footer-match-strip">
-        <div>
-          <span>Búsqueda activa</span>
-          <strong>Casa con jardín en zona norte</strong>
-        </div>
-        <div>
-          <span>Coincidencias</span>
-          <strong>7 propiedades compatibles</strong>
-        </div>
-        <div>
-          <span>Comisión</span>
-          <strong>2% a 3%</strong>
-        </div>
-        <Link className="btn btn-primary" to="/alertas">Publicar mi búsqueda</Link>
-      </div>
     </footer>
   );
 }
@@ -167,6 +206,7 @@ function AppRoutes() {
   return (
     <>
       {session && <Navbar />}
+      {session && <MatchBar />}
       <main className={session ? 'container app-main' : (isLanding ? '' : 'container')}>
         <Routes>
           <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />

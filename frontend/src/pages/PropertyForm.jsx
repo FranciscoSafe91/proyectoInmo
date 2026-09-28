@@ -962,6 +962,25 @@ export default function PropertyForm() {
               />
             )}
 
+            {!isTerreno && (
+              <CheckboxSearchList
+                sublabel="Servicios del edificio"
+                name="serviciosEdificio"
+                options={SERVICIOS_EDIFICIO}
+                selected={property.serviciosEdificio}
+                onChange={val => handleArrayChange('serviciosEdificio', val)}
+              />
+            )}
+
+            {!isTerreno && (
+              <CheckboxSearchList
+                sublabel="Amenities del edificio"
+                name="amenitiesEdificio"
+                options={AMENITIES_EDIFICIO}
+                selected={property.amenitiesEdificio}
+                onChange={val => handleArrayChange('amenitiesEdificio', val)}
+              />
+            )}
 
           </div>
         </section>

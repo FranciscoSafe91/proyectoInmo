@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bell, Building2, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bell, Building2, MapPin, Sparkles, Check, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
@@ -24,6 +24,90 @@ function summarizeAlert(alert) {
   return parts.length ? parts.join(' · ') : 'Cualquier propiedad de la red';
 }
 
+// ---------------------------------------------------------------------------
+// Solicitudes recibidas (vista del dueño de la propiedad)
+// ---------------------------------------------------------------------------
+function MatchRequestsReceived() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [responding, setResponding] = useState({});
+
+  const load = () => {
+    api.get('/match-requests').then(setData).catch(e => setError(e.message));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const respond = async (id, action) => {
+    setResponding(r => ({ ...r, [id]: true }));
+    try {
+      await api.post(`/match-requests/${id}/${action}`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setResponding(r => ({ ...r, [id]: false }));
+    }
+  };
+
+  if (error) return <div className="banner banner-error">{error}</div>;
+  if (!data) return null;
+  if (data.items.length === 0) return null;
+
+  return (
+    <div className="card" style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <Bell size={18} />
+        <strong>Solicitudes de match recibidas</strong>
+        <span className="badge" style={{ background: 'var(--color-accent,#f59e0b)', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 12 }}>
+          {data.items.length}
+        </span>
+      </div>
+      <p className="muted small" style={{ marginBottom: 16 }}>
+        Otra inmobiliaria encontró una de tus propiedades como posible coincidencia con su búsqueda. Aceptá para permitirles verla, o rechazá si no querés compartir esta información.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {data.items.map(({ matchRequest, property, alert, alertAgency }) => (
+          <div key={matchRequest.id} className="match-request-item">
+            <div className="match-request-thumb">
+              {property.coverUrl
+                ? <img src={property.coverUrl} alt={property.title} />
+                : <Building2 size={22} aria-hidden="true" />}
+            </div>
+            <div className="match-request-info">
+              <strong>{property.title}</strong>
+              <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
+              <span className="muted small" style={{ marginTop: 4 }}>
+                <strong>{alertAgency.name}</strong> busca: {summarizeAlert(alert)}
+                {alert.title ? ` — "${alert.title}"` : ''}
+              </span>
+            </div>
+            <div className="match-request-actions">
+              <button
+                className="btn btn-success btn-sm"
+                disabled={responding[matchRequest.id]}
+                onClick={() => respond(matchRequest.id, 'aceptar')}
+              >
+                <Check size={14} /> Aceptar
+              </button>
+              <button
+                className="btn btn-danger btn-sm"
+                disabled={responding[matchRequest.id]}
+                onClick={() => respond(matchRequest.id, 'rechazar')}
+              >
+                <X size={14} /> Rechazar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Lista de alertas propias (vista del buscador)
+// ---------------------------------------------------------------------------
 function AlertsList() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -49,6 +133,8 @@ function AlertsList() {
           <Sparkles size={17} aria-hidden="true" /> Nueva alerta
         </Link>
       </section>
+
+      <MatchRequestsReceived />
 
       {alerts.length === 0 ? (
         <div className="card">
@@ -81,7 +167,13 @@ function AlertsList() {
                 {!alert.active && <span className="badge badge-borrador" style={{ marginTop: 6 }}>Pausada</span>}
               </div>
               <div className="matcheadas-card-footer">
-                <span>{alert.matchCount === 1 ? '1 propiedad coincide' : `${alert.matchCount} propiedades coinciden`}</span>
+                <span>
+                  {alert.matchCount === 0
+                    ? 'Sin coincidencias aceptadas aún'
+                    : alert.matchCount === 1
+                    ? '1 propiedad coincide'
+                    : `${alert.matchCount} propiedades coinciden`}
+                </span>
                 <ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} aria-hidden="true" />
               </div>
             </Link>
@@ -92,6 +184,9 @@ function AlertsList() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tarjeta de propiedad aceptada
+// ---------------------------------------------------------------------------
 function PropertyCard({ property, ownerAgency }) {
   const thumb = property.coverUrl || null;
   return (
@@ -116,6 +211,9 @@ function PropertyCard({ property, ownerAgency }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Detalle de alerta (propiedades aceptadas)
+// ---------------------------------------------------------------------------
 function AlertDetail({ alertId }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -154,15 +252,15 @@ function AlertDetail({ alertId }) {
         {properties.length === 0 ? (
           <div className="empty-state" style={{ padding: '32px 0' }}>
             <Sparkles size={34} aria-hidden="true" />
-            <h2>Sin coincidencias por ahora</h2>
-            <p>Cuando algún socio publique una propiedad que encaje con esta búsqueda, va a aparecer acá.</p>
+            <h2>Sin coincidencias aceptadas aún</h2>
+            <p>Cuando el dueño de una propiedad coincidente acepte tu solicitud, va a aparecer acá.</p>
           </div>
         ) : (
           <>
             <p className="muted small" style={{ marginBottom: 16 }}>
               {properties.length === 1
-                ? '1 propiedad de la red coincide con esta alerta.'
-                : `${properties.length} propiedades de la red coinciden con esta alerta.`}
+                ? '1 propiedad aceptó mostrarse para esta alerta.'
+                : `${properties.length} propiedades aceptaron mostrarse para esta alerta.`}
             </p>
             <div className="matcheadas-property-list">
               {properties.map(({ property, ownerAgency }) => (

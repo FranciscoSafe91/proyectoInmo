@@ -213,6 +213,20 @@ function toSession(r) {
   return { token: r.token, userId: r.user_id, createdAt: r.created_at };
 }
 
+function toMatchRequest(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    alertId: r.alert_id,
+    alertAgencyId: r.alert_agency_id,
+    propertyId: r.property_id,
+    ownerAgencyId: r.owner_agency_id,
+    status: r.status,
+    createdAt: r.created_at,
+    respondedAt: r.responded_at,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Reset (usado por seed.js)
 // ---------------------------------------------------------------------------
@@ -910,36 +924,123 @@ export async function deleteSearchAlert(alertId) {
   await pool.query('DELETE FROM alertas_busqueda WHERE id=?', [alertId]);
 }
 
-export async function listAlertsWithMatchCounts(agencyId) {
-  const alerts = await listAlertsByAgency(agencyId);
-  if (alerts.length === 0) return [];
-  const allAgencies = await listAgencies();
-  const otherIds = allAgencies.map(a => a.id).filter(id => id !== agencyId);
-  if (otherIds.length === 0) return alerts.map(a => ({ ...a, matchCount: 0 }));
-  const allOtherProps = [];
-  for (const otherId of otherIds) {
-    const props = (await listPropertiesByAgency(otherId)).filter(p => p.status === 'publicada');
-    allOtherProps.push(...props);
-  }
-  return alerts.map(alert => ({
-    ...alert,
-    matchCount: allOtherProps.filter(p => propertyMatchesAlert(p, alert)).length,
-  }));
+// ---------------------------------------------------------------------------
+// Match Requests — flujo de aceptar/rechazar antes de ver la propiedad
+// ---------------------------------------------------------------------------
+let matchRequestsTableEnsured = false;
+async function ensureMatchRequestsTable() {
+  if (matchRequestsTableEnsured) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS match_requests (
+      id VARCHAR(36) PRIMARY KEY,
+      alert_id VARCHAR(36) NOT NULL,
+      alert_agency_id VARCHAR(36) NOT NULL,
+      property_id VARCHAR(36) NOT NULL,
+      owner_agency_id VARCHAR(36) NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+      created_at DATETIME NOT NULL,
+      responded_at DATETIME NULL,
+      UNIQUE KEY uq_alert_property (alert_id, property_id)
+    )
+  `);
+  matchRequestsTableEnsured = true;
 }
 
-export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId) {
+async function createMatchRequestIfNotExists(alertId, alertAgencyId, propertyId, ownerAgencyId) {
+  await ensureMatchRequestsTable();
+  const id = uuid();
+  await pool.query(
+    `INSERT IGNORE INTO match_requests (id, alert_id, alert_agency_id, property_id, owner_agency_id, status, created_at)
+     VALUES (?, ?, ?, ?, ?, 'pendiente', NOW())`,
+    [id, alertId, alertAgencyId, propertyId, ownerAgencyId]
+  );
+}
+
+export async function syncMatchRequestsForAlert(alertId, alertAgencyId) {
   const alert = await getSearchAlert(alertId);
-  if (!alert || alert.agencyId !== requestingAgencyId) return [];
+  if (!alert || !alert.active) return;
   const allAgencies = await listAgencies();
-  const otherIds = allAgencies.map(a => a.id).filter(id => id !== requestingAgencyId);
-  if (otherIds.length === 0) return [];
-  const results = [];
+  const otherIds = allAgencies.map(a => a.id).filter(id => id !== alertAgencyId);
   for (const otherId of otherIds) {
     const props = (await listPropertiesByAgency(otherId)).filter(p => p.status === 'publicada');
     for (const property of props) {
       if (propertyMatchesAlert(property, alert)) {
-        results.push({ property, ownerAgencyId: otherId });
+        await createMatchRequestIfNotExists(alertId, alertAgencyId, property.id, otherId);
       }
+    }
+  }
+}
+
+export async function syncMatchRequestsForProperty(property) {
+  if (property.status !== 'publicada') return;
+  const allAgencies = await listAgencies();
+  const otherIds = allAgencies.map(a => a.id).filter(id => id !== property.agencyId);
+  if (otherIds.length === 0) return;
+  const placeholders = otherIds.map(() => '?').join(',');
+  const [alertRows] = await pool.query(
+    `SELECT * FROM alertas_busqueda WHERE active=1 AND agency_id IN (${placeholders})`, otherIds
+  );
+  const alerts = alertRows.map(toAlert);
+  for (const alert of alerts) {
+    if (propertyMatchesAlert(property, alert)) {
+      await createMatchRequestIfNotExists(alert.id, alert.agencyId, property.id, property.agencyId);
+    }
+  }
+}
+
+export async function listPendingMatchRequestsForOwner(ownerAgencyId) {
+  await ensureMatchRequestsTable();
+  const [rows] = await pool.query(
+    `SELECT * FROM match_requests WHERE owner_agency_id=? AND status='pendiente' ORDER BY created_at DESC`,
+    [ownerAgencyId]
+  );
+  return rows.map(toMatchRequest);
+}
+
+export async function getMatchRequest(matchRequestId) {
+  await ensureMatchRequestsTable();
+  const [rows] = await pool.query('SELECT * FROM match_requests WHERE id=?', [matchRequestId]);
+  return toMatchRequest(rows[0] || null);
+}
+
+export async function respondMatchRequest(matchRequestId, status) {
+  await pool.query(
+    'UPDATE match_requests SET status=?, responded_at=NOW() WHERE id=?',
+    [status, matchRequestId]
+  );
+  return getMatchRequest(matchRequestId);
+}
+
+export async function listAlertsWithMatchCounts(agencyId) {
+  await ensureMatchRequestsTable();
+  const alerts = await listAlertsByAgency(agencyId);
+  if (alerts.length === 0) return [];
+  const alertIds = alerts.map(a => a.id);
+  const placeholders = alertIds.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT alert_id, COUNT(*) as cnt FROM match_requests
+     WHERE alert_id IN (${placeholders}) AND status='aceptado'
+     GROUP BY alert_id`,
+    alertIds
+  );
+  const countMap = {};
+  rows.forEach(r => { countMap[r.alert_id] = Number(r.cnt); });
+  return alerts.map(a => ({ ...a, matchCount: countMap[a.id] || 0 }));
+}
+
+export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId) {
+  await ensureMatchRequestsTable();
+  const alert = await getSearchAlert(alertId);
+  if (!alert || alert.agencyId !== requestingAgencyId) return [];
+  const [rows] = await pool.query(
+    `SELECT property_id, owner_agency_id FROM match_requests WHERE alert_id=? AND status='aceptado'`,
+    [alertId]
+  );
+  const results = [];
+  for (const row of rows) {
+    const property = await getProperty(row.property_id);
+    if (property && property.status === 'publicada') {
+      results.push({ property, ownerAgencyId: row.owner_agency_id });
     }
   }
   return results;

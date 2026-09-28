@@ -271,6 +271,7 @@ export function registerApiRoutes(router) {
     const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
     const media = await savePropertyMedia(property.id, files);
     notifyAlertMatches(property, session.agency).catch(() => {});
+    db.syncMatchRequestsForProperty(property).catch(() => {});
     json(res, { property, media }, 201);
   });
 
@@ -324,6 +325,7 @@ export function registerApiRoutes(router) {
       ? await savePropertyMedia(property.id, files)
       : await db.listPropertyMedia(property.id);
     notifyAlertMatches(updated, session.agency).catch(() => {});
+    db.syncMatchRequestsForProperty(updated).catch(() => {});
     json(res, { property: updated, media });
   });
 
@@ -527,6 +529,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const body = await parseJson(req);
     const alert = await db.createSearchAlert({ ...body, agencyId: session.agency.id });
+    db.syncMatchRequestsForAlert(alert.id, session.agency.id).catch(() => {});
     json(res, { alert }, 201);
   });
 
@@ -553,6 +556,37 @@ export function registerApiRoutes(router) {
       }))
     )).filter(e => e.ownerAgency);
     json(res, { alert, properties });
+  });
+
+  router.get('/api/match-requests', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const pending = await db.listPendingMatchRequestsForOwner(session.agency.id);
+    const items = await Promise.all(pending.map(async mr => {
+      const property = await db.getProperty(mr.propertyId);
+      const alert = await db.getSearchAlert(mr.alertId);
+      const alertAgency = await db.getAgency(mr.alertAgencyId);
+      return { matchRequest: mr, property, alert, alertAgency };
+    }));
+    json(res, { items: items.filter(i => i.property && i.alert && i.alertAgency) });
+  });
+
+  router.post('/api/match-requests/:id/aceptar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const mr = await db.getMatchRequest(req.params.id);
+    if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
+    await db.respondMatchRequest(mr.id, 'aceptado');
+    json(res, { ok: true });
+  });
+
+  router.post('/api/match-requests/:id/rechazar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const mr = await db.getMatchRequest(req.params.id);
+    if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
+    await db.respondMatchRequest(mr.id, 'rechazado');
+    json(res, { ok: true });
   });
 
   router.post('/api/alertas/:id/pausar', async (req, res) => {

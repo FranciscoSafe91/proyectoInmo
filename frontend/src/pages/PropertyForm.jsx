@@ -697,27 +697,31 @@ export default function PropertyForm() {
               <h2>Características de la propiedad</h2>
             </div>
 
-            <div className="qty-picker-section">
-              <label>Cocheras</label>
-              <div className="qty-picker-row">
-                <QtyPicker label="Cubiertas" name="cocherasCubiertas"
-                  value={property.cocherasCubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
-                <QtyPicker label="Descubiertas" name="cocherasDescubiertas"
-                  value={property.cocherasDescubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
-                <QtyPicker label="Semicubiertas" name="cocherasSemicubiertas"
-                  value={property.cocherasSemicubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
+            {!isTerreno && (
+              <div className="qty-picker-section">
+                <label>Cocheras</label>
+                <div className="qty-picker-row">
+                  <QtyPicker label="Cubiertas" name="cocherasCubiertas"
+                    value={property.cocherasCubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
+                  <QtyPicker label="Descubiertas" name="cocherasDescubiertas"
+                    value={property.cocherasDescubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
+                  <QtyPicker label="Semicubiertas" name="cocherasSemicubiertas"
+                    value={property.cocherasSemicubiertas} onChange={handleChange} options={COCHERAS_OPTS} />
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="qty-picker-section">
-              <label>Ambientes de la propiedad</label>
-              <div className="qty-picker-row">
-                <QtyPicker label="Dormitorios" name="bedrooms"
-                  value={property.bedrooms} onChange={handleChange} options={DORMITORIOS_OPTS} />
-                <QtyPicker label="Baños" name="bathrooms"
-                  value={property.bathrooms} onChange={handleChange} options={BANOS_OPTS} />
+            {!isTerreno && (
+              <div className="qty-picker-section">
+                <label>Ambientes de la propiedad</label>
+                <div className="qty-picker-row">
+                  <QtyPicker label="Dormitorios" name="bedrooms"
+                    value={property.bedrooms} onChange={handleChange} options={DORMITORIOS_OPTS} />
+                  <QtyPicker label="Baños" name="bathrooms"
+                    value={property.bathrooms} onChange={handleChange} options={BANOS_OPTS} />
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label htmlFor="areaM2">Superficie (m²)</label>
@@ -835,81 +839,83 @@ export default function PropertyForm() {
               </div>
             </div>
 
-            <div className="grid grid-4">
-              <div>
-                <label htmlFor="aguaCaliente">Agua caliente</label>
-                <select id="aguaCaliente" name="aguaCaliente" value={property.aguaCaliente} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="gas_individual">Gas individual</option>
-                  <option value="gas_central">Gas central</option>
-                  <option value="electrico">Eléctrico</option>
-                  <option value="solar">Solar</option>
-                  <option value="termotanque">Termotanque</option>
-                </select>
+            {!isTerreno && (
+              <div className="grid grid-4">
+                <div>
+                  <label htmlFor="aguaCaliente">Agua caliente</label>
+                  <select id="aguaCaliente" name="aguaCaliente" value={property.aguaCaliente} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="gas_individual">Gas individual</option>
+                    <option value="gas_central">Gas central</option>
+                    <option value="electrico">Eléctrico</option>
+                    <option value="solar">Solar</option>
+                    <option value="termotanque">Termotanque</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="calefaccion">Calefacción</label>
+                  <select id="calefaccion" name="calefaccion" value={property.calefaccion} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="gas_natural">Gas natural</option>
+                    <option value="electrica">Eléctrica</option>
+                    <option value="losa_radiante">Losa radiante</option>
+                    <option value="radiadores">Radiadores</option>
+                    <option value="aire_acondicionado">Aire acondicionado</option>
+                    <option value="sin_calefaccion">Sin calefacción</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="luminosidad">Luminosidad</label>
+                  <select id="luminosidad" name="luminosidad" value={property.luminosidad} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="muy_luminoso">Muy luminoso</option>
+                    <option value="luminoso">Luminoso</option>
+                    <option value="normal">Normal</option>
+                    <option value="poco_luminoso">Poco luminoso</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="tipoVigilancia">Tipo de vigilancia</label>
+                  <select id="tipoVigilancia" name="tipoVigilancia" value={property.tipoVigilancia} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="sin_vigilancia">Sin vigilancia</option>
+                    <option value="guardia_24hs">Guardia 24hs</option>
+                    <option value="vigilancia_nocturna">Vigilancia nocturna</option>
+                    <option value="camaras">Cámaras de seguridad</option>
+                    <option value="portero_electrico">Portero eléctrico</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label htmlFor="calefaccion">Calefacción</label>
-                <select id="calefaccion" name="calefaccion" value={property.calefaccion} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="gas_natural">Gas natural</option>
-                  <option value="electrica">Eléctrica</option>
-                  <option value="losa_radiante">Losa radiante</option>
-                  <option value="radiadores">Radiadores</option>
-                  <option value="aire_acondicionado">Aire acondicionado</option>
-                  <option value="sin_calefaccion">Sin calefacción</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="luminosidad">Luminosidad</label>
-                <select id="luminosidad" name="luminosidad" value={property.luminosidad} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="muy_luminoso">Muy luminoso</option>
-                  <option value="luminoso">Luminoso</option>
-                  <option value="normal">Normal</option>
-                  <option value="poco_luminoso">Poco luminoso</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="tipoVigilancia">Tipo de vigilancia</label>
-                <select id="tipoVigilancia" name="tipoVigilancia" value={property.tipoVigilancia} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="sin_vigilancia">Sin vigilancia</option>
-                  <option value="guardia_24hs">Guardia 24hs</option>
-                  <option value="vigilancia_nocturna">Vigilancia nocturna</option>
-                  <option value="camaras">Cámaras de seguridad</option>
-                  <option value="portero_electrico">Portero eléctrico</option>
-                </select>
-              </div>
-            </div>
+            )}
 
-            <div className="grid grid-4">
-              <div>
-                <label htmlFor="tipoPiso">Tipo de piso</label>
-                <select id="tipoPiso" name="tipoPiso" value={property.tipoPiso} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="porcelanato">Porcelanato</option>
-                  <option value="ceramica">Cerámica</option>
-                  <option value="madera">Madera</option>
-                  <option value="marmol">Mármol</option>
-                  <option value="granito">Granito</option>
-                  <option value="cemento">Cemento</option>
-                  <option value="alfombra">Alfombra</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="tipoTecho">Tipo de techo</label>
-                <select id="tipoTecho" name="tipoTecho" value={property.tipoTecho} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="losa">Losa</option>
-                  <option value="tejas">Tejas</option>
-                  <option value="chapa">Chapa</option>
-                  <option value="membrana">Membrana</option>
-                  <option value="pizarra">Pizarra</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </div>
-              {!isTerreno && (
+            {!isTerreno && (
+              <div className="grid grid-4">
+                <div>
+                  <label htmlFor="tipoPiso">Tipo de piso</label>
+                  <select id="tipoPiso" name="tipoPiso" value={property.tipoPiso} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="porcelanato">Porcelanato</option>
+                    <option value="ceramica">Cerámica</option>
+                    <option value="madera">Madera</option>
+                    <option value="marmol">Mármol</option>
+                    <option value="granito">Granito</option>
+                    <option value="cemento">Cemento</option>
+                    <option value="alfombra">Alfombra</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="tipoTecho">Tipo de techo</label>
+                  <select id="tipoTecho" name="tipoTecho" value={property.tipoTecho} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="losa">Losa</option>
+                    <option value="tejas">Tejas</option>
+                    <option value="chapa">Chapa</option>
+                    <option value="membrana">Membrana</option>
+                    <option value="pizarra">Pizarra</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
                 <div>
                   <label htmlFor="tipoCosta">Tipo de costa</label>
                   <select id="tipoCosta" name="tipoCosta" value={property.tipoCosta} onChange={handleChange}>
@@ -921,8 +927,6 @@ export default function PropertyForm() {
                     <option value="lago">Lago</option>
                   </select>
                 </div>
-              )}
-              {!isTerreno && (
                 <div>
                   <label htmlFor="tipoVista">Tipo de vista</label>
                   <select id="tipoVista" name="tipoVista" value={property.tipoVista} onChange={handleChange}>
@@ -935,24 +939,28 @@ export default function PropertyForm() {
                     <option value="al_parque">Al parque</option>
                   </select>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            <CheckboxSearchList
-              sublabel="Servicios de la propiedad"
-              name="servicios"
-              options={SERVICIOS}
-              selected={property.servicios}
-              onChange={val => handleArrayChange('servicios', val)}
-            />
+            {!isTerreno && (
+              <CheckboxSearchList
+                sublabel="Servicios de la propiedad"
+                name="servicios"
+                options={SERVICIOS}
+                selected={property.servicios}
+                onChange={val => handleArrayChange('servicios', val)}
+              />
+            )}
 
-            <CheckboxSearchList
-              sublabel="Instalaciones de la propiedad"
-              name="instalaciones"
-              options={INSTALACIONES}
-              selected={property.instalaciones}
-              onChange={val => handleArrayChange('instalaciones', val)}
-            />
+            {!isTerreno && (
+              <CheckboxSearchList
+                sublabel="Instalaciones de la propiedad"
+                name="instalaciones"
+                options={INSTALACIONES}
+                selected={property.instalaciones}
+                onChange={val => handleArrayChange('instalaciones', val)}
+              />
+            )}
 
             <CheckboxSearchList
               sublabel="Servicios del edificio"

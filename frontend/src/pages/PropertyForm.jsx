@@ -260,6 +260,7 @@ const EMPTY_PROPERTY = {
   tipoCosta: '',
   tipoVista: '',
   tipoPendiente: '',
+  zonificacion: '',
   necesitaReubicacion: false,
   cocherasCubiertas: '',
   cocherasDescubiertas: '',
@@ -353,6 +354,7 @@ export default function PropertyForm() {
         tipoCosta: p.tipoCosta || '',
         tipoVista: p.tipoVista || '',
         tipoPendiente: p.tipoPendiente || '',
+        zonificacion: p.zonificacion || '',
         necesitaReubicacion: p.necesitaReubicacion || false,
         cocherasCubiertas: p.cocherasCubiertas != null ? String(p.cocherasCubiertas) : '',
         cocherasDescubiertas: p.cocherasDescubiertas != null ? String(p.cocherasDescubiertas) : '',
@@ -501,6 +503,8 @@ export default function PropertyForm() {
       setSubmitting(false);
     }
   }
+
+  const isTerreno = property.type === 'terreno';
 
   return (
     <>
@@ -775,25 +779,35 @@ export default function PropertyForm() {
             </div>
 
             <div className="grid grid-4">
-              <div>
-                <label htmlFor="estadoPropiedad">Estado de la propiedad</label>
-                <select id="estadoPropiedad" name="estadoPropiedad" value={property.estadoPropiedad} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="excelente">Excelente</option>
-                  <option value="muy_bueno">Muy bueno</option>
-                  <option value="bueno">Bueno</option>
-                  <option value="regular">Regular</option>
-                  <option value="a_refaccionar">A refaccionar</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="antiguedad">Antigüedad</label>
-                <input type="number" id="antiguedad" name="antiguedad" min="0" value={property.antiguedad} onChange={handleChange} placeholder="Ej: 20" />
-                <div className="checkbox-row" style={{ marginTop: 8 }}>
-                  <input type="checkbox" id="aEstrenar" name="aEstrenar" checked={property.aEstrenar} onChange={handleChange} />
-                  <label htmlFor="aEstrenar" style={{ margin: 0, fontWeight: 'normal' }}>A estrenar</label>
+              {!isTerreno && (
+                <div>
+                  <label htmlFor="estadoPropiedad">Estado de la propiedad</label>
+                  <select id="estadoPropiedad" name="estadoPropiedad" value={property.estadoPropiedad} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="excelente">Excelente</option>
+                    <option value="muy_bueno">Muy bueno</option>
+                    <option value="bueno">Bueno</option>
+                    <option value="regular">Regular</option>
+                    <option value="a_refaccionar">A refaccionar</option>
+                  </select>
                 </div>
-              </div>
+              )}
+              {!isTerreno && (
+                <div>
+                  <label htmlFor="antiguedad">Antigüedad</label>
+                  <input type="number" id="antiguedad" name="antiguedad" min="0" value={property.antiguedad} onChange={handleChange} placeholder="Ej: 20" />
+                  <div className="checkbox-row" style={{ marginTop: 8 }}>
+                    <input type="checkbox" id="aEstrenar" name="aEstrenar" checked={property.aEstrenar} onChange={handleChange} />
+                    <label htmlFor="aEstrenar" style={{ margin: 0, fontWeight: 'normal' }}>A estrenar</label>
+                  </div>
+                </div>
+              )}
+              {isTerreno && (
+                <div>
+                  <label htmlFor="zonificacion">Zonificación</label>
+                  <input type="text" id="zonificacion" name="zonificacion" value={property.zonificacion} onChange={handleChange} placeholder="Ej: R1, C3, I2..." />
+                </div>
+              )}
               <div>
                 <label htmlFor="plantas">Plantas</label>
                 <select id="plantas" name="plantas" value={property.plantas} onChange={handleChange}>
@@ -895,29 +909,33 @@ export default function PropertyForm() {
                   <option value="otro">Otro</option>
                 </select>
               </div>
-              <div>
-                <label htmlFor="tipoCosta">Tipo de costa</label>
-                <select id="tipoCosta" name="tipoCosta" value={property.tipoCosta} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="sin_costa">Sin costa</option>
-                  <option value="laguna">Laguna</option>
-                  <option value="rio">Río</option>
-                  <option value="mar">Mar</option>
-                  <option value="lago">Lago</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="tipoVista">Tipo de vista</label>
-                <select id="tipoVista" name="tipoVista" value={property.tipoVista} onChange={handleChange}>
-                  <option value="">- Seleccionar -</option>
-                  <option value="sin_vista">Sin vista especial</option>
-                  <option value="al_rio">Al río</option>
-                  <option value="al_lago">Al lago</option>
-                  <option value="al_mar">Al mar</option>
-                  <option value="a_la_montana">A la montaña</option>
-                  <option value="al_parque">Al parque</option>
-                </select>
-              </div>
+              {!isTerreno && (
+                <div>
+                  <label htmlFor="tipoCosta">Tipo de costa</label>
+                  <select id="tipoCosta" name="tipoCosta" value={property.tipoCosta} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="sin_costa">Sin costa</option>
+                    <option value="laguna">Laguna</option>
+                    <option value="rio">Río</option>
+                    <option value="mar">Mar</option>
+                    <option value="lago">Lago</option>
+                  </select>
+                </div>
+              )}
+              {!isTerreno && (
+                <div>
+                  <label htmlFor="tipoVista">Tipo de vista</label>
+                  <select id="tipoVista" name="tipoVista" value={property.tipoVista} onChange={handleChange}>
+                    <option value="">- Seleccionar -</option>
+                    <option value="sin_vista">Sin vista especial</option>
+                    <option value="al_rio">Al río</option>
+                    <option value="al_lago">Al lago</option>
+                    <option value="al_mar">Al mar</option>
+                    <option value="a_la_montana">A la montaña</option>
+                    <option value="al_parque">Al parque</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <CheckboxSearchList

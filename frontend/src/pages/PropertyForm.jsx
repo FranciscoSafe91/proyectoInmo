@@ -652,19 +652,17 @@ export default function PropertyForm() {
               </div>
             </div>
 
-            {GMAPS_KEY && (
-              <div className="geocode-row">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={geocodeAddress} disabled={geocoding}>
-                  <MapPin size={15} aria-hidden="true" />
-                  {geocoding ? 'Buscando...' : 'Buscar dirección en el mapa'}
-                </button>
-                {geocodeMsg && (
-                  <span className={'geocode-msg' + (geocodeMsg.startsWith('No') || geocodeMsg.startsWith('Completá') ? ' geocode-msg--error' : '')}>
-                    {geocodeMsg}
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="geocode-row">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={geocodeAddress} disabled={geocoding}>
+                <MapPin size={15} aria-hidden="true" />
+                {geocoding ? 'Buscando...' : 'Buscar dirección en el mapa'}
+              </button>
+              {geocodeMsg && (
+                <span className={'geocode-msg' + (geocodeMsg.startsWith('No') || geocodeMsg.startsWith('Completá') ? ' geocode-msg--error' : '')}>
+                  {geocodeMsg}
+                </span>
+              )}
+            </div>
 
             <PropertyMap
               latitud={property.latitud}

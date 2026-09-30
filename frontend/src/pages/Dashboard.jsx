@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Bell,
   Building2,
-  Handshake,
   Plus,
   Search,
   Share2,
@@ -154,14 +153,17 @@ export default function Dashboard() {
         </article>
 
         <article className="card network-card">
-          <span className="section-kicker">Colaboración</span>
-          <h2>Activá más circulación</h2>
-          <p>Mientras más claro esté qué publicás, con quién trabajás y qué queda pendiente, más rápido se convierte una oportunidad en operación.</p>
+          <span className="section-kicker">SpyderPlus</span>
+          <h2>Impulsá tu visibilidad</h2>
+          <p>Mejorá tu suscripción para que tus propiedades tengan prioridad cuando otras inmobiliarias buscan alertas compatibles.</p>
           <div className="network-steps">
-            <div><Building2 size={18} aria-hidden="true" /><span>Inventario ordenado</span></div>
-            <div><Handshake size={18} aria-hidden="true" /><span>Socios conectados</span></div>
-            <div><Bell size={18} aria-hidden="true" /><span>Alertas accionables</span></div>
+            <div><Search size={18} aria-hidden="true" /><span>Aparecé más arriba en búsquedas</span></div>
+            <div><Sparkles size={18} aria-hidden="true" /><span>Propiedades destacadas ante socios</span></div>
+            <div><Bell size={18} aria-hidden="true" /><span>Más chances de recibir contactos</span></div>
           </div>
+          <Link className="btn btn-small" to="/suscripcion" style={{ marginTop: 16 }}>
+            Mejorar a SpyderPlus <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </article>
       </section>
 

@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  CreditCard,
   Handshake,
   Home,
   LogOut,
@@ -65,6 +66,7 @@ export default function Navbar() {
 
   const accountLinks = [
     { to: '/configuracion', label: 'Configuración', icon: Settings, className: settingsActive },
+    { to: '/suscripcion', label: 'Mi suscripción', icon: CreditCard, className: activeExact('/suscripcion') },
   ];
 
   if (session.user.isPlatformAdmin) {

@@ -45,6 +45,15 @@ a {
   background: var(--paper);
 }
 
+#propiedades,
+#funciona,
+#comisiones,
+#casos,
+#planes,
+#contacto {
+  scroll-margin-top: 88px;
+}
+
 .page :is(h1, h2, h3, .logo-text, .preview-brand, .hero-metrics strong) {
   font-family: 'Poppins', sans-serif;
 }
@@ -277,7 +286,7 @@ a {
   max-width: 680px;
   margin: 0;
   color: #ffffff;
-  font-size: 4.5rem;
+  font-size: 4.35rem;
   line-height: 1.03;
   letter-spacing: 0;
 }
@@ -402,8 +411,12 @@ a {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: .65rem;
   margin-bottom: .9rem;
+}
+
+.preview-header > div {
+  min-width: 0;
 }
 
 .preview-header span,
@@ -432,13 +445,14 @@ a {
 
 .live-chip {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   height: 28px;
-  padding: 0 .7rem;
+  padding: 0 .56rem;
   border-radius: 999px;
   background: var(--green-soft);
   color: #087655;
-  font-size: .72rem;
+  font-size: .68rem;
   font-weight: 800;
   white-space: nowrap;
 }

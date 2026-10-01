@@ -8,7 +8,6 @@ import {
   Search,
   Share2,
   Sparkles,
-  UsersRound,
 } from 'lucide-react';
 import { api } from '../api.js';
 
@@ -52,12 +51,13 @@ export default function Dashboard() {
       tone: 'orange',
     },
     {
-      label: 'Inmobiliarias socias',
-      value: stats.partners,
-      hint: 'Red disponible para operar',
-      to: '/socios',
-      icon: UsersRound,
+      label: 'Alarmas que coinciden',
+      value: stats.alertMatches,
+      hint: 'Socios buscando propiedades parecidas a las tuyas',
+      to: '/alertas',
+      icon: Bell,
       tone: 'ink',
+      notificationCount: stats.alertMatches,
     },
   ];
   const nextActions = [
@@ -103,6 +103,11 @@ export default function Dashboard() {
               to={item.to}
               className={`metric-card metric-${item.tone}${isActive ? ' metric-card-active' : ''}`}
             >
+              {item.notificationCount > 0 && (
+                <span className="metric-notification" aria-label={`${item.notificationCount} alarma${item.notificationCount === 1 ? '' : 's'} por ver`}>
+                  {item.notificationCount}
+                </span>
+              )}
               <div className="metric-icon"><Icon size={22} aria-hidden="true" /></div>
               <div>
                 <strong>{item.value}</strong>

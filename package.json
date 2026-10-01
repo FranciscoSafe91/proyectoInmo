@@ -5,10 +5,13 @@
     "cloudinary": "^2.5.1",
     "dotenv": "^16.4.5",
     "mysql2": "^3.11.0",
-    "nodemailer": "^9.1.0"
+    "nodemailer": "^10.0.9"
   },
   "devDependencies": {
     "shx": "^0.3.4"
+  },
+  "overrides": {
+    "brace-expansion": "^1.1.21"
   },
   "scripts": {
     "build": "cd frontend && npm install && npm run build && shx cp -r dist ../dist && shx rm -rf ../backend/public/app && shx cp -r dist ../backend/public/app",

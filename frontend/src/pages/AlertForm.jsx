@@ -35,6 +35,7 @@ const EMPTY_ALERT = {
   minPrice: '', maxPrice: '', minBedrooms: '', minBathrooms: '', minAreaM2: '',
   zonaGeografica: '', partido: '', localidad: '',
   minCocheras: '',
+  mudanzaInmediata: false,
   serviciosRequeridos: [],
   instalacionesRequeridas: [],
 };
@@ -83,13 +84,14 @@ export default function AlertForm() {
   const [saving, setSaving] = useState(false);
 
   function handleChange(e) {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? checked : value;
     if (name === 'zonaGeografica') {
-      setAlert(v => ({ ...v, zonaGeografica: value, partido: '', localidad: '' }));
+      setAlert(v => ({ ...v, zonaGeografica: val, partido: '', localidad: '' }));
     } else if (name === 'partido') {
-      setAlert(v => ({ ...v, partido: value, localidad: '' }));
+      setAlert(v => ({ ...v, partido: val, localidad: '' }));
     } else {
-      setAlert(v => ({ ...v, [name]: value }));
+      setAlert(v => ({ ...v, [name]: val }));
     }
   }
 
@@ -257,6 +259,19 @@ export default function AlertForm() {
             selected={alert.instalacionesRequeridas}
             onChange={val => handleArrayChange('instalacionesRequeridas', val)}
           />
+
+          <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '12px 16px', margin: '8px 0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0 }}>
+              <input
+                type="checkbox"
+                name="mudanzaInmediata"
+                checked={alert.mudanzaInmediata}
+                onChange={handleChange}
+              />
+              <span style={{ fontWeight: 600 }}>Mudanza inmediata</span>
+              <span style={{ color: '#666', fontWeight: 'normal', fontSize: '0.9rem' }}>— el cliente está listo para moverse ahora</span>
+            </label>
+          </div>
 
           <div className="btn-row">
             <Link className="btn btn-secondary" to="/alertas">Cancelar</Link>

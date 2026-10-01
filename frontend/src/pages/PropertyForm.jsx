@@ -245,6 +245,7 @@ const EMPTY_PROPERTY = {
   superficieTotal: '',
   superficieCubierta: '',
   superficieDescubierta: '',
+  superficieSemicubierta: '',
   fondoLibre: '',
   estadoPropiedad: '',
   antiguedad: '',
@@ -339,6 +340,7 @@ export default function PropertyForm() {
         superficieTotal: p.superficieTotal ?? '',
         superficieCubierta: p.superficieCubierta ?? '',
         superficieDescubierta: p.superficieDescubierta ?? '',
+        superficieSemicubierta: p.superficieSemicubierta ?? '',
         fondoLibre: p.fondoLibre ?? '',
         estadoPropiedad: p.estadoPropiedad || '',
         antiguedad: p.antiguedad ?? '',
@@ -428,8 +430,7 @@ export default function PropertyForm() {
 
   function handleMediaChange(e) {
     const files = Array.from(e.target.files || []);
-    const existingCount = allMedia.filter(m => !m.isNew).length;
-    const newItems = files.slice(0, 8 - existingCount).map(file => ({
+    const newItems = files.map(file => ({
       id: `${file.name}-${file.lastModified}-${Date.now()}`,
       type: file.type.startsWith('video/') ? 'video' : 'image',
       url: URL.createObjectURL(file),
@@ -439,7 +440,7 @@ export default function PropertyForm() {
     }));
     setAllMedia(prev => {
       const existing = prev.filter(m => !m.isNew);
-      return [...existing, ...newItems].slice(0, 8);
+      return [...existing, ...newItems];
     });
     setActivePreview(0);
   }
@@ -723,14 +724,6 @@ export default function PropertyForm() {
               </div>
             )}
 
-            <div>
-              <label htmlFor="areaM2">Superficie (m²)</label>
-              <div className="field-unit" style={{ maxWidth: 200 }}>
-                <input type="number" id="areaM2" name="areaM2" min="0" required value={property.areaM2} onChange={handleChange} />
-                <span className="unit-tag">m²</span>
-              </div>
-            </div>
-
             <div className="grid grid-2">
               <div>
                 <label>Medidas de terreno</label>
@@ -763,6 +756,13 @@ export default function PropertyForm() {
                 <label htmlFor="superficieCubierta">Superficie cubierta</label>
                 <div className="field-unit">
                   <input type="number" id="superficieCubierta" name="superficieCubierta" min="0" step="any" value={property.superficieCubierta} onChange={handleChange} />
+                  <span className="unit-tag">m²</span>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="superficieSemicubierta">Superficie semicubierta</label>
+                <div className="field-unit">
+                  <input type="number" id="superficieSemicubierta" name="superficieSemicubierta" min="0" step="any" value={property.superficieSemicubierta} onChange={handleChange} />
                   <span className="unit-tag">m²</span>
                 </div>
               </div>
@@ -992,7 +992,7 @@ export default function PropertyForm() {
             </div>
             <div>
               <h2>Fotos y videos</h2>
-              <p>Subí hasta 8 archivos para mostrar mejor la propiedad.</p>
+              <p>Subí fotos y videos de la propiedad.</p>
             </div>
             <input id="property-media" type="file" multiple accept="image/*,video/mp4,video/webm,video/quicktime" onChange={handleMediaChange} />
             <label className="btn btn-secondary" htmlFor="property-media">Elegir archivos</label>

@@ -88,6 +88,9 @@ export default function Alerts() {
                     <td>
                       {requestingAgency.name}<br />
                       <span className="muted small">busca: {summarizeAlert(alert)}</span>
+                      {alert.mudanzaInmediata && (
+                        <><br /><span style={{ display: 'inline-block', marginTop: 4, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 4, padding: '2px 8px', fontSize: '0.8rem', fontWeight: 600, color: '#856404' }}>🚚 Mudanza inmediata</span></>
+                      )}
                     </td>
                     <td>
                       <button className="btn btn-small" onClick={() => handleCompartir(alert.id, property.id)}>Compartir ahora</button>
@@ -122,7 +125,10 @@ export default function Alerts() {
                 {alerts.map(a => (
                   <tr key={a.id}>
                     <td>
-                      {a.title || <span className="muted">(sin título)</span>}<br />
+                      {a.title || <span className="muted">(sin título)</span>}
+                      {a.mudanzaInmediata && (
+                        <> <span style={{ display: 'inline-block', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 4, padding: '1px 7px', fontSize: '0.78rem', fontWeight: 600, color: '#856404', verticalAlign: 'middle' }}>🚚 Inmediata</span></>
+                      )}<br />
                       <span className="muted small">{summarizeAlert(a)}</span>
                     </td>
                     <td>

@@ -78,13 +78,19 @@ export async function sendWelcome(to, name) {
   });
 }
 
-export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, alertTitle }) {
+export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, alertTitle, mudanzaInmediata }) {
+  const urgencyBanner = mudanzaInmediata
+    ? `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin:16px 0;font-weight:bold;color:#856404">
+        🚚 Mudanza inmediata — el cliente está listo para moverse
+       </div>`
+    : '';
   await getTransport().sendMail({
     from: `"SpyderConnect" <${FROM_ADDRESS}>`,
     to,
-    subject: `Nueva coincidencia: ${alertTitle || propertyTitle}`,
+    subject: `Nueva coincidencia${mudanzaInmediata ? ' 🚚 MUDANZA INMEDIATA' : ''}: ${alertTitle || propertyTitle}`,
     html: baseHtml(`
       <h2 style="margin-top:0">¡Encontramos una coincidencia!</h2>
+      ${urgencyBanner}
       <p>La inmobiliaria <strong>${partnerAgencyName}</strong> tiene una propiedad que coincide con tu alerta <strong>"${alertTitle || 'sin título'}"</strong>:</p>
       <p style="font-size:1.1rem;margin:16px 0"><strong>${propertyTitle}</strong></p>
       <p>Entrá a SpyderConnect para pedirle que te la comparta.</p>

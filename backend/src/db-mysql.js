@@ -73,6 +73,7 @@ function toProperty(r) {
     superficieTotal: r.superficie_total ? Number(r.superficie_total) : null,
     superficieCubierta: r.superficie_cubierta ? Number(r.superficie_cubierta) : null,
     superficieDescubierta: r.superficie_descubierta ? Number(r.superficie_descubierta) : null,
+    superficieSemicubierta: r.superficie_semicubierta ? Number(r.superficie_semicubierta) : null,
     fondoLibre: r.fondo_libre ? Number(r.fondo_libre) : null,
     estadoPropiedad: r.estado_propiedad || '',
     antiguedad: r.antiguedad != null ? Number(r.antiguedad) : null,
@@ -165,6 +166,7 @@ function toAlert(r) {
     minCocheras: r.min_cocheras != null ? Number(r.min_cocheras) : null,
     serviciosRequeridos: r.servicios_requeridos ? tryParseJson(r.servicios_requeridos) : [],
     instalacionesRequeridas: r.instalaciones_requeridas ? tryParseJson(r.instalaciones_requeridas) : [],
+    mudanzaInmediata: Boolean(r.mudanza_inmediata),
     active: Boolean(r.active), createdAt: r.created_at,
   };
 }
@@ -478,6 +480,7 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN superficie_total DECIMAL(10,2) DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN superficie_cubierta DECIMAL(10,2) DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN superficie_descubierta DECIMAL(10,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN superficie_semicubierta DECIMAL(10,2) DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN fondo_libre DECIMAL(10,2) DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN estado_propiedad VARCHAR(50) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN antiguedad SMALLINT DEFAULT NULL",
@@ -525,6 +528,7 @@ async function ensureAlertasColumns() {
     "ALTER TABLE alertas_busqueda ADD COLUMN min_cocheras TINYINT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN servicios_requeridos TEXT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN instalaciones_requeridas TEXT DEFAULT NULL",
+    "ALTER TABLE alertas_busqueda ADD COLUMN mudanza_inmediata TINYINT(1) NOT NULL DEFAULT 0",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -560,14 +564,14 @@ export async function createProperty(data) {
        barrio_cerrado,zona_geografica,partido,localidad,calle,nro_calle,piso,depto,
        mostrar_portales,entre_calles,y_calles,cerca_de,latitud,longitud,
        ancho_terreno,largo_terreno,superficie_terreno,superficie_total,
-       superficie_cubierta,superficie_descubierta,fondo_libre,
+       superficie_cubierta,superficie_descubierta,superficie_semicubierta,fondo_libre,
        estado_propiedad,antiguedad,a_estrenar,plantas,orientacion,
        agua_caliente,calefaccion,luminosidad,tipo_vigilancia,
        tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,zonificacion,necesita_reubicacion,
        cocheras_cubiertas,cocheras_descubiertas,cocheras_semicubiertas,
        servicios,instalaciones,servicios_edificio,amenities_edificio,
        created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -589,6 +593,7 @@ export async function createProperty(data) {
       data.superficieTotal ? Number(data.superficieTotal) : null,
       data.superficieCubierta ? Number(data.superficieCubierta) : null,
       data.superficieDescubierta ? Number(data.superficieDescubierta) : null,
+      data.superficieSemicubierta ? Number(data.superficieSemicubierta) : null,
       data.fondoLibre ? Number(data.fondoLibre) : null,
       data.estadoPropiedad || '',
       data.antiguedad ? Number(data.antiguedad) : null,
@@ -681,6 +686,7 @@ export async function updateProperty(propertyId, patch) {
     anchoTerreno: 'ancho_terreno', largoTerreno: 'largo_terreno',
     superficieTerreno: 'superficie_terreno', superficieTotal: 'superficie_total',
     superficieCubierta: 'superficie_cubierta', superficieDescubierta: 'superficie_descubierta',
+    superficieSemicubierta: 'superficie_semicubierta',
     fondoLibre: 'fondo_libre', estadoPropiedad: 'estado_propiedad',
     antiguedad: 'antiguedad', plantas: 'plantas', orientacion: 'orientacion',
     aguaCaliente: 'agua_caliente', calefaccion: 'calefaccion',
@@ -885,8 +891,8 @@ export async function createSearchAlert(data) {
     `INSERT INTO alertas_busqueda
       (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,
        zona_geografica,partido,localidad,min_bathrooms,min_area_m2,
-       min_cocheras,servicios_requeridos,instalaciones_requeridas,active,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+       min_cocheras,servicios_requeridos,instalaciones_requeridas,mudanza_inmediata,active,created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
     [
       id, data.agencyId, data.title || '', data.operation || '', data.type || '',
       (data.city || '').trim(), data.currency || '',
@@ -901,6 +907,7 @@ export async function createSearchAlert(data) {
       data.minCocheras ? Number(data.minCocheras) : null,
       toJsonField(data.serviciosRequeridos),
       toJsonField(data.instalacionesRequeridas),
+      data.mudanzaInmediata ? 1 : 0,
     ]
   );
   return getSearchAlert(id);

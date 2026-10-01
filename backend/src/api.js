@@ -67,8 +67,7 @@ async function parsePropertyRequest(req) {
 
 async function savePropertyMedia(propertyId, files) {
   const accepted = files
-    .filter(file => file && PROPERTY_MEDIA_CONTENT_TYPES.has(file.contentType))
-    .slice(0, 8);
+    .filter(file => file && PROPERTY_MEDIA_CONTENT_TYPES.has(file.contentType));
 
   const created = [];
   for (const [index, file] of accepted.entries()) {
@@ -110,6 +109,7 @@ async function notifyAlertMatches(property, ownerAgency) {
         partnerAgencyName: ownerAgency.name,
         propertyTitle: property.title,
         alertTitle: alert.title,
+        mudanzaInmediata: alert.mudanzaInmediata,
       }).catch(() => {});
     }
   } catch {}

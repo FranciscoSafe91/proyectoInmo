@@ -718,7 +718,7 @@ export function registerApiRoutes(router) {
       currentUser: session.user,
       users: await db.listUsersByAgency(session.agency.id),
       pendingInvitations: await db.listPendingInvitationsByAgency(session.agency.id),
-      baseUrl: baseUrlFor(req).replace(':3001', ':5173'),
+      baseUrl: CORS_ORIGIN,
     });
   });
 
@@ -807,7 +807,7 @@ export function registerApiRoutes(router) {
         const preapproval = await mercadopago.createPreapproval({
           reason: plan.name, payerEmail: session.agency.email, amount: plan.priceARS,
           externalReference: session.agency.id,
-          backUrl: `${baseUrlFor(req).replace(':3001', ':5173')}/suscripcion`,
+          backUrl: `${CORS_ORIGIN}/suscripcion`,
         });
         await db.updateSubscription(session.agency.id, { mpPreapprovalId: preapproval.id });
         return json(res, { ok: true, redirectUrl: preapproval.init_point });

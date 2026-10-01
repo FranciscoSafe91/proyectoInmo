@@ -5,6 +5,7 @@ const SMTP_PORT = Number(process.env.MAIL_SMTP_PORT) || 465;
 const SMTP_USER = process.env.MAIL_SMTP_USER || '';
 const SMTP_PASS = process.env.MAIL_SMTP_PASS || '';
 const FROM_ADDRESS = process.env.MAIL_FROM || SMTP_USER;
+const APP_URL = process.env.CORS_ORIGIN || 'https://spyderconnect.com';
 
 let _transport = null;
 
@@ -68,7 +69,7 @@ export async function sendWelcome(to, name) {
       <p>Tu cuenta en SpyderConnect fue creada exitosamente.</p>
       <p>Ya podés ingresar y empezar a gestionar y compartir tus propiedades con otras inmobiliarias.</p>
       <p style="margin:24px 0">
-        <a href="https://spyderconnect.com"
+        <a href="${APP_URL}"
            style="background:#1f6f54;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold">
           Ir a SpyderConnect
         </a>
@@ -88,7 +89,7 @@ export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, ale
       <p style="font-size:1.1rem;margin:16px 0"><strong>${propertyTitle}</strong></p>
       <p>Entrá a SpyderConnect para pedirle que te la comparta.</p>
       <p style="margin:24px 0">
-        <a href="https://spyderconnect.com/alertas"
+        <a href="${APP_URL}/alertas"
            style="background:#1f6f54;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold">
           Ver coincidencias
         </a>

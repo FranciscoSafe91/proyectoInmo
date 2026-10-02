@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Camera, Film, Home, ImagePlus, Loader, MapPin, Ruler, Search } from 'lucide-react';
+import { Camera, Home, ImagePlus, Loader, MapPin, Ruler, Search, Youtube } from 'lucide-react';
 import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
@@ -270,7 +270,13 @@ const EMPTY_PROPERTY = {
   instalaciones: [],
   serviciosEdificio: [],
   amenitiesEdificio: [],
+  youtubeUrl: '',
 };
+
+function getYoutubeEmbedId(url) {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
 
 function buildPropertyFormData(property, orderedFiles) {
   const formData = new FormData();
@@ -365,6 +371,7 @@ export default function PropertyForm() {
         instalaciones: Array.isArray(p.instalaciones) ? p.instalaciones : [],
         serviciosEdificio: Array.isArray(p.serviciosEdificio) ? p.serviciosEdificio : [],
         amenitiesEdificio: Array.isArray(p.amenitiesEdificio) ? p.amenitiesEdificio : [],
+        youtubeUrl: p.youtubeUrl || '',
       });
       setAllMedia((data.media || []).map(m => ({
         id: m.id,
@@ -428,61 +435,18 @@ export default function PropertyForm() {
     }
   }
 
-  async function uploadVideoToCloudinary(itemId, file) {
-    const MAX_MB = 200;
-    if (file.size > MAX_MB * 1024 * 1024) {
-      setAllMedia(prev => prev.filter(m => m.id !== itemId));
-      setError(`El video no puede superar los ${MAX_MB} MB.`);
-      return;
-    }
-    try {
-      const res = await fetch('/api/upload/video', {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Error al subir el video');
-      }
-      const data = await res.json();
-      setAllMedia(prev => prev.map(m =>
-        m.id === itemId
-          ? { ...m, url: data.secure_url, uploading: false, preUploaded: true }
-          : m
-      ));
-    } catch (e) {
-      setAllMedia(prev => prev.filter(m => m.id !== itemId));
-      setError(e.message || 'Error al subir el video. Intentá de nuevo.');
-    }
-  }
-
   function handleMediaChange(e) {
-    const files = Array.from(e.target.files || []);
-    const toUpload = [];
-    const newItems = files.map(file => {
-      const isVideo = file.type.startsWith('video/');
-      const id = `${file.name}-${file.lastModified}-${Date.now()}-${Math.random()}`;
-      if (isVideo) toUpload.push({ id, file });
-      return {
-        id,
-        type: isVideo ? 'video' : 'image',
-        url: isVideo ? null : URL.createObjectURL(file),
-        filename: file.name,
-        isNew: !isVideo,
-        uploading: isVideo,
-        file: isVideo ? null : file,
-      };
-    });
-    setAllMedia(prev => {
-      const existing = prev.filter(m => !m.isNew && !m.uploading);
-      return [...existing, ...newItems];
-    });
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    const newItems = files.map(file => ({
+      id: `${file.name}-${file.lastModified}-${Date.now()}-${Math.random()}`,
+      type: 'image',
+      url: URL.createObjectURL(file),
+      filename: file.name,
+      isNew: true,
+      file,
+    }));
+    setAllMedia(prev => [...prev.filter(m => !m.isNew), ...newItems]);
     setActivePreview(0);
-    for (const { id, file } of toUpload) {
-      uploadVideoToCloudinary(id, file);
-    }
   }
 
   function removeMedia(id) {
@@ -527,10 +491,6 @@ export default function PropertyForm() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (submitting) return;
-    if (allMedia.some(m => m.uploading)) {
-      setError('Esperá a que terminen de subirse los videos.');
-      return;
-    }
     setError('');
     setSubmitting(true);
     try {
@@ -543,14 +503,6 @@ export default function PropertyForm() {
       } else {
         const data = await api.post('/propiedades', body);
         propertyId = data.property.id;
-      }
-      for (const item of allMedia.filter(m => m.preUploaded)) {
-        await api.post(`/propiedades/${propertyId}/media-url`, {
-          url: item.url,
-          type: item.type,
-          filename: item.filename,
-          sortOrder: allMedia.indexOf(item),
-        });
       }
       navigate(`/propiedades/${propertyId}`);
     } catch (err) {
@@ -1045,20 +997,16 @@ export default function PropertyForm() {
               <ImagePlus size={24} aria-hidden="true" />
             </div>
             <div>
-              <h2>Fotos y videos</h2>
-              <p>Subí fotos y videos de la propiedad.</p>
+              <h2>Fotos</h2>
+              <p>Subí fotos de la propiedad.</p>
             </div>
-            <input id="property-media" type="file" multiple accept="image/*,video/mp4,video/webm,video/quicktime" onChange={handleMediaChange} />
+            <input id="property-media" type="file" multiple accept="image/*" onChange={handleMediaChange} />
             <label className="btn btn-secondary" htmlFor="property-media">Elegir archivos</label>
           </div>
 
           <article className="upload-preview-card">
             {activeMedia ? (
-              activeMedia.type === 'video' ? (
-                <video src={activeMedia.url} controls />
-              ) : (
-                <img src={activeMedia.url} alt={activeMedia.filename || property.title || 'Vista previa de la propiedad'} />
-              )
+              <img src={activeMedia.url} alt={activeMedia.filename || property.title || 'Vista previa de la propiedad'} />
             ) : (
               <div className="preview-empty">
                 <Camera size={30} aria-hidden="true" />
@@ -1098,8 +1046,6 @@ export default function PropertyForm() {
                     >
                       {item.uploading
                         ? <Loader size={16} className="spin" aria-hidden="true" />
-                        : item.type === 'video'
-                        ? <Film size={16} aria-hidden="true" />
                         : <img src={item.url} alt="" />}
                       <span className="thumb-order">{index + 1}</span>
                     </button>
@@ -1116,6 +1062,31 @@ export default function PropertyForm() {
               </div>
             </>
           )}
+
+          <div className="youtube-url-field">
+            <label htmlFor="youtubeUrl">
+              <Youtube size={16} aria-hidden="true" />
+              Video de YouTube
+            </label>
+            <input
+              type="url"
+              id="youtubeUrl"
+              name="youtubeUrl"
+              value={property.youtubeUrl}
+              onChange={handleChange}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+            {property.youtubeUrl && getYoutubeEmbedId(property.youtubeUrl) && (
+              <div className="youtube-embed-preview">
+                <iframe
+                  src={`https://www.youtube.com/embed/${getYoutubeEmbedId(property.youtubeUrl)}`}
+                  title="Vista previa del video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+          </div>
 
           <label htmlFor="status">Estado</label>
           <select id="status" name="status" value={property.status} onChange={handleChange}>

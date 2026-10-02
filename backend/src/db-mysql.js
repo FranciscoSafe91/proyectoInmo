@@ -98,6 +98,7 @@ function toProperty(r) {
     instalaciones: r.instalaciones ? tryParseJson(r.instalaciones) : [],
     serviciosEdificio: r.servicios_edificio ? tryParseJson(r.servicios_edificio) : [],
     amenitiesEdificio: r.amenities_edificio ? tryParseJson(r.amenities_edificio) : [],
+    youtubeUrl: r.youtube_url || '',
   };
 }
 
@@ -500,6 +501,7 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN necesita_reubicacion TINYINT(1) NOT NULL DEFAULT 0",
     "ALTER TABLE propiedades ADD COLUMN cocheras_cubiertas TINYINT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN cocheras_descubiertas TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN youtube_url VARCHAR(500) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN cocheras_semicubiertas TINYINT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN servicios TEXT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN instalaciones TEXT DEFAULT NULL",
@@ -570,8 +572,8 @@ export async function createProperty(data) {
        tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,zonificacion,necesita_reubicacion,
        cocheras_cubiertas,cocheras_descubiertas,cocheras_semicubiertas,
        servicios,instalaciones,servicios_edificio,amenities_edificio,
-       created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       youtube_url,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -618,6 +620,7 @@ export async function createProperty(data) {
       toJsonField(data.instalaciones),
       toJsonField(data.serviciosEdificio),
       toJsonField(data.amenitiesEdificio),
+      data.youtubeUrl || '',
     ]
   );
   return getProperty(propId);
@@ -694,6 +697,7 @@ export async function updateProperty(propertyId, patch) {
     tipoPiso: 'tipo_piso', tipoTecho: 'tipo_techo',
     tipoCosta: 'tipo_costa', tipoVista: 'tipo_vista', tipoPendiente: 'tipo_pendiente',
     zonificacion: 'zonificacion',
+    youtubeUrl: 'youtube_url',
     cocherasCubiertas: 'cocheras_cubiertas',
     cocherasDescubiertas: 'cocheras_descubiertas',
     cocherasSemicubiertas: 'cocheras_semicubiertas',

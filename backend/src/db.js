@@ -49,6 +49,7 @@ export const getPropertyShare = (...args) => impl.getPropertyShare(...args);
 export const getShareForPropertyAndTarget = (...args) => impl.getShareForPropertyAndTarget(...args);
 export const setSharePublishAuthorization = (...args) => impl.setSharePublishAuthorization(...args);
 export const cancelShare = (...args) => impl.cancelShare(...args);
+export const cancelMatchRequestsForPropertyAndTarget = (...args) => impl.cancelMatchRequestsForPropertyAndTarget(...args);
 export const respondPropertyShare = (...args) => impl.respondPropertyShare(...args);
 export const listSharesForProperty = (...args) => impl.listSharesForProperty(...args);
 export const listPendingSharesReceived = (...args) => impl.listPendingSharesReceived(...args);

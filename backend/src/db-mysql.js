@@ -848,7 +848,23 @@ export async function dissolvePartnership(partnershipId) {
         OR (owner_agency_id=? AND target_agency_id=?)`,
     [agencyAId, agencyBId, agencyBId, agencyAId]
   );
+  await ensureMatchRequestsTable();
+  await pool.query(
+    `UPDATE match_requests SET status='rechazado'
+     WHERE (owner_agency_id=? AND alert_agency_id=?)
+        OR (owner_agency_id=? AND alert_agency_id=?)`,
+    [agencyAId, agencyBId, agencyBId, agencyAId]
+  );
   await pool.query('DELETE FROM sociedades WHERE id=?', [partnershipId]);
+}
+
+export async function cancelMatchRequestsForPropertyAndTarget(propertyId, targetAgencyId) {
+  await ensureMatchRequestsTable();
+  await pool.query(
+    `UPDATE match_requests SET status='rechazado'
+     WHERE property_id=? AND alert_agency_id=?`,
+    [propertyId, targetAgencyId]
+  );
 }
 
 export async function listPartnersOfAgency(agencyId) {

@@ -431,6 +431,7 @@ export function registerApiRoutes(router) {
     const share = await db.getPropertyShare(req.params.shareId);
     if (property && share && property.agencyId === session.agency.id && share.propertyId === property.id) {
       await db.cancelShare(share.id);
+      await db.cancelMatchRequestsForPropertyAndTarget(share.propertyId, share.targetAgencyId);
     }
     json(res, { ok: true });
   });

@@ -7,7 +7,7 @@ import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
 import { randomUUID } from 'node:crypto';
 import * as mail from './mail.js';
-import { uploadBuffer, deleteResource } from './cloudinary.js';
+import { uploadBuffer, deleteResource, signUpload } from './cloudinary.js';
 
 const LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const PROPERTY_MEDIA_CONTENT_TYPES = new Set([
@@ -338,6 +338,40 @@ export function registerApiRoutes(router) {
     }
     await db.deleteProperty(property.id);
     json(res, { ok: true });
+  });
+
+  // Firma para subida directa de video desde el browser a Cloudinary
+  router.get('/api/cloudinary/sign', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const timestamp = Math.round(Date.now() / 1000);
+    const publicId = `spyderconnect/properties/${randomUUID()}`;
+    const signature = signUpload({ timestamp, public_id: publicId });
+    json(res, {
+      signature,
+      timestamp,
+      publicId,
+      apiKey: process.env.CLOUDINARY_API_KEY,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    });
+  });
+
+  // Registra una URL de video ya subida directamente a Cloudinary
+  router.post('/api/propiedades/:id/media-url', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const property = await db.getProperty(req.params.id);
+    if (!property || property.agencyId !== session.agency.id) return err(res, 'No encontrada.', 404);
+    const body = await parseJson(req);
+    if (!body.url || !body.type) return err(res, 'url y type son requeridos.', 400);
+    const media = await db.createPropertyMedia({
+      propertyId: req.params.id,
+      url: body.url,
+      type: body.type,
+      filename: body.filename || '',
+      sortOrder: body.sortOrder ?? 0,
+    });
+    json(res, { media }, 201);
   });
 
   router.post('/api/propiedades/:id/compartir', async (req, res) => {

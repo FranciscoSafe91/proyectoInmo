@@ -22,3 +22,7 @@ export async function deleteResource(publicId, resourceType = 'image') {
     await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch {}
 }
+
+export function signUpload(paramsToSign) {
+  return cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
+}

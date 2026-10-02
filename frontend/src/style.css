@@ -753,6 +753,187 @@
     right: 12px;
   }
 
+  /* Stage clickable */
+  .gallery-stage-clickable {
+    cursor: pointer;
+  }
+
+  .gallery-stage-clickable:hover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  /* YouTube en el stage principal */
+  .gallery-yt-stage {
+    position: relative;
+    width: 100%;
+    height: 360px;
+  }
+
+  .gallery-yt-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gallery-yt-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.28);
+    transition: background 0.15s;
+  }
+
+  .gallery-stage-clickable:hover .gallery-yt-play {
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  /* YouTube en los thumbnails */
+  .thumb-yt {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .thumb-yt img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .thumb-yt-badge {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 3px;
+    color: #fff;
+  }
+
+  /* ---- Lightbox ---- */
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.93);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 92vw;
+    max-height: 90vh;
+  }
+
+  .lightbox-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox-img {
+    max-width: 88vw;
+    max-height: 84vh;
+    object-fit: contain;
+    border-radius: 4px;
+    display: block;
+  }
+
+  .lightbox-video {
+    max-width: 88vw;
+    max-height: 84vh;
+    border-radius: 4px;
+    display: block;
+  }
+
+  .lightbox-youtube {
+    width: min(84vw, 960px);
+    aspect-ratio: 16 / 9;
+  }
+
+  .lightbox-youtube iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 4px;
+    display: block;
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: -44px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .lightbox-arrow {
+    position: absolute;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 8px;
+    background: rgba(16, 24, 32, 0.80);
+    color: #ffffff;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background 0.15s;
+    z-index: 1;
+  }
+
+  .lightbox-arrow:hover {
+    background: rgba(16, 24, 32, 0.95);
+  }
+
+  .lightbox-arrow.left {
+    left: -60px;
+  }
+
+  .lightbox-arrow.right {
+    right: -60px;
+  }
+
+  .lightbox-counter {
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
   .property-gallery-thumbs {
     padding: 10px;
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -883,8 +1064,44 @@
       height: 240px;
     }
 
+    .gallery-yt-stage {
+      height: 240px;
+    }
+
     .property-gallery-thumbs {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .lightbox-arrow.left {
+      left: -46px;
+    }
+
+    .lightbox-arrow.right {
+      right: -46px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .lightbox-arrow.left {
+      left: 8px;
+    }
+
+    .lightbox-arrow.right {
+      right: 8px;
+    }
+
+    .lightbox-close {
+      top: -38px;
+      right: 0;
+    }
+
+    .lightbox-youtube {
+      width: 96vw;
+    }
+
+    .lightbox-img,
+    .lightbox-video {
+      max-width: 96vw;
     }
   }
 
@@ -2753,6 +2970,11 @@
     .property-gallery-stage img,
     .property-gallery-stage video,
     .upload-preview-card > img {
+      height: min(62vw, 260px);
+      min-height: 190px;
+    }
+
+    .gallery-yt-stage {
       height: min(62vw, 260px);
       min-height: 190px;
     }

@@ -883,7 +883,8 @@ export async function listPendingSharesReceived(agencyId) {
 export async function listAcceptedSharesReceived(agencyId) {
   await ensureCompartidasColumns();
   const [rows] = await pool.query(
-    "SELECT * FROM compartidas WHERE status='aceptada' AND target_agency_id=?", [agencyId]
+    "SELECT c.* FROM compartidas c INNER JOIN propiedades p ON p.id = c.property_id WHERE c.status='aceptada' AND c.target_agency_id=?",
+    [agencyId]
   );
   return rows.map(toShare);
 }
@@ -891,14 +892,17 @@ export async function listAcceptedSharesReceived(agencyId) {
 export async function listAcceptedDirectSharesReceived(agencyId) {
   await ensureCompartidasColumns();
   const [rows] = await pool.query(
-    "SELECT * FROM compartidas WHERE status='aceptada' AND target_agency_id=? AND (source IS NULL OR source='directa')",
+    "SELECT c.* FROM compartidas c INNER JOIN propiedades p ON p.id = c.property_id WHERE c.status='aceptada' AND c.target_agency_id=? AND (c.source IS NULL OR c.source='directa')",
     [agencyId]
   );
   return rows.map(toShare);
 }
 
 export async function listSharesByOwnerAgency(agencyId) {
-  const [rows] = await pool.query('SELECT * FROM compartidas WHERE owner_agency_id=?', [agencyId]);
+  const [rows] = await pool.query(
+    'SELECT c.* FROM compartidas c INNER JOIN propiedades p ON p.id = c.property_id WHERE c.owner_agency_id=?',
+    [agencyId]
+  );
   return rows.map(toShare);
 }
 

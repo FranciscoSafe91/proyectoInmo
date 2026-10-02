@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { BedDouble, Building2, ChevronLeft, ChevronRight, Home, MapPin, Ruler, Share2 } from 'lucide-react';
+import { Home, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { api } from './api.js';
 import { typeLabel, money } from './utils.js';
@@ -49,38 +49,6 @@ function PublicOnly({ children }) {
   return children;
 }
 
-const sharedHighlights = [
-  {
-    title: 'Departamento Lumiere',
-    location: 'Belgrano, CABA',
-    price: 'USD 215k',
-    rooms: '3 amb.',
-    area: '86 m²',
-    shares: '34 compartidos',
-    agency: 'Norte Propiedades',
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    title: 'Casa Ombú',
-    location: 'San Isidro, Buenos Aires',
-    price: 'USD 390k',
-    rooms: '5 amb.',
-    area: '210 m²',
-    shares: '28 compartidos',
-    agency: 'Grupo Raíz',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    title: 'Loft Distrito',
-    location: 'Palermo Soho, CABA',
-    price: 'USD 178k',
-    rooms: '2 amb.',
-    area: '72 m²',
-    shares: '21 compartidos',
-    agency: 'Nova Propiedades',
-    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80',
-  },
-];
 
 function MatchBar() {
   const [matches, setMatches] = useState([]);
@@ -134,105 +102,6 @@ function MatchBar() {
   );
 }
 
-function FeaturedFooter() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [items, setItems] = useState([]);
-
-  useEffect(() => {
-    api.get('/propiedades').then(data => {
-      const { properties, coverMediaByProperty = {}, sharesByProperty = {} } = data;
-      const active = properties
-        .filter(p => p.status === 'publicada')
-        .slice(-3)
-        .reverse()
-        .map(p => ({
-          id: p.id,
-          title: p.title,
-          location: [p.localidad, p.ciudad || p.city, p.province].filter(Boolean).join(', '),
-          price: money(p.price, p.currency),
-          rooms: p.bedrooms ? `${p.bedrooms} amb.` : typeLabel(p.type),
-          area: p.areaM2 ? `${p.areaM2} m²` : '',
-          shares: `${(sharesByProperty[p.id] || []).length} compartidos`,
-          cover: coverMediaByProperty[p.id] || null,
-        }));
-      setItems(active);
-    }).catch(() => {});
-  }, []);
-
-  const list = items.length ? items : sharedHighlights;
-  const isReal = items.length > 0;
-  const activeItem = list[activeIndex] || list[0];
-
-  if (!activeItem) return null;
-
-  const move = (step) => {
-    setActiveIndex(current => (current + step + list.length) % list.length);
-  };
-
-  return (
-    <footer className="footer app-footer featured-footer">
-      <div className="featured-footer-copy">
-        <span>{isReal ? 'Tus últimas publicadas' : 'Los más compartidos'}</span>
-        <h2>{isReal ? 'Tus propiedades activas recientes' : 'Inmuebles que más se movieron esta semana'}</h2>
-      </div>
-
-      <div className="featured-carousel" aria-live="polite">
-        <button className="carousel-button" type="button" onClick={() => move(-1)} aria-label="Ver inmueble anterior">
-          <ChevronLeft size={20} aria-hidden="true" />
-        </button>
-
-        <article className="featured-property">
-          {isReal ? (
-            activeItem.cover?.type === 'image'
-              ? <img src={activeItem.cover.url} alt={activeItem.title} />
-              : <div className="featured-property-placeholder"><Building2 size={28} aria-hidden="true" /></div>
-          ) : (
-            <img src={activeItem.image} alt={activeItem.title} />
-          )}
-          <div className="featured-property-body">
-            <div className="featured-property-top">
-              <div>
-                <p>{isReal ? '' : activeItem.agency}</p>
-                <h3>{activeItem.title}</h3>
-              </div>
-              <strong>{activeItem.price}</strong>
-            </div>
-
-            {activeItem.location && (
-              <div className="featured-location">
-                <MapPin size={16} aria-hidden="true" />
-                <span>{activeItem.location}</span>
-              </div>
-            )}
-
-            <div className="featured-meta">
-              {activeItem.rooms && <span><BedDouble size={15} aria-hidden="true" />{activeItem.rooms}</span>}
-              {activeItem.area && <span><Ruler size={15} aria-hidden="true" />{activeItem.area}</span>}
-              <span><Share2 size={15} aria-hidden="true" />{activeItem.shares}</span>
-            </div>
-          </div>
-        </article>
-
-        <button className="carousel-button" type="button" onClick={() => move(1)} aria-label="Ver siguiente inmueble">
-          <ChevronRight size={20} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="carousel-dots" aria-label="Inmuebles destacados">
-        {list.map((item, index) => (
-          <button
-            key={item.id || item.title}
-            type="button"
-            className={index === activeIndex ? 'active' : ''}
-            onClick={() => setActiveIndex(index)}
-            aria-label={`Ver ${item.title}`}
-          />
-        ))}
-      </div>
-
-    </footer>
-  );
-}
 
 function AppRoutes() {
   const { session } = useAuth();
@@ -277,7 +146,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {session ? <FeaturedFooter /> : (!isLanding && <footer className="footer">Prototipo - Sistema Compartido de Propiedades</footer>)}
+      {!isLanding && <footer className="footer">Prototipo - Sistema Compartido de Propiedades</footer>}
     </>
   );
 }

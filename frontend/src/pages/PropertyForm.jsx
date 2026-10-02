@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Camera, Home, ImagePlus, Loader, MapPin, Ruler, Search, Youtube } from 'lucide-react';
+import { Camera, Home, ImagePlus, Loader, MapPin, Ruler, Search, Video } from 'lucide-react';
 import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
@@ -1065,7 +1065,7 @@ export default function PropertyForm() {
 
           <div className="youtube-url-field">
             <label htmlFor="youtubeUrl">
-              <Youtube size={16} aria-hidden="true" />
+              <Video size={16} aria-hidden="true" />
               Video de YouTube
             </label>
             <input

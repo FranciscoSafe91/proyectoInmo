@@ -937,6 +937,14 @@ export function registerApiRoutes(router) {
     const body = await parseJson(req);
     if (!body.subject || !body.message) return err(res, 'Completá el asunto y el mensaje.');
     const ticket = await db.createSupportTicket({ agencyId: session.agency.id, userId: session.user.id, subject: body.subject, message: body.message });
+    if (mail.isConfigured()) {
+      mail.sendSupportTicket({
+        agencyName: session.agency.name,
+        userName: `${session.user.nombre} ${session.user.apellido}`.trim(),
+        subject: body.subject,
+        message: body.message,
+      }).catch(() => {});
+    }
     json(res, { ticket }, 201);
   });
 

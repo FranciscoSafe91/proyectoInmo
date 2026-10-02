@@ -34,7 +34,7 @@ export default function Support() {
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { tickets, contactEmail } = data;
+  const { tickets } = data;
 
   return (
     <>
@@ -42,12 +42,6 @@ export default function Support() {
       <p className="subtitle">¿Algo no funciona como esperabas, o tenés una duda? Contanos acá.</p>
 
       {flash && <div className="banner banner-success">{flash}</div>}
-
-      <div className="card">
-        <h3>Contacto directo</h3>
-        <p className="muted">Si preferís escribirnos por fuera del sistema:</p>
-        <p>✉️ <a href={`mailto:${contactEmail}`}>{contactEmail}</a></p>
-      </div>
 
       <div className="card">
         <h3>Enviar una consulta</h3>

@@ -104,6 +104,22 @@ export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, ale
   });
 }
 
+export async function sendSupportTicket({ agencyName, userName, subject, message }) {
+  await getTransport().sendMail({
+    from: `"SpyderConnect" <${FROM_ADDRESS}>`,
+    to: 'soporte@spyderconnect.com',
+    subject: `[Soporte] ${subject}`,
+    html: baseHtml(`
+      <h2 style="margin-top:0">Nueva consulta de soporte</h2>
+      <p><strong>Inmobiliaria:</strong> ${agencyName}</p>
+      <p><strong>Usuario:</strong> ${userName}</p>
+      <p><strong>Asunto:</strong> ${subject}</p>
+      <hr style="border:none;border-top:1px solid #e0e0e0;margin:16px 0">
+      <p style="white-space:pre-wrap">${message}</p>
+    `),
+  });
+}
+
 export function isConfigured() {
   return Boolean(SMTP_USER && SMTP_PASS);
 }

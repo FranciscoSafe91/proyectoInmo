@@ -49,7 +49,8 @@ export default function Navbar() {
   function canSee(key) {
     if (isAdmin) return true;
     if (!permisos) return true;
-    return permisos.includes(key);
+    if (Array.isArray(permisos)) return permisos.includes(key); // formato viejo
+    return (permisos.secciones || []).includes(key); // formato nuevo
   }
 
   const primaryLinks = [

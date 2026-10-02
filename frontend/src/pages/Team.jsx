@@ -14,12 +14,25 @@ const SECCIONES = [
   { key: 'invitaciones', label: 'Invitaciones' },
 ];
 
+const ACCIONES = [
+  { key: 'crear_propiedades',     label: 'Crear propiedades' },
+  { key: 'editar_propiedades',    label: 'Editar propiedades' },
+  { key: 'eliminar_propiedades',  label: 'Eliminar propiedades' },
+  { key: 'publicar_propiedades',  label: 'Publicar / despublicar' },
+  { key: 'compartir_propiedades', label: 'Compartir con socios' },
+  { key: 'responder_compartidas', label: 'Aceptar/rechazar compartidas' },
+  { key: 'gestionar_socios',      label: 'Gestionar solicitudes de socios' },
+  { key: 'crear_alertas',         label: 'Crear y eliminar alertas' },
+  { key: 'invitar_equipo',        label: 'Invitar al equipo' },
+];
+
 export default function Team() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [role, setRole] = useState('agente');
   const [permisos, setPermisos] = useState(SECCIONES.map(s => s.key));
+  const [acciones, setAcciones] = useState(ACCIONES.map(a => a.key));
   const [newInviteLink, setNewInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -34,10 +47,16 @@ export default function Team() {
     );
   }
 
+  function toggleAccion(key) {
+    setAcciones(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  }
+
   async function handleInvitar(e) {
     e.preventDefault();
     try {
-      const menuPermisos = role === 'admin' ? null : permisos;
+      const menuPermisos = role === 'admin' ? null : { secciones: permisos, acciones };
       const result = await api.post('/equipo/invitar', { role, note, menuPermisos });
       const { invitation } = result;
       setNewInviteLink(`${data.baseUrl}/unirse/${invitation.token}`);
@@ -45,6 +64,7 @@ export default function Team() {
       setNote('');
       setRole('agente');
       setPermisos(SECCIONES.map(s => s.key));
+      setAcciones(ACCIONES.map(a => a.key));
       load();
     } catch (err) {
       setError(err.data?.error || 'Error al invitar.');
@@ -158,21 +178,38 @@ export default function Team() {
           </div>
 
           {role === 'agente' && (
-            <div className="invite-permisos">
-              <p className="invite-permisos-label">Secciones a las que va a tener acceso</p>
-              <div className="invite-permisos-grid">
-                {SECCIONES.map(s => (
-                  <label key={s.key} className="invite-permiso-item">
-                    <input
-                      type="checkbox"
-                      checked={permisos.includes(s.key)}
-                      onChange={() => togglePermiso(s.key)}
-                    />
-                    {s.label}
-                  </label>
-                ))}
+            <>
+              <div className="invite-permisos">
+                <p className="invite-permisos-label">Secciones a las que va a tener acceso</p>
+                <div className="invite-permisos-grid">
+                  {SECCIONES.map(s => (
+                    <label key={s.key} className="invite-permiso-item">
+                      <input
+                        type="checkbox"
+                        checked={permisos.includes(s.key)}
+                        onChange={() => togglePermiso(s.key)}
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+              <div className="invite-permisos">
+                <p className="invite-permisos-label">Acciones que puede realizar</p>
+                <div className="invite-permisos-grid">
+                  {ACCIONES.map(a => (
+                    <label key={a.key} className="invite-permiso-item">
+                      <input
+                        type="checkbox"
+                        checked={acciones.includes(a.key)}
+                        onChange={() => toggleAccion(a.key)}
+                      />
+                      {a.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
           {role === 'admin' && (
             <p className="muted small" style={{ marginTop: 8 }}>Los administradores tienen acceso a todas las secciones.</p>

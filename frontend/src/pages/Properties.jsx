@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, BedDouble, Building2, MapPin, Plus, Ruler, Search, Share2, SlidersHorizontal, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, TYPE_LABELS, OPERATION_LABELS } from '../utils.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 function StatusBadge({ status }) {
   return <span className={`badge badge-${status}`}>{status}</span>;
@@ -31,6 +32,7 @@ const AMBIENTES_OPTIONS = [
 ];
 
 export default function Properties() {
+  const { canDo } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -103,9 +105,11 @@ export default function Properties() {
           <h1>Mis propiedades</h1>
           <p className="subtitle">Gestioná tus publicaciones, su estado y con qué socios están circulando.</p>
         </div>
-        <Link className="btn" to="/propiedades/nueva">
-          <Plus size={17} aria-hidden="true" /> Nueva propiedad
-        </Link>
+        {canDo('crear_propiedades') && (
+          <Link className="btn" to="/propiedades/nueva">
+            <Plus size={17} aria-hidden="true" /> Nueva propiedad
+          </Link>
+        )}
       </section>
 
       <form className="search-bar" onSubmit={handleSearch}>

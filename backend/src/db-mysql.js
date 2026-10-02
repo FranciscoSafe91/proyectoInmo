@@ -1366,7 +1366,7 @@ export async function createInvitation({ agencyId, role, note, menuPermisos }) {
   await ensureInvitacionesColumns();
   const token = randomBytes(16).toString('hex');
   const id = uuid();
-  const permisoVal = menuPermisos && menuPermisos.length ? JSON.stringify(menuPermisos) : null;
+  const permisoVal = menuPermisos ? JSON.stringify(menuPermisos) : null;
   await pool.query(
     `INSERT INTO invitaciones (id,agency_id,role,note,token,status,menu_permisos,created_at)
      VALUES (?,?,?,?,?,'pendiente',?,NOW())`,

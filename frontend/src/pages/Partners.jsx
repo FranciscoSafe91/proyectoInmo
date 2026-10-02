@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function Partners() {
+  const { canDo } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(searchParams.get('q') || '');
   const [data, setData] = useState(null);
@@ -42,7 +44,9 @@ export default function Partners() {
     if (partnerIds.has(a.id)) return <span className="badge badge-aceptada">Socios</span>;
     if (sentPendingIds.has(a.id)) return <span className="badge badge-pendiente">Solicitud enviada</span>;
     if (receivedPendingIds.has(a.id)) return <Link className="btn btn-small" to="/invitaciones">Responder solicitud</Link>;
-    return <button className="btn btn-small" onClick={() => handleSolicitar(a.id)}>Enviar solicitud de sociedad</button>;
+    return canDo('gestionar_socios')
+      ? <button className="btn btn-small" onClick={() => handleSolicitar(a.id)}>Enviar solicitud de sociedad</button>
+      : null;
   }
 
   return (

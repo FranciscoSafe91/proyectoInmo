@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bell, Plus, Send } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 function summarizeAlert(alert) {
   const parts = [];
@@ -25,6 +26,7 @@ function summarizeAlert(alert) {
 }
 
 export default function Alerts() {
+  const { canDo } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -64,9 +66,11 @@ export default function Alerts() {
           <h1>Mis alertas</h1>
           <p className="subtitle">Creá una alerta cuando busques algo que no tenés ni vos ni tus socios. En cuanto alguien tenga algo compatible, te avisamos.</p>
         </div>
-        <Link className="btn" to="/alertas/nueva">
-          <Plus size={17} aria-hidden="true" /> Nueva alerta
-        </Link>
+        {canDo('crear_alertas') && (
+          <Link className="btn" to="/alertas/nueva">
+            <Plus size={17} aria-hidden="true" /> Nueva alerta
+          </Link>
+        )}
       </section>
 
       <div className="page-two-col">

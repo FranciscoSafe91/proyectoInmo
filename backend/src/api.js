@@ -821,7 +821,14 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAccountAdmin(req, res, session)) return;
     const body = await parseJson(req);
-    const menuPermisos = Array.isArray(body.menuPermisos) && body.menuPermisos.length ? body.menuPermisos : null;
+    let menuPermisos = null;
+    if (body.menuPermisos) {
+      if (typeof body.menuPermisos === 'object' && !Array.isArray(body.menuPermisos)) {
+        menuPermisos = body.menuPermisos; // nuevo: { secciones, acciones }
+      } else if (Array.isArray(body.menuPermisos) && body.menuPermisos.length) {
+        menuPermisos = body.menuPermisos; // viejo: array plano
+      }
+    }
     const invitation = await db.createInvitation({ agencyId: session.agency.id, role: body.role, note: body.note, menuPermisos });
     json(res, { invitation }, 201);
   });
@@ -870,7 +877,7 @@ export function registerApiRoutes(router) {
     if (!target || target.agencyId !== session.agency.id) return err(res, 'Usuario no encontrado.', 404);
     if (target.role === 'admin') return err(res, 'Los administradores siempre tienen acceso completo.', 400);
     const body = await parseJson(req);
-    const permisos = Array.isArray(body.permisos) ? body.permisos : null;
+    const permisos = (body.permisos !== null && body.permisos !== undefined) ? body.permisos : null;
     const updated = await db.updateUserMenuPermisos(target.id, permisos);
     json(res, { user: updated });
   });

@@ -24,8 +24,17 @@ export function AuthProvider({ children }) {
   const refresh = () =>
     api.get('/session').then(setSession).catch(() => setSession(null));
 
+  function canDo(action) {
+    if (!session?.user) return false;
+    const { role, menuPermisos } = session.user;
+    if (role === 'admin') return true;
+    if (!menuPermisos) return true;
+    if (Array.isArray(menuPermisos)) return true; // formato viejo: concede todas las acciones
+    return Array.isArray(menuPermisos.acciones) && menuPermisos.acciones.includes(action);
+  }
+
   return (
-    <AuthContext.Provider value={{ session, login, logout, refresh }}>
+    <AuthContext.Provider value={{ session, login, logout, refresh, canDo }}>
       {children}
     </AuthContext.Provider>
   );

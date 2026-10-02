@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Camera, ChevronLeft, ChevronRight, Film, Printer } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, formatDate } from '../utils.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 function StatusBadge({ status }) {
   return <span className={`badge badge-${status}`}>{status}</span>;
@@ -97,6 +98,7 @@ function WebPublishCell({ property, share, onUpdate }) {
 export default function PropertyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canDo } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [selectedPartners, setSelectedPartners] = useState([]);
@@ -176,11 +178,11 @@ export default function PropertyDetail() {
               </tbody>
             </table>
             <div className="btn-row">
-              {isOwner && <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/editar`}>Editar propiedad</Link>}
+              {isOwner && canDo('editar_propiedades') && <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/editar`}>Editar propiedad</Link>}
               <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/ficha`} target="_blank">
                 <Printer size={15} aria-hidden="true" /> Ficha para imprimir
               </Link>
-              {isOwner && (
+              {isOwner && canDo('eliminar_propiedades') && (
                 <button className="btn btn-danger btn-small" onClick={handleDelete} disabled={deleting}>
                   {deleting ? 'Eliminando...' : 'Eliminar'}
                 </button>
@@ -236,7 +238,7 @@ export default function PropertyDetail() {
                 )}
               </div>
 
-              <div className="card">
+              {canDo('compartir_propiedades') && <div className="card">
                 <h3>Compartir con socios</h3>
                 {availablePartners.length === 0 ? (
                   <p className="muted">
@@ -273,7 +275,7 @@ export default function PropertyDetail() {
                     <button type="submit" className="btn btn-small" disabled={selectedPartners.length === 0}>Enviar invitación</button>
                   </form>
                 )}
-              </div>
+              </div>}
             </>
           ) : (
             <div className="card">

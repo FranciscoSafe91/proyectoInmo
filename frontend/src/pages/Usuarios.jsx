@@ -16,23 +16,44 @@ const ALL_MENU_ITEMS = [
 
 const ALL_KEYS = ALL_MENU_ITEMS.map(i => i.key);
 
+const ALL_ACCIONES = [
+  { key: 'crear_propiedades',     label: 'Crear propiedades' },
+  { key: 'editar_propiedades',    label: 'Editar propiedades' },
+  { key: 'eliminar_propiedades',  label: 'Eliminar propiedades' },
+  { key: 'publicar_propiedades',  label: 'Publicar / despublicar' },
+  { key: 'compartir_propiedades', label: 'Compartir con socios' },
+  { key: 'responder_compartidas', label: 'Aceptar/rechazar compartidas' },
+  { key: 'gestionar_socios',      label: 'Gestionar solicitudes de socios' },
+  { key: 'crear_alertas',         label: 'Crear y eliminar alertas' },
+  { key: 'invitar_equipo',        label: 'Invitar al equipo' },
+];
+
+const ALL_ACCION_KEYS = ALL_ACCIONES.map(a => a.key);
+
 function PermisosEditor({ user, onSaved }) {
-  const currentPermisos = user.menuPermisos ?? ALL_KEYS;
-  const [checked, setChecked] = useState(new Set(currentPermisos));
+  const mp = user.menuPermisos;
+  const initSecciones = Array.isArray(mp) ? mp : (mp?.secciones ?? ALL_KEYS);
+  const initAcciones = Array.isArray(mp) ? ALL_ACCION_KEYS : (mp?.acciones ?? ALL_ACCION_KEYS);
+
+  const [checkedSec, setCheckedSec] = useState(new Set(initSecciones));
+  const [checkedAcc, setCheckedAcc] = useState(new Set(initAcciones));
   const [saving, setSaving] = useState(false);
 
-  function toggle(key) {
-    setChecked(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  function toggleSec(key) {
+    setCheckedSec(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
+
+  function toggleAcc(key) {
+    setCheckedAcc(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   }
 
   async function save() {
     setSaving(true);
     try {
-      const permisos = ALL_KEYS.filter(k => checked.has(k));
+      const permisos = {
+        secciones: ALL_KEYS.filter(k => checkedSec.has(k)),
+        acciones: ALL_ACCION_KEYS.filter(k => checkedAcc.has(k)),
+      };
       await api.put(`/equipo/usuarios/${user.id}/permisos`, { permisos });
       onSaved();
     } finally {
@@ -40,18 +61,28 @@ function PermisosEditor({ user, onSaved }) {
     }
   }
 
-  const changed = JSON.stringify([...checked].sort()) !== JSON.stringify([...currentPermisos].sort());
+  const origSec = JSON.stringify([...initSecciones].sort());
+  const origAcc = JSON.stringify([...initAcciones].sort());
+  const changed =
+    JSON.stringify([...checkedSec].sort()) !== origSec ||
+    JSON.stringify([...checkedAcc].sort()) !== origAcc;
 
   return (
     <div className="permisos-editor">
+      <p className="invite-permisos-label" style={{ marginBottom: 6 }}>Secciones</p>
       <div className="permisos-grid">
         {ALL_MENU_ITEMS.map(({ key, label }) => (
           <label key={key} className="permisos-row">
-            <input
-              type="checkbox"
-              checked={checked.has(key)}
-              onChange={() => toggle(key)}
-            />
+            <input type="checkbox" checked={checkedSec.has(key)} onChange={() => toggleSec(key)} />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+      <p className="invite-permisos-label" style={{ marginTop: 12, marginBottom: 6 }}>Acciones</p>
+      <div className="permisos-grid">
+        {ALL_ACCIONES.map(({ key, label }) => (
+          <label key={key} className="permisos-row">
+            <input type="checkbox" checked={checkedAcc.has(key)} onChange={() => toggleAcc(key)} />
             <span>{label}</span>
           </label>
         ))}

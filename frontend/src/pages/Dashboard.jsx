@@ -35,14 +35,6 @@ export default function Dashboard() {
       tone: 'green',
     },
     {
-      label: 'Matcheadas',
-      value: stats.myAlertMatchCount ?? 0,
-      hint: 'Propiedades de socios que coinciden con tus alertas',
-      to: '/matcheadas',
-      icon: Sparkles,
-      tone: 'violet',
-    },
-    {
       label: 'Compartidas conmigo',
       value: stats.sharedWithMe,
       hint: 'Oportunidades aceptadas de socios',
@@ -51,13 +43,22 @@ export default function Dashboard() {
       tone: 'orange',
     },
     {
-      label: 'Alarmas que coinciden',
+      label: 'Alertas que coinciden',
       value: stats.alertMatches,
       hint: 'Socios buscando propiedades parecidas a las tuyas',
       to: '/alertas',
       icon: Bell,
       tone: 'ink',
       notificationCount: stats.alertMatches,
+    },
+    {
+      label: 'Matcheadas',
+      value: stats.myAlertMatchCount ?? 0,
+      hint: 'Propiedades de socios que coinciden con tus alertas',
+      to: '/matcheadas',
+      icon: Sparkles,
+      tone: 'violet',
+      notificationCount: stats.myAlertMatchCount ?? 0,
     },
   ];
   const nextActions = [
@@ -104,7 +105,7 @@ export default function Dashboard() {
               className={`metric-card metric-${item.tone}${isActive ? ' metric-card-active' : ''}`}
             >
               {item.notificationCount > 0 && (
-                <span className="metric-notification" aria-label={`${item.notificationCount} alarma${item.notificationCount === 1 ? '' : 's'} por ver`}>
+                <span className="metric-notification" aria-label={`${item.notificationCount} alerta${item.notificationCount === 1 ? '' : 's'} por ver`}>
                   {item.notificationCount}
                 </span>
               )}

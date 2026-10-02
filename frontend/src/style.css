@@ -1688,6 +1688,28 @@
     flex-shrink: 0;
   }
 
+  /* Two-column page layout (Alertas / Matcheadas) */
+  .page-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .page-col-heading {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @media (max-width: 820px) {
+    .page-two-col { grid-template-columns: 1fr; }
+  }
+
   /* Matcheadas */
   .matcheadas-grid {
     display: grid;

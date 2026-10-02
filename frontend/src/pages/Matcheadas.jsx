@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bell, Building2, MapPin, Sparkles } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, Bell, Building2, Check, MapPin, Send, Sparkles, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
@@ -25,84 +25,93 @@ function summarizeAlert(alert) {
 }
 
 // ---------------------------------------------------------------------------
-// Lista de alertas propias (vista del buscador)
+// Matches recibidos: solicitudes de aceptar / rechazar
 // ---------------------------------------------------------------------------
-function AlertsList() {
+function MatchRequestsReceived() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [responding, setResponding] = useState({});
 
-  useEffect(() => {
-    api.get('/matcheadas').then(setData).catch(e => setError(e.message));
-  }, []);
+  const load = () => {
+    api.get('/match-requests').then(setData).catch(e => setError(e.message));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const respond = async (id, action) => {
+    setResponding(r => ({ ...r, [id]: true }));
+    try {
+      await api.post(`/match-requests/${id}/${action}`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setResponding(r => ({ ...r, [id]: false }));
+    }
+  };
 
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { alerts } = data;
+  if (data.items.length === 0) {
+    return (
+      <div className="card">
+        <div className="empty-state" style={{ padding: '32px 0' }}>
+          <Bell size={34} aria-hidden="true" />
+          <h2>Sin solicitudes pendientes</h2>
+          <p>Cuando un socio encuentre una de tus propiedades como coincidencia, aparecerá acá para que puedas aceptar o rechazar.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <section className="page-hero compact-hero">
-        <div>
-          <span className="section-kicker">Resultados de tus búsquedas</span>
-          <h1>Matcheadas</h1>
-          <p className="subtitle">Propiedades de toda la red que coinciden con las alertas que creaste.</p>
-        </div>
-        <Link className="btn" to="/alertas/nueva">
-          <Sparkles size={17} aria-hidden="true" /> Nueva alerta
-        </Link>
-      </section>
-
-      {alerts.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <Bell size={38} aria-hidden="true" />
-            <h2>Todavía no creaste ninguna alerta</h2>
-            <p>Creá una alerta para buscar propiedades en toda la red y ver los resultados acá.</p>
-            <Link className="btn" to="/alertas/nueva">
-              <Sparkles size={17} aria-hidden="true" /> Crear alerta
+    <div className="card">
+      <p className="muted small" style={{ marginBottom: 16 }}>
+        Otra inmobiliaria encontró una de tus propiedades como posible coincidencia con su búsqueda. Aceptá para permitirles verla, o rechazá si no querés compartir esta información.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {data.items.map(({ matchRequest, property, alert, alertAgency }) => (
+          <div key={matchRequest.id} className="match-request-item">
+            <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+              {property.coverUrl
+                ? <img src={property.coverUrl} alt={property.title} />
+                : <Building2 size={22} aria-hidden="true" />}
             </Link>
+            <div className="match-request-info">
+              <Link to={`/propiedades/${property.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}>{property.title}</Link>
+              <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
+              <span className="muted small" style={{ marginTop: 4 }}>
+                <strong>{alertAgency.name}</strong> busca: {summarizeAlert(alert)}
+                {alert.title ? ` — "${alert.title}"` : ''}
+              </span>
+            </div>
+            <div className="match-request-actions">
+              <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-sm">Ver</Link>
+              <button
+                className="btn btn-success btn-sm"
+                disabled={responding[matchRequest.id]}
+                onClick={() => respond(matchRequest.id, 'aceptar')}
+              >
+                <Check size={14} /> Aceptar
+              </button>
+              <button
+                className="btn btn-danger btn-sm"
+                disabled={responding[matchRequest.id]}
+                onClick={() => respond(matchRequest.id, 'rechazar')}
+              >
+                <X size={14} /> Rechazar
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="matcheadas-grid">
-          {alerts.map(alert => (
-            <Link
-              key={alert.id}
-              to={`/matcheadas/${alert.id}`}
-              className={'matcheadas-alert-card' + (!alert.active ? ' matcheadas-alert-card--paused' : '')}
-            >
-              <div className="matcheadas-card-head">
-                <div className="matcheadas-card-icon">
-                  <Sparkles size={18} aria-hidden="true" />
-                </div>
-                <div className="matcheadas-badge">{alert.matchCount}</div>
-              </div>
-              <div className="matcheadas-card-body">
-                <strong>{alert.title || '(Sin título)'}</strong>
-                <p>{summarizeAlert(alert)}</p>
-                {!alert.active && <span className="badge badge-borrador" style={{ marginTop: 6 }}>Pausada</span>}
-              </div>
-              <div className="matcheadas-card-footer">
-                <span>
-                  {alert.matchCount === 0
-                    ? 'Sin coincidencias aceptadas aún'
-                    : alert.matchCount === 1
-                    ? '1 propiedad coincide'
-                    : `${alert.matchCount} propiedades coinciden`}
-                </span>
-                <ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} aria-hidden="true" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </>
+        ))}
+      </div>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Tarjeta de propiedad aceptada
+// Tarjeta de propiedad aceptada (detalle de alerta)
 // ---------------------------------------------------------------------------
 function PropertyCard({ property, ownerAgency }) {
   const thumb = property.coverUrl || null;
@@ -191,7 +200,186 @@ function AlertDetail({ alertId }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Matches pendientes de confirmar por el buscador
+// ---------------------------------------------------------------------------
+function PendingMatchConfirmation() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [responding, setResponding] = useState({});
+
+  const load = () => {
+    api.get('/match-accepted/pending').then(setData).catch(e => setError(e.message));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const respond = async (id, action) => {
+    setResponding(r => ({ ...r, [id]: true }));
+    try {
+      await api.post(`/match-accepted/${id}/${action}`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setResponding(r => ({ ...r, [id]: false }));
+    }
+  };
+
+  if (error) return <div className="banner banner-error">{error}</div>;
+  if (!data) return <p className="muted">Cargando...</p>;
+
+  if (data.items.length === 0) return null;
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <Sparkles size={16} />
+        <strong>Nuevos matches disponibles</strong>
+        <span className="badge" style={{ background: '#6d28d9', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 12 }}>
+          {data.items.length}
+        </span>
+      </div>
+      <p className="muted small" style={{ marginBottom: 14 }}>
+        El propietario aceptó mostrarle su propiedad. Confirmá si este match te resulta relevante.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {data.items.map(({ matchRequest, property, ownerAgency, alert }) => (
+          <div key={matchRequest.id} className="match-request-item">
+            <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+              {property.coverUrl
+                ? <img src={property.coverUrl} alt={property.title} />
+                : <Building2 size={22} aria-hidden="true" />}
+            </Link>
+            <div className="match-request-info">
+              <Link to={`/propiedades/${property.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}>{property.title}</Link>
+              <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
+              <span className="muted small" style={{ marginTop: 4 }}>
+                Publicada por <strong>{ownerAgency.name}</strong> · Alerta: {alert.title || summarizeAlert(alert)}
+              </span>
+            </div>
+            <div className="match-request-actions">
+              <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-sm">Ver</Link>
+              <button
+                className="btn btn-success btn-sm"
+                disabled={responding[matchRequest.id]}
+                onClick={() => respond(matchRequest.id, 'aceptar')}
+              >
+                <Check size={14} /> Aceptar
+              </button>
+              <button
+                className="btn btn-danger btn-sm"
+                disabled={responding[matchRequest.id]}
+                onClick={() => respond(matchRequest.id, 'rechazar')}
+              >
+                <X size={14} /> Rechazar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vista principal: dos columnas
+// ---------------------------------------------------------------------------
+function MatcheadasList() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/matcheadas').then(setData).catch(e => setError(e.message));
+  }, []);
+
+  if (error) return <div className="banner banner-error">{error}</div>;
+  if (!data) return <p className="muted">Cargando...</p>;
+
+  const { alerts } = data;
+
+  return (
+    <>
+      <section className="page-hero compact-hero">
+        <div>
+          <span className="section-kicker">Resultados de tus búsquedas</span>
+          <h1>Matcheadas</h1>
+          <p className="subtitle">Propiedades de toda la red que coinciden con las alertas que creaste, y solicitudes de match que recibiste.</p>
+        </div>
+        <Link className="btn" to="/alertas/nueva">
+          <Sparkles size={17} aria-hidden="true" /> Nueva alerta
+        </Link>
+      </section>
+
+      <div className="page-two-col">
+
+        {/* ── Columna izquierda: Matches enviados ── */}
+        <div>
+          <h2 className="page-col-heading">
+            <Send size={17} aria-hidden="true" /> Matches enviados
+          </h2>
+          <PendingMatchConfirmation />
+
+          {alerts.length === 0 ? (
+            <div className="card">
+              <div className="empty-state">
+                <Bell size={38} aria-hidden="true" />
+                <h2>Todavía no creaste ninguna alerta</h2>
+                <p>Creá una alerta para buscar propiedades en toda la red y ver los resultados acá.</p>
+                <Link className="btn" to="/alertas/nueva">
+                  <Sparkles size={17} aria-hidden="true" /> Crear alerta
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="matcheadas-grid">
+              {alerts.map(alert => (
+                <Link
+                  key={alert.id}
+                  to={`/matcheadas/${alert.id}`}
+                  className={'matcheadas-alert-card' + (!alert.active ? ' matcheadas-alert-card--paused' : '')}
+                >
+                  <div className="matcheadas-card-head">
+                    <div className="matcheadas-card-icon">
+                      <Sparkles size={18} aria-hidden="true" />
+                    </div>
+                    <div className="matcheadas-badge">{alert.matchCount}</div>
+                  </div>
+                  <div className="matcheadas-card-body">
+                    <strong>{alert.title || '(Sin título)'}</strong>
+                    <p>{summarizeAlert(alert)}</p>
+                    {!alert.active && <span className="badge badge-borrador" style={{ marginTop: 6 }}>Pausada</span>}
+                  </div>
+                  <div className="matcheadas-card-footer">
+                    <span>
+                      {alert.matchCount === 0
+                        ? 'Sin coincidencias aceptadas aún'
+                        : alert.matchCount === 1
+                        ? '1 propiedad coincide'
+                        : `${alert.matchCount} propiedades coinciden`}
+                    </span>
+                    <ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} aria-hidden="true" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Columna derecha: Matches recibidos ── */}
+        <div>
+          <h2 className="page-col-heading">
+            <Bell size={17} aria-hidden="true" /> Matches recibidos
+          </h2>
+          <MatchRequestsReceived />
+        </div>
+
+      </div>
+    </>
+  );
+}
+
 export default function Matcheadas() {
   const { alertId } = useParams();
-  return alertId ? <AlertDetail alertId={alertId} /> : <AlertsList />;
+  return alertId ? <AlertDetail alertId={alertId} /> : <MatcheadasList />;
 }

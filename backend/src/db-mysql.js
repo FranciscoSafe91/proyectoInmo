@@ -230,6 +230,7 @@ function toMatchRequest(r) {
     propertyId: r.property_id,
     ownerAgencyId: r.owner_agency_id,
     status: r.status,
+    alerteeStatus: r.alertee_status || null,
     createdAt: r.created_at,
     respondedAt: r.responded_at,
   };
@@ -974,11 +975,13 @@ async function ensureMatchRequestsTable() {
       property_id VARCHAR(36) NOT NULL,
       owner_agency_id VARCHAR(36) NOT NULL,
       status VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+      alertee_status VARCHAR(20) NULL,
       created_at DATETIME NOT NULL,
       responded_at DATETIME NULL,
       UNIQUE KEY uq_alert_property (alert_id, property_id)
     )
   `);
+  try { await pool.query(`ALTER TABLE match_requests ADD COLUMN alertee_status VARCHAR(20) NULL`); } catch (_) {}
   matchRequestsTableEnsured = true;
 }
 
@@ -1047,6 +1050,24 @@ export async function respondMatchRequest(matchRequestId, status) {
   return getMatchRequest(matchRequestId);
 }
 
+export async function listPendingAlerteeMatchRequests(alertAgencyId) {
+  await ensureMatchRequestsTable();
+  const [rows] = await pool.query(
+    `SELECT * FROM match_requests WHERE alert_agency_id=? AND status='aceptado' AND alertee_status IS NULL ORDER BY responded_at DESC`,
+    [alertAgencyId]
+  );
+  return rows.map(toMatchRequest);
+}
+
+export async function respondAlerteeMatchRequest(matchRequestId, alerteeStatus) {
+  await ensureMatchRequestsTable();
+  await pool.query(
+    'UPDATE match_requests SET alertee_status=? WHERE id=?',
+    [alerteeStatus, matchRequestId]
+  );
+  return getMatchRequest(matchRequestId);
+}
+
 export async function listAlertsWithMatchCounts(agencyId) {
   await ensureMatchRequestsTable();
   const alerts = await listAlertsByAgency(agencyId);
@@ -1055,7 +1076,7 @@ export async function listAlertsWithMatchCounts(agencyId) {
   const placeholders = alertIds.map(() => '?').join(',');
   const [rows] = await pool.query(
     `SELECT alert_id, COUNT(*) as cnt FROM match_requests
-     WHERE alert_id IN (${placeholders}) AND status='aceptado'
+     WHERE alert_id IN (${placeholders}) AND status='aceptado' AND alertee_status='aceptado'
      GROUP BY alert_id`,
     alertIds
   );
@@ -1069,7 +1090,7 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
   const alert = await getSearchAlert(alertId);
   if (!alert || alert.agencyId !== requestingAgencyId) return [];
   const [rows] = await pool.query(
-    `SELECT property_id, owner_agency_id FROM match_requests WHERE alert_id=? AND status='aceptado'`,
+    `SELECT property_id, owner_agency_id FROM match_requests WHERE alert_id=? AND status='aceptado' AND alertee_status='aceptado'`,
     [alertId]
   );
   const results = [];

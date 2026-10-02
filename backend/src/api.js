@@ -652,6 +652,37 @@ export function registerApiRoutes(router) {
     json(res, { ok: true });
   });
 
+  router.get('/api/match-accepted/pending', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const pending = await db.listPendingAlerteeMatchRequests(session.agency.id);
+    const items = await Promise.all(pending.map(async mr => {
+      const property = await db.getProperty(mr.propertyId);
+      const ownerAgency = await db.getAgency(mr.ownerAgencyId);
+      const alert = await db.getSearchAlert(mr.alertId);
+      return { matchRequest: mr, property, ownerAgency, alert };
+    }));
+    json(res, { items: items.filter(i => i.property && i.ownerAgency && i.alert) });
+  });
+
+  router.post('/api/match-accepted/:id/aceptar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const mr = await db.getMatchRequest(req.params.id);
+    if (!mr || mr.alertAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
+    await db.respondAlerteeMatchRequest(mr.id, 'aceptado');
+    json(res, { ok: true });
+  });
+
+  router.post('/api/match-accepted/:id/rechazar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const mr = await db.getMatchRequest(req.params.id);
+    if (!mr || mr.alertAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
+    await db.respondAlerteeMatchRequest(mr.id, 'rechazado');
+    json(res, { ok: true });
+  });
+
   router.post('/api/alertas/:id/pausar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;

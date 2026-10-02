@@ -928,7 +928,7 @@ export function registerApiRoutes(router) {
   router.get('/api/soporte', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
-    json(res, { tickets: await db.listSupportTicketsByAgency(session.agency.id), contactEmail: 'info@safeinmuebles.com' });
+    json(res, { tickets: await db.listSupportTicketsByAgency(session.agency.id), userEmail: session.user.email });
   });
 
   router.post('/api/soporte', async (req, res) => {

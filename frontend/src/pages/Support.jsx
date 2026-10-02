@@ -8,7 +8,10 @@ export default function Support() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.get('/soporte').then(setData).catch(e => setError(e.message));
+    api.get('/soporte').then(d => {
+      setData(d);
+      setForm(f => ({ ...f, email: d.userEmail || '' }));
+    }).catch(e => setError(e.message));
   }, []);
 
   const handleSubmit = async (e) => {

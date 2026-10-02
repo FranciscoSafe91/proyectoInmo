@@ -146,7 +146,6 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isLanding && <footer className="footer">Prototipo - Sistema Compartido de Propiedades</footer>}
     </>
   );
 }

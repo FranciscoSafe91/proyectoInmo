@@ -1,5 +1,5 @@
 /*
- * Sistema Compartido de Propiedades — widget embebible.
+ * SpyderConnect — widget embebible.
  *
  * Se pega en cualquier página web así:
  *   <div id="propiedades-compartidas"></div>
@@ -101,7 +101,7 @@
     }
 
     var footer = el('div', { className: 'pc-footer' });
-    var link = el('a', { href: origin, target: '_blank', rel: 'noopener', textContent: 'Sistema Compartido de Propiedades' });
+    var link = el('a', { href: origin, target: '_blank', rel: 'noopener', textContent: 'SpyderConnect' });
     footer.appendChild(document.createTextNode('Powered by '));
     footer.appendChild(link);
     wrap.appendChild(footer);
@@ -130,7 +130,7 @@
     renderMessage(root, 'Cargando propiedades...', false);
 
     if (!agencyId || !apiKey) {
-      renderMessage(root, 'Sistema Compartido de Propiedades: falta configurar el código (agency/key).', true);
+      renderMessage(root, 'SpyderConnect: falta configurar el código (agency/key).', true);
       return;
     }
 

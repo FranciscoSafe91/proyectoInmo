@@ -838,6 +838,19 @@ export async function respondPartnership(partnershipId, status) {
   return getPartnership(partnershipId);
 }
 
+export async function dissolvePartnership(partnershipId) {
+  const partnership = await getPartnership(partnershipId);
+  if (!partnership) return;
+  const { agencyAId, agencyBId } = partnership;
+  await pool.query(
+    `DELETE FROM compartidas
+     WHERE (owner_agency_id=? AND target_agency_id=?)
+        OR (owner_agency_id=? AND target_agency_id=?)`,
+    [agencyAId, agencyBId, agencyBId, agencyAId]
+  );
+  await pool.query('DELETE FROM sociedades WHERE id=?', [partnershipId]);
+}
+
 export async function listPartnersOfAgency(agencyId) {
   const [rows] = await pool.query(
     `SELECT agency_a_id, agency_b_id FROM sociedades

@@ -49,7 +49,7 @@ export default function SettingsHub() {
 
         <Link to="/soporte" className="card" style={{ display: 'block', color: 'inherit' }}>
           <h3>Soporte</h3>
-          <p className="muted small">Enviá una consulta o revisá el estado de tus tickets.</p>
+          <p className="muted small">Enviá una consulta a nuestro equipo de soporte.</p>
         </Link>
 
         {isPlatformAdmin && (

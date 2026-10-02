@@ -26,6 +26,12 @@ export default function Partners() {
     load(q);
   }
 
+  async function handleDisolver(partnershipId, partnerName) {
+    if (!window.confirm(`¿Seguro que querés dejar de ser socio de ${partnerName}? Se revocarán todas las propiedades compartidas entre ambas inmobiliarias.`)) return;
+    await api.delete(`/socios/${partnershipId}`);
+    load(q);
+  }
+
   if (error) return <div className="banner banner-error">{error}</div>;
 
   const results = data?.results || [];
@@ -67,7 +73,17 @@ export default function Partners() {
                   <tr key={a.id}>
                     <td>{a.name} {accountTypeBadge(a)}</td>
                     <td>{a.city || '-'}</td>
-                    <td><span className="badge badge-aceptada">Socios</span></td>
+                    <td style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span className="badge badge-aceptada">Socios</span>
+                      {canDo('gestionar_socios') && a.partnershipId && (
+                        <button
+                          className="btn btn-danger btn-small"
+                          onClick={() => handleDisolver(a.partnershipId, a.name)}
+                        >
+                          Dejar de ser socio
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -40,6 +40,7 @@ export const findPartnership = (...args) => impl.findPartnership(...args);
 export const createPartnershipRequest = (...args) => impl.createPartnershipRequest(...args);
 export const getPartnership = (...args) => impl.getPartnership(...args);
 export const respondPartnership = (...args) => impl.respondPartnership(...args);
+export const dissolvePartnership = (...args) => impl.dissolvePartnership(...args);
 export const listPartnersOfAgency = (...args) => impl.listPartnersOfAgency(...args);
 export const listPendingPartnershipRequestsReceived = (...args) => impl.listPendingPartnershipRequestsReceived(...args);
 export const listPendingPartnershipRequestsSent = (...args) => impl.listPendingPartnershipRequestsSent(...args);

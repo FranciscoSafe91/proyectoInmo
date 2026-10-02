@@ -487,7 +487,12 @@ export function registerApiRoutes(router) {
     const partnerIds = await db.listPartnersOfAgency(session.agency.id);
     const sentPendingIds = (await db.listPendingPartnershipRequestsSent(session.agency.id)).map(p => p.agencyBId);
     const receivedPendingIds = (await db.listPendingPartnershipRequestsReceived(session.agency.id)).map(p => p.agencyAId);
-    const currentPartners = (await Promise.all(partnerIds.map(id => db.getAgency(id)))).filter(Boolean);
+    const currentPartners = (await Promise.all(partnerIds.map(async id => {
+      const agency = await db.getAgency(id);
+      if (!agency) return null;
+      const partnership = await db.findPartnership(session.agency.id, id);
+      return { ...agency, partnershipId: partnership?.id || null };
+    }))).filter(Boolean);
     json(res, { query, results, partnerIds, sentPendingIds, receivedPendingIds, currentPartners });
   });
 
@@ -528,6 +533,17 @@ export function registerApiRoutes(router) {
     if (partnership && partnership.agencyBId === session.agency.id && partnership.status === 'pendiente') {
       await db.respondPartnership(partnership.id, 'rechazada');
     }
+    json(res, { ok: true });
+  });
+
+  router.delete('/api/socios/:partnershipId', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const partnership = await db.getPartnership(req.params.partnershipId);
+    if (!partnership || partnership.status !== 'aceptada') return err(res, 'Sociedad no encontrada.', 404);
+    const belongs = partnership.agencyAId === session.agency.id || partnership.agencyBId === session.agency.id;
+    if (!belongs) return err(res, 'No tenés permiso para disolver esta sociedad.', 403);
+    await db.dissolvePartnership(partnership.id);
     json(res, { ok: true });
   });
 

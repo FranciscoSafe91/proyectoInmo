@@ -52,6 +52,7 @@ export const respondPropertyShare = (...args) => impl.respondPropertyShare(...ar
 export const listSharesForProperty = (...args) => impl.listSharesForProperty(...args);
 export const listPendingSharesReceived = (...args) => impl.listPendingSharesReceived(...args);
 export const listAcceptedSharesReceived = (...args) => impl.listAcceptedSharesReceived(...args);
+export const listAcceptedDirectSharesReceived = (...args) => impl.listAcceptedDirectSharesReceived(...args);
 export const listSharesByOwnerAgency = (...args) => impl.listSharesByOwnerAgency(...args);
 export const createSearchAlert = (...args) => impl.createSearchAlert(...args);
 export const getSearchAlert = (...args) => impl.getSearchAlert(...args);

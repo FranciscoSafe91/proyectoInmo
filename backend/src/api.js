@@ -229,7 +229,7 @@ export function registerApiRoutes(router) {
     const { agency } = session;
     const stats = {
       myProperties:        (await db.listPropertiesByAgency(agency.id)).length,
-      sharedWithMe:        (await db.listAcceptedSharesReceived(agency.id)).length,
+      sharedWithMe:        (await db.listAcceptedDirectSharesReceived(agency.id)).length,
       partners:            (await db.listPartnersOfAgency(agency.id)).length,
       pendingShares:       (await db.listPendingSharesReceived(agency.id)).length,
       pendingPartnerships: (await db.listPendingPartnershipRequestsReceived(agency.id)).length,
@@ -463,7 +463,7 @@ export function registerApiRoutes(router) {
   router.get('/api/compartidas', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
-    const shares = await db.listAcceptedSharesReceived(session.agency.id);
+    const shares = await db.listAcceptedDirectSharesReceived(session.agency.id);
     const items = (await Promise.all(shares.map(async s => {
       const property = await db.getProperty(s.propertyId);
       if (!property) return null;
@@ -682,7 +682,7 @@ export function registerApiRoutes(router) {
     const alert = await db.getSearchAlert(req.params.alertId);
     const property = await db.getProperty(req.params.propertyId);
     if (alert && property && property.agencyId === session.agency.id && await db.arePartners(session.agency.id, alert.agencyId)) {
-      const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId: alert.agencyId });
+      const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId: alert.agencyId, source: 'match' });
       await db.respondPropertyShare(share.id, 'aceptada');
     }
     json(res, { ok: true });

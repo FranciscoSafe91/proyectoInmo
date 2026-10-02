@@ -941,6 +941,8 @@ export function registerApiRoutes(router) {
       mail.sendSupportTicket({
         agencyName: session.agency.name,
         userName: `${session.user.nombre} ${session.user.apellido}`.trim(),
+        email: body.email || '',
+        phone: body.phone || '',
         subject: body.subject,
         message: body.message,
       }).catch(() => {});

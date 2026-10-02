@@ -104,7 +104,7 @@ export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, ale
   });
 }
 
-export async function sendSupportTicket({ agencyName, userName, subject, message }) {
+export async function sendSupportTicket({ agencyName, userName, email, phone, subject, message }) {
   await getTransport().sendMail({
     from: `"SpyderConnect" <${FROM_ADDRESS}>`,
     to: 'soporte@spyderconnect.com',
@@ -113,6 +113,8 @@ export async function sendSupportTicket({ agencyName, userName, subject, message
       <h2 style="margin-top:0">Nueva consulta de soporte</h2>
       <p><strong>Inmobiliaria:</strong> ${agencyName}</p>
       <p><strong>Usuario:</strong> ${userName}</p>
+      <p><strong>Email:</strong> ${email || '-'}</p>
+      <p><strong>Teléfono:</strong> ${phone || '-'}</p>
       <p><strong>Asunto:</strong> ${subject}</p>
       <hr style="border:none;border-top:1px solid #e0e0e0;margin:16px 0">
       <p style="white-space:pre-wrap">${message}</p>

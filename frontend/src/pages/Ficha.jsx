@@ -3,54 +3,152 @@ import { useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
+function moneyExpensas(amount, moneda) {
+  const n = Number(amount) || 0;
+  const formatted = n.toLocaleString('es-AR');
+  return `${moneda === 'USD' ? 'U$D' : '$'} ${formatted}`;
+}
+
 export default function Ficha() {
   const { id } = useParams();
-  const [data, setData] = useState(null);
-  const [agency, setAgency] = useState(null);
+  const [propData, setPropData] = useState(null);
+  const [sessionData, setSessionData] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([
       api.get(`/propiedades/${id}`),
-      api.get('/mi-cuenta'),
-    ]).then(([propData, acctData]) => {
-      setData(propData);
-      setAgency(acctData.agency);
+      api.get('/session'),
+    ]).then(([pd, sd]) => {
+      setPropData(pd);
+      setSessionData(sd);
     }).catch(e => setError(e.message));
   }, [id]);
 
   if (error) return <div className="banner banner-error">{error}</div>;
-  if (!data || !agency) return <p className="muted">Cargando...</p>;
+  if (!propData || !sessionData) return <p className="muted">Cargando...</p>;
 
-  const { property } = data;
+  const { property, media = [] } = propData;
+  const agency = sessionData.agency;
+  const user = sessionData.user;
   const color = agency.brandColor || '#1f6f54';
-  const logoUrl = agency.logoPath;
+  const photos = media.filter(m => m.type === 'image').slice(0, 4);
+
+  const shortId = property.id.replace(/-/g, '').slice(0, 8).toUpperCase();
+  const codeRef = `${agency.name?.slice(0, 4).toUpperCase() || 'PROP'}-${shortId}`;
+
+  function row(label, value) {
+    if (!value && value !== 0) return null;
+    return (
+      <div className="char-row">
+        <span className="char-label">{label}:</span>
+        <span className="char-value"><strong>{value}</strong></span>
+      </div>
+    );
+  }
 
   const styles = `
     :root { --brand: ${color}; }
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #22292b; margin: 0; padding: 32px; background: #f6f7f5; }
-    .sheet { max-width: 820px; margin: 0 auto; background: white; border: 1px solid #e1e4e0; border-radius: 12px; overflow: hidden; }
-    .ficha-header { display: flex; align-items: center; gap: 16px; padding: 24px 28px; border-bottom: 4px solid ${color}; }
-    .ficha-logo { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; }
-    .ficha-logo-placeholder { width: 64px; height: 64px; border-radius: 8px; color: white; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; background: ${color}; }
-    .ficha-agency-name { font-size: 1.15rem; font-weight: 700; margin: 0; }
-    .ficha-agency-contact { color: #667070; font-size: 0.85rem; margin: 2px 0 0; }
-    .ficha-body { padding: 28px; }
-    .ficha-title { font-size: 1.4rem; margin: 0 0 4px; }
-    .ficha-subtitle { color: #667070; margin: 0 0 18px; }
-    .ficha-price { font-size: 1.6rem; font-weight: 700; color: ${color}; margin: 0 0 18px; }
-    .ficha-desc { margin: 0 0 20px; line-height: 1.5; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid #eee; font-size: 0.92rem; }
-    th { color: #667070; font-weight: 600; width: 40%; }
-    .ficha-footer { text-align: center; padding: 16px; color: #98a0a0; font-size: 0.75rem; }
-    .print-bar { max-width: 820px; margin: 0 auto 16px; text-align: right; }
-    .print-btn { background: ${color}; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-    @media print { body { background: white; padding: 0; } .print-bar { display: none; } .sheet { border: none; border-radius: 0; max-width: 100%; } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color: #222; background: #f0f0f0; padding: 24px; }
+    .print-bar { max-width: 860px; margin: 0 auto 12px; text-align: right; }
+    .print-btn { background: ${color}; color: #fff; border: none; padding: 9px 18px; border-radius: 7px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+    .sheet { max-width: 860px; margin: 0 auto; background: #fff; border: 1px solid #ddd; }
+    /* Reference bar */
+    .ref-bar { padding: 7px 18px; background: #f9f9f9; border-bottom: 1px solid #e8e8e8; font-size: 0.78rem; color: #888; }
+    .ref-bar strong { color: #444; }
+    /* Main layout */
+    .main-grid { display: grid; grid-template-columns: 1fr 240px; }
+    /* Left column */
+    .left-col { padding: 20px 22px; border-right: 1px solid #e8e8e8; }
+    .prop-address { font-size: 1.7rem; font-weight: 700; line-height: 1.2; color: #111; margin-bottom: 4px; }
+    .prop-entre { font-size: 0.9rem; color: #555; margin-bottom: 2px; }
+    .prop-location { font-size: 0.82rem; color: #888; margin-bottom: 12px; }
+    .price-block { margin-bottom: 14px; }
+    .price-main { font-size: 1.55rem; font-weight: 700; color: ${color}; }
+    .price-expensas { font-size: 0.88rem; color: #666; margin-top: 2px; }
+    /* Right column */
+    .right-col { display: flex; flex-direction: column; }
+    .photos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; flex: 1; }
+    .photos-grid.one   { grid-template-columns: 1fr; }
+    .photos-grid.two   { grid-template-columns: 1fr 1fr; }
+    .photos-grid.three { grid-template-columns: 1fr 1fr; }
+    .photos-grid.four  { grid-template-columns: 1fr 1fr; }
+    .photo-img { width: 100%; height: 120px; object-fit: cover; display: block; }
+    .photo-img.tall { height: 240px; }
+    /* Agency card */
+    .agency-card { padding: 14px; border-top: 1px solid #e8e8e8; background: #fafafa; }
+    .agency-logo { width: 80px; height: 50px; object-fit: contain; display: block; margin: 0 auto 8px; }
+    .agency-logo-placeholder { width: 80px; height: 50px; background: ${color}; color: #fff; font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; border-radius: 4px; }
+    .agency-agent { font-size: 0.82rem; font-weight: 700; text-align: center; }
+    .agency-agent-role { font-size: 0.72rem; color: #888; text-align: center; }
+    .agency-name { font-size: 0.8rem; font-weight: 700; text-align: center; margin-top: 6px; }
+    .agency-info { font-size: 0.72rem; color: #666; text-align: center; line-height: 1.5; }
+    /* Sections */
+    .section { margin-top: 14px; }
+    .section-title { font-size: 0.82rem; font-weight: 700; color: ${color}; text-transform: uppercase; letter-spacing: 0.04em; padding-bottom: 4px; border-bottom: 1.5px solid ${color}; margin-bottom: 8px; }
+    .chars-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .char-row { font-size: 0.82rem; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+    .char-label { color: #666; }
+    .char-value { margin-left: 4px; }
+    .services-line { font-size: 0.82rem; color: #444; line-height: 1.6; }
+    .services-others { font-size: 0.82rem; color: #444; margin-top: 4px; }
+    .description { font-size: 0.82rem; line-height: 1.55; color: #333; white-space: pre-wrap; }
+    /* Footer */
+    .ficha-footer { border-top: 1px solid #e8e8e8; padding: 10px 18px; font-size: 0.68rem; color: #aaa; line-height: 1.4; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .print-bar { display: none; }
+      .sheet { border: none; max-width: 100%; }
+      .photo-img { height: 100px; }
+      .photo-img.tall { height: 200px; }
+    }
+    @media (max-width: 600px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .right-col { border-top: 1px solid #e8e8e8; }
+    }
   `;
 
-  const contact = [agency.phone, agency.email].filter(Boolean).join(' · ');
+  const yCallesText = property.yCalles ? ` y ${property.yCalles}` : '';
+  const entreCallesText = property.entreCalles
+    ? `Entre ${property.entreCalles}${yCallesText}`
+    : '';
+  const locationParts = [property.zonaGeografica, property.partido || property.city].filter(Boolean);
+
+  const chars1 = [
+    { label: 'Apto crédito', value: property.aptoCredito ? 'Sí' : 'No' },
+    { label: 'Apto prof.', value: property.aptoProf ? 'Sí' : 'No' },
+    { label: 'Estado', value: property.estadoPropiedad },
+    { label: 'Antigüedad', value: property.aEstrenar ? 'A estrenar' : property.antiguedad != null ? `${property.antiguedad} año${property.antiguedad !== 1 ? 's' : ''}` : null },
+    { label: 'Cant. plantas', value: property.plantas },
+    { label: 'Disposición', value: property.disposicion },
+    { label: 'Orientación', value: property.orientacion },
+    { label: 'Dormitorio/s', value: property.bedrooms || null },
+    { label: 'Baño/s', value: property.bathrooms || null },
+    { label: 'Agua caliente', value: property.aguaCaliente },
+    { label: 'Calefacción', value: property.calefaccion },
+  ].filter(c => c.value != null && c.value !== '');
+
+  const charsEdificio = [
+    { label: 'Categoría edificio', value: property.categoriaEdificio },
+    { label: 'Pisos', value: property.pisosEdificio != null ? String(property.pisosEdificio) : null },
+    { label: 'Deptos. por piso', value: property.deptosPorPiso != null ? String(property.deptosPorPiso) : null },
+    { label: 'Ascensores', value: property.ascensoresPrincipales != null ? String(property.ascensoresPrincipales) : null },
+  ].filter(c => c.value != null && c.value !== '');
+
+  const superficies = [
+    { label: 'Sup. total', value: property.superficieTotal ? `${property.superficieTotal} m²` : (property.areaM2 ? `${property.areaM2} m²` : null) },
+    { label: 'Sup. cubierta', value: property.superficieCubierta ? `${property.superficieCubierta} m²` : null },
+    { label: 'Sup. descubierta', value: property.superficieDescubierta ? `${property.superficieDescubierta} m²` : null },
+    { label: 'Sup. semicubierta', value: property.superficieSemicubierta ? `${property.superficieSemicubierta} m²` : null },
+    { label: 'Terreno', value: property.superficieTerreno ? `${property.superficieTerreno} m²` : null },
+  ].filter(c => c.value != null);
+
+  const serviciosList = Array.isArray(property.servicios) ? property.servicios : [];
+  const amenitiesList = Array.isArray(property.amenitiesEdificio) ? property.amenitiesEdificio : [];
+
+  const photoCount = photos.length;
+  const gridClass = ['zero', 'one', 'two', 'three', 'four'][photoCount] || 'four';
 
   return (
     <>
@@ -59,32 +157,137 @@ export default function Ficha() {
         <button className="print-btn" onClick={() => window.print()}>Imprimir / Guardar como PDF</button>
       </div>
       <div className="sheet">
-        <div className="ficha-header">
-          {logoUrl
-            ? <img src={logoUrl} alt={agency.name} className="ficha-logo" />
-            : <div className="ficha-logo-placeholder">{agency.name.slice(0, 1).toUpperCase()}</div>}
-          <div>
-            <p className="ficha-agency-name">{agency.name}</p>
-            <p className="ficha-agency-contact">{contact}</p>
+        {/* Reference bar */}
+        <div className="ref-bar">
+          <strong>{codeRef}</strong>&nbsp;|&nbsp;{typeLabel(property.type)} en {operationLabel(property.operation)}
+        </div>
+
+        {/* Main 2-column grid */}
+        <div className="main-grid">
+          {/* LEFT */}
+          <div className="left-col">
+            <h1 className="prop-address">{property.address || property.title}</h1>
+            {entreCallesText && <p className="prop-entre">{entreCallesText}</p>}
+            {locationParts.length > 0 && (
+              <p className="prop-location">{locationParts.join(' | ')}</p>
+            )}
+
+            <div className="price-block">
+              <div className="price-main">{money(property.price, property.currency)}</div>
+              {property.expensas > 0 && (
+                <div className="price-expensas">
+                  {moneyExpensas(property.expensas, property.expensasMoneda)} expensas
+                </div>
+              )}
+            </div>
+
+            {/* Características */}
+            {chars1.length > 0 && (
+              <div className="section">
+                <div className="section-title">Características</div>
+                <div className="chars-grid">
+                  {chars1.map(c => (
+                    <div key={c.label} className="char-row">
+                      <span className="char-label">{c.label}: </span>
+                      <strong>{c.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Características del edificio */}
+            {charsEdificio.length > 0 && (
+              <div className="section">
+                <div className="section-title">Características del edificio</div>
+                <div className="chars-grid">
+                  {charsEdificio.map(c => (
+                    <div key={c.label} className="char-row">
+                      <span className="char-label">{c.label}: </span>
+                      <strong>{c.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Superficies */}
+            {superficies.length > 0 && (
+              <div className="section">
+                <div className="section-title">Superficies</div>
+                <div className="chars-grid">
+                  {superficies.map(c => (
+                    <div key={c.label} className="char-row">
+                      <span className="char-label">{c.label}: </span>
+                      <strong>{c.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Servicios */}
+            {(serviciosList.length > 0 || amenitiesList.length > 0) && (
+              <div className="section">
+                <div className="section-title">Servicios</div>
+                {serviciosList.length > 0 && (
+                  <p className="services-line">{serviciosList.join(' - ')}</p>
+                )}
+                {amenitiesList.length > 0 && (
+                  <p className="services-others">
+                    <strong>Otros: </strong>{amenitiesList.join(' - ')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Descripción */}
+            {property.description && (
+              <div className="section">
+                <div className="section-title">Descripción</div>
+                <p className="description">{property.description}</p>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT */}
+          <div className="right-col">
+            {photoCount > 0 && (
+              <div className={`photos-grid ${gridClass}`}>
+                {photos.map((ph, i) => (
+                  <img
+                    key={ph.id}
+                    src={ph.url}
+                    alt={`Foto ${i + 1}`}
+                    className={`photo-img${photoCount <= 2 ? ' tall' : ''}`}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="agency-card">
+              {agency.logoPath
+                ? <img src={agency.logoPath} alt={agency.name} className="agency-logo" />
+                : <div className="agency-logo-placeholder">{agency.name?.slice(0, 1).toUpperCase()}</div>}
+              {user?.name && (
+                <>
+                  <p className="agency-agent">{user.name}</p>
+                  <p className="agency-agent-role">Agente Responsable</p>
+                  {user.email && <p className="agency-info">{user.email}</p>}
+                </>
+              )}
+              <p className="agency-name">{agency.name}</p>
+              {agency.city && <p className="agency-info">{agency.city}</p>}
+              {agency.phone && <p className="agency-info">{agency.phone}</p>}
+            </div>
           </div>
         </div>
-        <div className="ficha-body">
-          <h1 className="ficha-title">{property.title}</h1>
-          <p className="ficha-subtitle">
-            {typeLabel(property.type)} · {operationLabel(property.operation)} · {property.city}{property.city ? ', ' : ''}{property.province}
-          </p>
-          <p className="ficha-price">{money(property.price, property.currency)}</p>
-          <p className="ficha-desc">{property.description || ''}</p>
-          <table>
-            <tbody>
-              <tr><th>Dirección</th><td>{property.address || '-'}</td></tr>
-              <tr><th>Dormitorios</th><td>{property.bedrooms || '-'}</td></tr>
-              <tr><th>Baños</th><td>{property.bathrooms || '-'}</td></tr>
-              <tr><th>Superficie</th><td>{property.areaM2 ? property.areaM2 + ' m²' : '-'}</td></tr>
-            </tbody>
-          </table>
+
+        {/* Footer legal */}
+        <div className="ficha-footer">
+          Nota importante: Toda la información y medidas provistas son aproximadas y deberán ratificarse con la documentación pertinente.
+          Los gastos (expensas, ABL) expresados refieren a la última información recabada y deberán confirmarse.
+          Fotografías no vinculantes ni contractuales.
         </div>
-        <div className="ficha-footer">Ficha generada por {agency.name}</div>
       </div>
     </>
   );

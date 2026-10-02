@@ -98,6 +98,15 @@ function toProperty(r) {
     instalaciones: r.instalaciones ? tryParseJson(r.instalaciones) : [],
     serviciosEdificio: r.servicios_edificio ? tryParseJson(r.servicios_edificio) : [],
     amenitiesEdificio: r.amenities_edificio ? tryParseJson(r.amenities_edificio) : [],
+    aptoCredito: Boolean(r.apto_credito),
+    aptoProf: Boolean(r.apto_profesional),
+    disposicion: r.disposicion || '',
+    categoriaEdificio: r.categoria_edificio || '',
+    pisosEdificio: r.pisos_edificio != null ? Number(r.pisos_edificio) : null,
+    deptosPorPiso: r.deptos_por_piso != null ? Number(r.deptos_por_piso) : null,
+    ascensoresPrincipales: r.ascensores_principales != null ? Number(r.ascensores_principales) : null,
+    expensas: r.expensas != null ? Number(r.expensas) : null,
+    expensasMoneda: r.expensas_moneda || 'ARS',
     youtubeUrl: r.youtube_url || '',
   };
 }
@@ -512,6 +521,15 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN instalaciones TEXT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN servicios_edificio TEXT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN amenities_edificio TEXT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN apto_credito TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE propiedades ADD COLUMN apto_profesional TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE propiedades ADD COLUMN disposicion VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN categoria_edificio VARCHAR(50) NOT NULL DEFAULT ''",
+    "ALTER TABLE propiedades ADD COLUMN pisos_edificio TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN deptos_por_piso TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN ascensores_principales TINYINT DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN expensas DECIMAL(12,2) DEFAULT NULL",
+    "ALTER TABLE propiedades ADD COLUMN expensas_moneda VARCHAR(5) NOT NULL DEFAULT 'ARS'",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -577,8 +595,10 @@ export async function createProperty(data) {
        tipo_piso,tipo_techo,tipo_costa,tipo_vista,tipo_pendiente,zonificacion,necesita_reubicacion,
        cocheras_cubiertas,cocheras_descubiertas,cocheras_semicubiertas,
        servicios,instalaciones,servicios_edificio,amenities_edificio,
+       apto_credito,apto_profesional,disposicion,categoria_edificio,
+       pisos_edificio,deptos_por_piso,ascensores_principales,expensas,expensas_moneda,
        youtube_url,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -625,6 +645,15 @@ export async function createProperty(data) {
       toJsonField(data.instalaciones),
       toJsonField(data.serviciosEdificio),
       toJsonField(data.amenitiesEdificio),
+      data.aptoCredito === 'true' || data.aptoCredito === true ? 1 : 0,
+      data.aptoProf === 'true' || data.aptoProf === true ? 1 : 0,
+      data.disposicion || '',
+      data.categoriaEdificio || '',
+      data.pisosEdificio ? Number(data.pisosEdificio) : null,
+      data.deptosPorPiso ? Number(data.deptosPorPiso) : null,
+      data.ascensoresPrincipales ? Number(data.ascensoresPrincipales) : null,
+      data.expensas ? Number(data.expensas) : null,
+      data.expensasMoneda || 'ARS',
       data.youtubeUrl || '',
     ]
   );
@@ -708,7 +737,22 @@ export async function updateProperty(propertyId, patch) {
     cocherasCubiertas: 'cocheras_cubiertas',
     cocherasDescubiertas: 'cocheras_descubiertas',
     cocherasSemicubiertas: 'cocheras_semicubiertas',
+    disposicion: 'disposicion',
+    categoriaEdificio: 'categoria_edificio',
+    pisosEdificio: 'pisos_edificio',
+    deptosPorPiso: 'deptos_por_piso',
+    ascensoresPrincipales: 'ascensores_principales',
+    expensas: 'expensas',
+    expensasMoneda: 'expensas_moneda',
   };
+  if (patch.aptoCredito !== undefined) {
+    fields.push('apto_credito=?');
+    vals.push(patch.aptoCredito === 'true' || patch.aptoCredito === true ? 1 : 0);
+  }
+  if (patch.aptoProf !== undefined) {
+    fields.push('apto_profesional=?');
+    vals.push(patch.aptoProf === 'true' || patch.aptoProf === true ? 1 : 0);
+  }
   if (patch.servicios !== undefined) {
     fields.push('servicios=?'); vals.push(toJsonField(patch.servicios));
   }

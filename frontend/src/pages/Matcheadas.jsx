@@ -69,13 +69,13 @@ function MatchRequestsReceived() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {data.items.map(({ matchRequest, property, alert, alertAgency }) => (
           <div key={matchRequest.id} className="match-request-item">
-            <div className="match-request-thumb">
+            <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
               {property.coverUrl
                 ? <img src={property.coverUrl} alt={property.title} />
                 : <Building2 size={22} aria-hidden="true" />}
-            </div>
+            </Link>
             <div className="match-request-info">
-              <strong>{property.title}</strong>
+              <Link to={`/propiedades/${property.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}>{property.title}</Link>
               <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
               <span className="muted small" style={{ marginTop: 4 }}>
                 <strong>{alertAgency.name}</strong> busca: {summarizeAlert(alert)}
@@ -83,6 +83,7 @@ function MatchRequestsReceived() {
               </span>
             </div>
             <div className="match-request-actions">
+              <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-sm">Ver</Link>
               <button
                 className="btn btn-success btn-sm"
                 disabled={responding[matchRequest.id]}

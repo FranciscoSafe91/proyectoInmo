@@ -468,7 +468,8 @@ export function registerApiRoutes(router) {
       const property = await db.getProperty(s.propertyId);
       if (!property) return null;
       const ownerAgency = await db.getAgency(s.ownerAgencyId);
-      return { property, ownerAgency, webPublishAuthorized: s.webPublishAuthorized };
+      const cover = (await db.listPropertyMedia(s.propertyId)).find(m => m.type === 'image') || null;
+      return { property, ownerAgency, webPublishAuthorized: s.webPublishAuthorized, cover };
     }))).filter(Boolean);
     json(res, { items });
   });

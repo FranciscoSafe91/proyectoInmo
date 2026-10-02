@@ -83,13 +83,16 @@ export default function SharedProperties() {
             </div>
           ) : (
           <div className="estate-grid">
-            {filteredItems.map(({ property, ownerAgency, webPublishAuthorized }) => (
+            {filteredItems.map(({ property, ownerAgency, webPublishAuthorized, cover }) => (
               <article key={property.id} className="estate-card">
                 <Link className="estate-card-media" to={`/propiedades/${property.id}`} aria-label={`Ver ${property.title}`}>
-                  <div className="estate-card-placeholder">
-                    <Building2 size={34} aria-hidden="true" />
-                    <span>{typeLabel(property.type) || 'Propiedad'}</span>
-                  </div>
+                  {cover?.url
+                    ? <img src={cover.url} alt={property.title} />
+                    : <div className="estate-card-placeholder">
+                        <Building2 size={34} aria-hidden="true" />
+                        <span>{typeLabel(property.type) || 'Propiedad'}</span>
+                      </div>
+                  }
                   <div className="estate-card-badges">
                     <span className="badge badge-compartida">Compartida</span>
                     {webPublishAuthorized

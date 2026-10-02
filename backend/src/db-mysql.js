@@ -1212,6 +1212,18 @@ export async function listAlertMatchesForOwner(ownerAgencyId) {
   );
   const existingShares = shareRows.map(toShare);
 
+  await ensureMatchRequestsTable();
+  const myPropertyIds = myProperties.map(p => p.id);
+  let existingMatchRequests = [];
+  if (myPropertyIds.length > 0) {
+    const ph = myPropertyIds.map(() => '?').join(',');
+    const [mrRows] = await pool.query(
+      `SELECT alert_id, property_id FROM match_requests WHERE property_id IN (${ph}) AND status<>'rechazado'`,
+      myPropertyIds
+    );
+    existingMatchRequests = mrRows;
+  }
+
   const matches = [];
   for (const partnerAgencyId of partnerIds) {
     const alerts = partnerAlerts.filter(a => a.agencyId === partnerAgencyId);
@@ -1221,6 +1233,10 @@ export async function listAlertMatchesForOwner(ownerAgencyId) {
       );
       if (alreadyShared) continue;
       for (const alert of alerts) {
+        const alreadyMatched = existingMatchRequests.some(
+          mr => mr.property_id === property.id && mr.alert_id === alert.id
+        );
+        if (alreadyMatched) continue;
         if (propertyMatchesAlert(property, alert)) {
           matches.push({ alert, property, requestingAgencyId: partnerAgencyId });
         }

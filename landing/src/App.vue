@@ -3,7 +3,9 @@
     <header class="topbar">
       <nav class="nav" aria-label="Navegación principal">
         <a href="#inicio" class="logo" aria-label="SpyderConnect inicio">
-          <span class="logo-mark">SC</span>
+          <span class="logo-mark">
+            <img :src="brandIconSrc" alt="" aria-hidden="true" />
+          </span>
           <span class="logo-text">Spyder<span>Connect</span></span>
         </a>
 
@@ -375,7 +377,9 @@
         <div class="footer-grid">
           <div>
             <a href="#inicio" class="logo footer-logo" aria-label="SpyderConnect inicio">
-              <span class="logo-mark">SC</span>
+              <span class="logo-mark">
+                <img :src="brandIconSrc" alt="" aria-hidden="true" />
+              </span>
               <span class="logo-text">Spyder<span>Connect</span></span>
             </a>
             <p>
@@ -452,6 +456,7 @@ import {
 const menuOpen = ref(false)
 const leadEmail = ref('')
 const leadSent = ref(false)
+const brandIconSrc = `${import.meta.env.BASE_URL}brand-icon.png`
 
 const properties = [
   {

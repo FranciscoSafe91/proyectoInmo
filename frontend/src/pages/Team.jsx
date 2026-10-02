@@ -1,34 +1,77 @@
 import React, { useState, useEffect } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { api } from '../api.js';
 
 const ROLE_LABELS = { admin: 'Administrador', agente: 'Agente' };
+
+const SECCIONES = [
+  { key: 'propiedades',  label: 'Propiedades publicadas' },
+  { key: 'compartidas',  label: 'Carpeta compartida' },
+  { key: 'buscar_match', label: 'Buscar match' },
+  { key: 'matcheadas',   label: 'Matcheadas' },
+  { key: 'socios',       label: 'Socios' },
+  { key: 'alertas',      label: 'Alertas' },
+  { key: 'invitaciones', label: 'Invitaciones' },
+];
 
 export default function Team() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [role, setRole] = useState('agente');
+  const [permisos, setPermisos] = useState(SECCIONES.map(s => s.key));
   const [newInviteLink, setNewInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
 
   function load() {
     api.get('/equipo').then(setData).catch(e => setError(e.data?.error || e.message));
   }
   useEffect(load, []);
 
+  function togglePermiso(key) {
+    setPermisos(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  }
+
   async function handleInvitar(e) {
     e.preventDefault();
     try {
-      const result = await api.post('/equipo/invitar', { role, note });
-      setNote(''); setRole('agente');
-      setNewInviteLink('');
+      const menuPermisos = role === 'admin' ? null : permisos;
+      const result = await api.post('/equipo/invitar', { role, note, menuPermisos });
+      const { invitation } = result;
+      setNewInviteLink(`${data.baseUrl}/unirse/${invitation.token}`);
+      setCopied(false);
+      setNote('');
+      setRole('agente');
+      setPermisos(SECCIONES.map(s => s.key));
       load();
     } catch (err) {
       setError(err.data?.error || 'Error al invitar.');
     }
   }
 
+  async function handleCopiar() {
+    try {
+      await navigator.clipboard.writeText(newInviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback para navegadores que bloquean clipboard
+      const el = document.createElement('textarea');
+      el.value = newInviteLink;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  }
+
   async function handleCancelarInvitacion(id) {
     await api.post(`/equipo/invitaciones/${id}/cancelar`);
+    setNewInviteLink('');
     load();
   }
 
@@ -46,7 +89,7 @@ export default function Team() {
   if (error && !data) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { users, pendingInvitations, currentUser, baseUrl } = data;
+  const { users, pendingInvitations, currentUser } = data;
 
   return (
     <>
@@ -98,6 +141,7 @@ export default function Team() {
       <div className="card">
         <h3>Invitar a alguien</h3>
         <p className="muted small">El sistema todavía no envía emails: generá el link y mandáselo vos por donde prefieras (WhatsApp, email, etc.). Es válido una sola vez.</p>
+
         <form onSubmit={handleInvitar}>
           <div className="grid grid-2">
             <div>
@@ -112,10 +156,45 @@ export default function Team() {
               </select>
             </div>
           </div>
+
+          {role === 'agente' && (
+            <div className="invite-permisos">
+              <p className="invite-permisos-label">Secciones a las que va a tener acceso</p>
+              <div className="invite-permisos-grid">
+                {SECCIONES.map(s => (
+                  <label key={s.key} className="invite-permiso-item">
+                    <input
+                      type="checkbox"
+                      checked={permisos.includes(s.key)}
+                      onChange={() => togglePermiso(s.key)}
+                    />
+                    {s.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {role === 'admin' && (
+            <p className="muted small" style={{ marginTop: 8 }}>Los administradores tienen acceso a todas las secciones.</p>
+          )}
+
           <div className="btn-row">
             <button type="submit" className="btn btn-small">Generar link de invitación</button>
           </div>
         </form>
+
+        {newInviteLink && (
+          <div className="invite-link-box">
+            <code className="invite-link-text">{newInviteLink}</code>
+            <button
+              type="button"
+              className={`btn btn-small invite-copy-btn${copied ? ' copied' : ''}`}
+              onClick={handleCopiar}
+            >
+              {copied ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar link</>}
+            </button>
+          </div>
+        )}
 
         {pendingInvitations.length > 0 && (
           <div className="table-wrap" style={{ marginTop: 14 }}>
@@ -126,7 +205,7 @@ export default function Team() {
                   <tr key={inv.id}>
                     <td>{inv.note || <span className="muted">(sin nota)</span>}</td>
                     <td>{ROLE_LABELS[inv.role]}</td>
-                    <td><code className="small">{baseUrl}/unirse/{inv.token}</code></td>
+                    <td><code className="small">{data.baseUrl}/unirse/{inv.token}</code></td>
                     <td>
                       <button className="btn btn-secondary btn-small" onClick={() => handleCancelarInvitacion(inv.id)}>Cancelar</button>
                     </td>

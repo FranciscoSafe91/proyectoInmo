@@ -87,11 +87,6 @@ export default function Dashboard() {
           <h1>{agency.name}</h1>
           <p className="subtitle">Un resumen claro de tu inventario, tu red y las oportunidades que esperan acción.</p>
         </div>
-        <div className="hero-status-card">
-          <span>Estado de la red</span>
-          <strong>{pendingTotal > 0 ? `${pendingTotal} pendiente${pendingTotal === 1 ? '' : 's'}` : 'Todo al día'}</strong>
-          <p>{stats.partners} socio{stats.partners === 1 ? '' : 's'} conectado{stats.partners === 1 ? '' : 's'} con tu cuenta.</p>
-        </div>
       </section>
 
       <div className="metric-grid">

@@ -589,6 +589,77 @@
     border: none;
   }
 
+  /* ---- Invitar equipo ---- */
+
+  .invite-permisos {
+    margin-top: 12px;
+  }
+
+  .invite-permisos-label {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  .invite-permisos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 6px 12px;
+  }
+
+  .invite-permiso-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: normal;
+    cursor: pointer;
+    margin: 0;
+    user-select: none;
+  }
+
+  .invite-permiso-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    accent-color: var(--app-accent, #1dbc8b);
+  }
+
+  .invite-link-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--app-bg-2, #f3f4f6);
+    border-radius: 8px;
+    border: 1px solid var(--app-border, #e5e7eb);
+    flex-wrap: wrap;
+  }
+
+  .invite-link-text {
+    flex: 1;
+    min-width: 0;
+    word-break: break-all;
+    font-size: 12px;
+  }
+
+  .invite-copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .invite-copy-btn.copied {
+    background: #1dbc8b;
+    color: #fff;
+    border-color: #1dbc8b;
+  }
+
+  /* ---- fin invitar ---- */
+
   .media-thumbs img,
   .property-gallery-thumbs img {
     width: 100%;

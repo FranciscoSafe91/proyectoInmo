@@ -790,7 +790,8 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAccountAdmin(req, res, session)) return;
     const body = await parseJson(req);
-    const invitation = await db.createInvitation({ agencyId: session.agency.id, role: body.role, note: body.note });
+    const menuPermisos = Array.isArray(body.menuPermisos) && body.menuPermisos.length ? body.menuPermisos : null;
+    const invitation = await db.createInvitation({ agencyId: session.agency.id, role: body.role, note: body.note, menuPermisos });
     json(res, { invitation }, 201);
   });
 
@@ -1018,6 +1019,9 @@ export function registerApiRoutes(router) {
     if (await db.findUserByEmail(email)) return err(res, 'Ya existe un usuario con ese email.');
     const { hash, salt } = auth.hashPassword(password);
     const user = await db.createUser({ agencyId: agency.id, nombre: name, email, passwordHash: hash, passwordSalt: salt, role: invitation.role });
+    if (invitation.menuPermisos && invitation.role !== 'admin') {
+      await db.updateUserMenuPermisos(user.id, invitation.menuPermisos);
+    }
     await db.acceptInvitation(invitation.id);
     await auth.login(res, user.id);
     json(res, { user, agency }, 201);

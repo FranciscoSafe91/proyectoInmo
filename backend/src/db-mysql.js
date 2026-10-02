@@ -197,9 +197,11 @@ function toPayment(r) {
 
 function toInvitation(r) {
   if (!r) return null;
+  let menuPermisos = null;
+  if (r.menu_permisos) { try { menuPermisos = JSON.parse(r.menu_permisos); } catch {} }
   return {
     id: r.id, agencyId: r.agency_id, role: r.role, note: r.note,
-    token: r.token, status: r.status, createdAt: r.created_at,
+    token: r.token, status: r.status, createdAt: r.created_at, menuPermisos,
   };
 }
 
@@ -1269,13 +1271,22 @@ export async function listAgenciesWithSubscriptions() {
 // ---------------------------------------------------------------------------
 // Invitaciones
 // ---------------------------------------------------------------------------
-export async function createInvitation({ agencyId, role, note }) {
+let _invitacionesColumnsMigrated = false;
+async function ensureInvitacionesColumns() {
+  if (_invitacionesColumnsMigrated) return;
+  await pool.query("ALTER TABLE invitaciones ADD COLUMN menu_permisos TEXT DEFAULT NULL").catch(() => {});
+  _invitacionesColumnsMigrated = true;
+}
+
+export async function createInvitation({ agencyId, role, note, menuPermisos }) {
+  await ensureInvitacionesColumns();
   const token = randomBytes(16).toString('hex');
   const id = uuid();
+  const permisoVal = menuPermisos && menuPermisos.length ? JSON.stringify(menuPermisos) : null;
   await pool.query(
-    `INSERT INTO invitaciones (id,agency_id,role,note,token,status,created_at)
-     VALUES (?,?,?,?,?,'pendiente',NOW())`,
-    [id, agencyId, role === 'admin' ? 'admin' : 'agente', note || '', token]
+    `INSERT INTO invitaciones (id,agency_id,role,note,token,status,menu_permisos,created_at)
+     VALUES (?,?,?,?,?,'pendiente',?,NOW())`,
+    [id, agencyId, role === 'admin' ? 'admin' : 'agente', note || '', token, permisoVal]
   );
   return getInvitation(id);
 }

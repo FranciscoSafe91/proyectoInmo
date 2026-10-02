@@ -481,6 +481,41 @@
     border-color: #1dbc8b;
   }
 
+  .thumb-wrap {
+    position: relative;
+    height: 58px;
+  }
+
+  .thumb-wrap > button:first-child {
+    width: 100%;
+    height: 100%;
+  }
+
+  .media-thumbs .thumb-remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    z-index: 2;
+    overflow: visible;
+  }
+
+  .media-thumbs .thumb-remove:hover {
+    background: #c0392b;
+  }
+
   .media-thumbs button[draggable] {
     cursor: grab;
     position: relative;

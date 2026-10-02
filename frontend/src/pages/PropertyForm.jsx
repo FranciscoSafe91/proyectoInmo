@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Camera, Film, Home, ImagePlus, MapPin, Ruler, Search, Trash2 } from 'lucide-react';
+import { Camera, Film, Home, ImagePlus, MapPin, Ruler, Search } from 'lucide-react';
 import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
@@ -1027,42 +1027,36 @@ export default function PropertyForm() {
               <p className="media-thumbs-hint">Arrastrá las miniaturas para cambiar el orden.</p>
               <div className="media-thumbs">
                 {allMedia.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={[
-                      index === activePreview ? 'active' : '',
-                      dragOver === index ? 'drag-over' : '',
-                    ].filter(Boolean).join(' ')}
-                    draggable
-                    onDragStart={() => handleThumbDragStart(index)}
-                    onDragOver={e => handleThumbDragOver(e, index)}
-                    onDrop={e => handleThumbDrop(e, index)}
-                    onDragEnd={handleThumbDragEnd}
-                    onClick={() => setActivePreview(index)}
-                    aria-label={`Ver archivo ${index + 1}`}
-                  >
-                    {item.type === 'video'
-                      ? <Film size={16} aria-hidden="true" />
-                      : <img src={item.url} alt="" />}
-                    <span className="thumb-order">{index + 1}</span>
-                  </button>
+                  <div key={item.id} className="thumb-wrap">
+                    <button
+                      type="button"
+                      className={[
+                        index === activePreview ? 'active' : '',
+                        dragOver === index ? 'drag-over' : '',
+                      ].filter(Boolean).join(' ')}
+                      draggable
+                      onDragStart={() => handleThumbDragStart(index)}
+                      onDragOver={e => handleThumbDragOver(e, index)}
+                      onDrop={e => handleThumbDrop(e, index)}
+                      onDragEnd={handleThumbDragEnd}
+                      onClick={() => setActivePreview(index)}
+                      aria-label={`Ver archivo ${index + 1}`}
+                    >
+                      {item.type === 'video'
+                        ? <Film size={16} aria-hidden="true" />
+                        : <img src={item.url} alt="" />}
+                      <span className="thumb-order">{index + 1}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="thumb-remove"
+                      onClick={() => removeMedia(item.id)}
+                      aria-label={`Eliminar archivo ${index + 1}`}
+                    >×</button>
+                  </div>
                 ))}
               </div>
             </>
-          )}
-
-          {allMedia.some(m => m.isNew) && (
-            <div className="selected-media-list">
-              {allMedia.filter(m => m.isNew).map(item => (
-                <div key={item.id}>
-                  <span>{item.filename}</span>
-                  <button type="button" onClick={() => removeMedia(item.id)} aria-label={`Quitar ${item.filename}`}>
-                    <Trash2 size={15} aria-hidden="true" />
-                  </button>
-                </div>
-              ))}
-            </div>
           )}
 
           <label htmlFor="status">Estado</label>

@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
+const brandIconSrc = `${import.meta.env.BASE_URL}brand-icon.png`;
+
 export default function Navbar() {
   const { session, logout } = useAuth();
   const location = useLocation();
@@ -148,7 +150,9 @@ export default function Navbar() {
       <aside className={`navbar sidebar${open ? ' open' : ''}`} aria-label="Navegación principal">
         <div className="sidebar-head">
           <Link to="/dashboard" className="sidebar-brand" onClick={closeMenu}>
-            <span className="logo-mark">SC</span>
+            <span className="logo-mark">
+              <img src={brandIconSrc} alt="" aria-hidden="true" />
+            </span>
             <span className="navbar-brand">Spyder<span className="brand-accent">Connect</span></span>
           </Link>
           <div className="navbar-agency">{session.agency.name}</div>

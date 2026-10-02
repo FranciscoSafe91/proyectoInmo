@@ -26,3 +26,16 @@ export async function deleteResource(publicId, resourceType = 'image') {
 export function signUpload(paramsToSign) {
   return cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
 }
+
+export function uploadStreamToCloudinary(options = {}) {
+  let resolveUpload, rejectUpload;
+  const promise = new Promise((resolve, reject) => {
+    resolveUpload = resolve;
+    rejectUpload = reject;
+  });
+  const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+    if (error) rejectUpload(error);
+    else resolveUpload(result);
+  });
+  return { stream, promise };
+}

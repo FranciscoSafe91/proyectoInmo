@@ -429,25 +429,32 @@ export default function PropertyForm() {
   }
 
   async function uploadVideoToCloudinary(itemId, file) {
+    const MAX_MB = 200;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setAllMedia(prev => prev.filter(m => m.id !== itemId));
+      setError(`El video no puede superar los ${MAX_MB} MB.`);
+      return;
+    }
     try {
-      const { signature, timestamp, publicId, apiKey, cloudName } = await api.get('/cloudinary/sign');
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('api_key', apiKey);
-      fd.append('timestamp', String(timestamp));
-      fd.append('signature', signature);
-      fd.append('public_id', publicId);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Error Cloudinary');
+      const res = await fetch('/api/upload/video', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Error al subir el video');
+      }
       const data = await res.json();
       setAllMedia(prev => prev.map(m =>
         m.id === itemId
           ? { ...m, url: data.secure_url, uploading: false, preUploaded: true }
           : m
       ));
-    } catch {
+    } catch (e) {
       setAllMedia(prev => prev.filter(m => m.id !== itemId));
-      setError('Error al subir el video. Intentá de nuevo.');
+      setError(e.message || 'Error al subir el video. Intentá de nuevo.');
     }
   }
 

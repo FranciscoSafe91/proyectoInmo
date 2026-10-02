@@ -7,7 +7,7 @@ import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
 import { randomUUID } from 'node:crypto';
 import * as mail from './mail.js';
-import { uploadBuffer, deleteResource, signUpload } from './cloudinary.js';
+import { uploadBuffer, deleteResource, signUpload, uploadStreamToCloudinary } from './cloudinary.js';
 
 const LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
 const PROPERTY_MEDIA_CONTENT_TYPES = new Set([
@@ -340,7 +340,36 @@ export function registerApiRoutes(router) {
     json(res, { ok: true });
   });
 
-  // Firma para subida directa de video desde el browser a Cloudinary
+  // Subida de video al backend → backend sube a Cloudinary (evita CORS y límite de tamaño del browser)
+  router.post('/api/upload/video', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const MAX_BYTES = 200 * 1024 * 1024; // 200 MB
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength > MAX_BYTES) {
+      return err(res, 'El video no puede superar los 200 MB.');
+    }
+    const publicId = `spyderconnect/properties/${randomUUID()}`;
+    const { stream, promise } = uploadStreamToCloudinary({ resource_type: 'video', public_id: publicId });
+    let received = 0;
+    req.on('data', chunk => {
+      received += chunk.length;
+      if (received > MAX_BYTES) {
+        req.destroy();
+        return err(res, 'El video no puede superar los 200 MB.');
+      }
+    });
+    req.pipe(stream);
+    try {
+      const result = await promise;
+      json(res, { secure_url: result.secure_url, public_id: result.public_id });
+    } catch (e) {
+      console.error('Error subiendo video a Cloudinary:', e);
+      if (!res.headersSent) err(res, 'Error al subir el video. Intentá de nuevo.');
+    }
+  });
+
+  // Firma para subida directa de video desde el browser a Cloudinary (legacy, mantenido por compatibilidad)
   router.get('/api/cloudinary/sign', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;

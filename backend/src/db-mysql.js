@@ -881,6 +881,7 @@ export async function listPendingSharesReceived(agencyId) {
 }
 
 export async function listAcceptedSharesReceived(agencyId) {
+  await ensureCompartidasColumns();
   const [rows] = await pool.query(
     "SELECT * FROM compartidas WHERE status='aceptada' AND target_agency_id=?", [agencyId]
   );
@@ -888,6 +889,7 @@ export async function listAcceptedSharesReceived(agencyId) {
 }
 
 export async function listAcceptedDirectSharesReceived(agencyId) {
+  await ensureCompartidasColumns();
   const [rows] = await pool.query(
     "SELECT * FROM compartidas WHERE status='aceptada' AND target_agency_id=? AND (source IS NULL OR source='directa')",
     [agencyId]

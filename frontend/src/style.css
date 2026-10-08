@@ -1863,6 +1863,14 @@
     color: rgba(255, 255, 255, 0.68);
   }
 
+  .metric-bar {
+    min-height: auto;
+    padding: 14px 18px;
+    align-items: center;
+    margin-bottom: 10px;
+    grid-template-columns: 38px 1fr;
+  }
+
   .metric-orange .metric-icon {
     background: var(--app-clay-soft);
     color: #b95021;

@@ -89,6 +89,17 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <Link
+        to="/alertas"
+        className={`metric-card metric-ink metric-bar${location.pathname === '/alertas' ? ' metric-card-active' : ''}`}
+      >
+        <div className="metric-icon"><Bell size={22} aria-hidden="true" /></div>
+        <div>
+          <span>Alertas</span>
+          <p>Alertas de búsqueda entre socios</p>
+        </div>
+      </Link>
+
       <div className="metric-grid">
         {healthItems.map(item => {
           const Icon = item.icon;

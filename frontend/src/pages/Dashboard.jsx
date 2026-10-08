@@ -91,12 +91,16 @@ export default function Dashboard() {
 
       <Link
         to="/alertas"
-        className={`metric-card metric-ink metric-bar${location.pathname === '/alertas' ? ' metric-card-active' : ''}`}
+        className={`metric-card metric-bar${location.pathname.startsWith('/alertas') ? ' metric-card-active' : ''}`}
       >
+        {stats.alertMatches > 0 && (
+          <span className="metric-notification" aria-label={`${stats.alertMatches} alerta${stats.alertMatches === 1 ? '' : 's'} por ver`}>
+            {stats.alertMatches}
+          </span>
+        )}
         <div className="metric-icon"><Bell size={22} aria-hidden="true" /></div>
         <div>
-          <span>Alertas</span>
-          <p>Alertas de búsqueda entre socios</p>
+          <span>Crear alerta</span>
         </div>
       </Link>
 

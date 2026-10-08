@@ -85,23 +85,18 @@ export default function Dashboard() {
         <div>
           <span className="section-kicker">Panel de operaciones</span>
           <h1>{agency.name}</h1>
-          <p className="subtitle">Un resumen claro de tu inventario, tu red y las oportunidades que esperan acción.</p>
+          <p className="subtitle">Resumen de tu inventario, red de socios y oportunidades activas.</p>
         </div>
       </section>
 
-      <Link
-        to="/alertas"
-        className={`metric-card metric-bar${location.pathname.startsWith('/alertas') ? ' metric-card-active' : ''}`}
-      >
+      <Link to="/alertas" className="btn btn-alerta-bar">
         {stats.alertMatches > 0 && (
           <span className="metric-notification" aria-label={`${stats.alertMatches} alerta${stats.alertMatches === 1 ? '' : 's'} por ver`}>
             {stats.alertMatches}
           </span>
         )}
-        <div className="metric-icon"><Bell size={22} aria-hidden="true" /></div>
-        <div>
-          <span>Crear alerta</span>
-        </div>
+        <Bell size={17} aria-hidden="true" />
+        Crear alerta
       </Link>
 
       <div className="metric-grid">

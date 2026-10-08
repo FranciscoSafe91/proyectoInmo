@@ -1688,9 +1688,9 @@
   }
 
   .dashboard-hero .subtitle {
-    max-width: 620px;
     margin-bottom: 0;
     color: rgba(255, 255, 255, 0.68);
+    white-space: nowrap;
   }
 
   .dashboard-hero .section-kicker {
@@ -1863,54 +1863,10 @@
     color: rgba(255, 255, 255, 0.68);
   }
 
-  .metric-card.metric-bar {
-    min-height: auto;
-    padding: 14px 20px;
+  .btn-alerta-bar {
+    position: relative;
+    width: 100%;
     margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    background: #1dbc8b;
-    border-color: #1dbc8b;
-    color: #ffffff;
-    transform: none;
-  }
-
-  .metric-card.metric-bar .metric-icon {
-    background: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-    flex-shrink: 0;
-  }
-
-  .metric-card.metric-bar span {
-    color: #ffffff;
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin-top: 0;
-  }
-
-  .metric-card.metric-bar:hover,
-  .metric-card.metric-bar:focus-visible,
-  .metric-card.metric-bar:active {
-    background: #17a377;
-    border-color: #17a377;
-    box-shadow: 0 6px 18px rgba(29, 188, 139, 0.35);
-    transform: translateY(-2px);
-    color: #ffffff;
-  }
-
-  .metric-card.metric-bar:hover .metric-icon,
-  .metric-card.metric-bar:focus-visible .metric-icon,
-  .metric-card.metric-bar:active .metric-icon {
-    background: rgba(255, 255, 255, 0.28);
-    color: #ffffff;
-  }
-
-  .metric-card.metric-bar:hover span,
-  .metric-card.metric-bar:focus-visible span,
-  .metric-card.metric-bar:active span {
-    color: #ffffff;
   }
 
   .metric-orange .metric-icon {

@@ -96,7 +96,7 @@ function PropertyMap({ latitud, longitud, onChange }) {
 }
 
 const SERVICIOS = [
-  'ABL','Agua Corriente','Agua de pozo','Cloacas','Conmutador','Electricidad',
+  'ABL','Agua Corriente','Agua de pozo','Cámaras de vigilancia','Cloacas','Conmutador','Electricidad',
   'Gas','Gas envasado','Internet','Limpieza','Pavimento','Rentas municipales',
   'Ropa de cama','Seguridad','Teléfono','Toallas','Videocable',
 ];
@@ -108,7 +108,7 @@ const INSTALACIONES = [
   'Cancha de tenis','Cocina equipada','Dependencia','Energía solar','Extractor aire',
   'Gimnasio','Grupo electrógeno','Hidromasaje','Hogar a leña','Jacuzzi','Jardín',
   'Jardín delantero','Jardín trasero','Juegos para chicos','Lavadero','Microcine',
-  'Parque','Parrilla','Patio','Pileta','Piso radiante','Quincho techado','Radiadores',
+  'Parque','Parrilla','Patio','Pileta','Pileta climatizada','Piso radiante','Quincho techado','Radiadores',
   'Reciclado','Sala de juegos','Salón de fiestas','Sauna','Solarium','Spa','Termotanque',
   'Terraza','Toilette','Vigilancia','Vivienda multifamiliar',
 ];
@@ -226,6 +226,7 @@ const EMPTY_PROPERTY = {
   areaM2: '',
   status: 'publicada',
   barrioCerrado: false,
+  nombreBarrioCerrado: '',
   zonaGeografica: '',
   partido: '',
   localidad: '',
@@ -293,11 +294,75 @@ function buildPropertyFormData(property, orderedFiles) {
   return formData;
 }
 
+function mapPropertyToForm(p) {
+  return {
+    title: p.title || '',
+    description: p.description || '',
+    operation: p.operation || 'venta',
+    type: p.type || 'casa',
+    price: p.price ?? '',
+    currency: p.currency || 'USD',
+    bedrooms: p.bedrooms ?? '',
+    bathrooms: p.bathrooms ?? '',
+    areaM2: p.areaM2 ?? '',
+    status: p.status || 'publicada',
+    barrioCerrado: p.barrioCerrado || false,
+    nombreBarrioCerrado: p.nombreBarrioCerrado || '',
+    zonaGeografica: p.zonaGeografica || '',
+    partido: p.partido || '',
+    localidad: p.localidad || '',
+    calle: p.calle || '',
+    nroCalle: p.nroCalle || '',
+    piso: p.piso || '',
+    depto: p.depto || '',
+    mostrarPortales: p.mostrarPortales || 'aproximada',
+    entreCalles: p.entreCalles || '',
+    yCalles: p.yCalles || '',
+    cercaDe: p.cercaDe || '',
+    latitud: p.latitud ?? '',
+    longitud: p.longitud ?? '',
+    anchoTerreno: p.anchoTerreno ?? '',
+    largoTerreno: p.largoTerreno ?? '',
+    superficieTerreno: p.superficieTerreno ?? '',
+    superficieTotal: p.superficieTotal ?? '',
+    superficieCubierta: p.superficieCubierta ?? '',
+    superficieDescubierta: p.superficieDescubierta ?? '',
+    superficieSemicubierta: p.superficieSemicubierta ?? '',
+    fondoLibre: p.fondoLibre ?? '',
+    estadoPropiedad: p.estadoPropiedad || '',
+    antiguedad: p.antiguedad ?? '',
+    aEstrenar: p.aEstrenar || false,
+    plantas: p.plantas || '',
+    orientacion: p.orientacion || '',
+    aguaCaliente: p.aguaCaliente || '',
+    calefaccion: p.calefaccion || '',
+    luminosidad: p.luminosidad || '',
+    tipoVigilancia: p.tipoVigilancia || '',
+    tipoPiso: p.tipoPiso || '',
+    tipoTecho: p.tipoTecho || '',
+    tipoCosta: p.tipoCosta || '',
+    tipoVista: p.tipoVista || '',
+    tipoPendiente: p.tipoPendiente || '',
+    zonificacion: p.zonificacion || '',
+    necesitaReubicacion: p.necesitaReubicacion || false,
+    cocherasCubiertas: p.cocherasCubiertas != null ? String(p.cocherasCubiertas) : '',
+    cocherasDescubiertas: p.cocherasDescubiertas != null ? String(p.cocherasDescubiertas) : '',
+    cocherasSemicubiertas: p.cocherasSemicubiertas != null ? String(p.cocherasSemicubiertas) : '',
+    servicios: Array.isArray(p.servicios) ? p.servicios : [],
+    instalaciones: Array.isArray(p.instalaciones) ? p.instalaciones : [],
+    serviciosEdificio: Array.isArray(p.serviciosEdificio) ? p.serviciosEdificio : [],
+    amenitiesEdificio: Array.isArray(p.amenitiesEdificio) ? p.amenitiesEdificio : [],
+    youtubeUrl: p.youtubeUrl || '',
+  };
+}
+
 export default function PropertyForm() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const isEdit = Boolean(id) && !location.pathname.endsWith('/nueva');
+  const duplicarDe = new URLSearchParams(location.search).get('duplicarDe');
+  const isDuplicate = !isEdit && Boolean(duplicarDe);
 
   const [property, setProperty] = useState(EMPTY_PROPERTY);
   const [allMedia, setAllMedia] = useState([]);
@@ -312,67 +377,16 @@ export default function PropertyForm() {
   const activeMedia = allMedia[activePreview] || null;
 
   useEffect(() => {
+    if (!isDuplicate || !duplicarDe) return;
+    api.get(`/propiedades/${duplicarDe}`).then(data => {
+      setProperty(mapPropertyToForm(data.property));
+    }).catch(e => setError(e.message));
+  }, [duplicarDe, isDuplicate]);
+
+  useEffect(() => {
     if (!isEdit) return;
     api.get(`/propiedades/${id}`).then(data => {
-      const p = data.property;
-      setProperty({
-        title: p.title || '',
-        description: p.description || '',
-        operation: p.operation || 'venta',
-        type: p.type || 'casa',
-        price: p.price ?? '',
-        currency: p.currency || 'USD',
-        bedrooms: p.bedrooms ?? '',
-        bathrooms: p.bathrooms ?? '',
-        areaM2: p.areaM2 ?? '',
-        status: p.status || 'publicada',
-        barrioCerrado: p.barrioCerrado || false,
-        zonaGeografica: p.zonaGeografica || '',
-        partido: p.partido || '',
-        localidad: p.localidad || '',
-        calle: p.calle || '',
-        nroCalle: p.nroCalle || '',
-        piso: p.piso || '',
-        depto: p.depto || '',
-        mostrarPortales: p.mostrarPortales || 'aproximada',
-        entreCalles: p.entreCalles || '',
-        yCalles: p.yCalles || '',
-        cercaDe: p.cercaDe || '',
-        latitud: p.latitud ?? '',
-        longitud: p.longitud ?? '',
-        anchoTerreno: p.anchoTerreno ?? '',
-        largoTerreno: p.largoTerreno ?? '',
-        superficieTerreno: p.superficieTerreno ?? '',
-        superficieTotal: p.superficieTotal ?? '',
-        superficieCubierta: p.superficieCubierta ?? '',
-        superficieDescubierta: p.superficieDescubierta ?? '',
-        superficieSemicubierta: p.superficieSemicubierta ?? '',
-        fondoLibre: p.fondoLibre ?? '',
-        estadoPropiedad: p.estadoPropiedad || '',
-        antiguedad: p.antiguedad ?? '',
-        aEstrenar: p.aEstrenar || false,
-        plantas: p.plantas || '',
-        orientacion: p.orientacion || '',
-        aguaCaliente: p.aguaCaliente || '',
-        calefaccion: p.calefaccion || '',
-        luminosidad: p.luminosidad || '',
-        tipoVigilancia: p.tipoVigilancia || '',
-        tipoPiso: p.tipoPiso || '',
-        tipoTecho: p.tipoTecho || '',
-        tipoCosta: p.tipoCosta || '',
-        tipoVista: p.tipoVista || '',
-        tipoPendiente: p.tipoPendiente || '',
-        zonificacion: p.zonificacion || '',
-        necesitaReubicacion: p.necesitaReubicacion || false,
-        cocherasCubiertas: p.cocherasCubiertas != null ? String(p.cocherasCubiertas) : '',
-        cocherasDescubiertas: p.cocherasDescubiertas != null ? String(p.cocherasDescubiertas) : '',
-        cocherasSemicubiertas: p.cocherasSemicubiertas != null ? String(p.cocherasSemicubiertas) : '',
-        servicios: Array.isArray(p.servicios) ? p.servicios : [],
-        instalaciones: Array.isArray(p.instalaciones) ? p.instalaciones : [],
-        serviciosEdificio: Array.isArray(p.serviciosEdificio) ? p.serviciosEdificio : [],
-        amenitiesEdificio: Array.isArray(p.amenitiesEdificio) ? p.amenitiesEdificio : [],
-        youtubeUrl: p.youtubeUrl || '',
-      });
+      setProperty(mapPropertyToForm(data.property));
       setAllMedia((data.media || []).map(m => ({
         id: m.id,
         type: m.type,
@@ -517,11 +531,15 @@ export default function PropertyForm() {
     <>
       <div className="page-heading">
         <div>
-          <h1>{isEdit ? 'Editar propiedad' : 'Nueva propiedad'}</h1>
-          <p className="subtitle">Cargá los datos clave y sumá material visual para que el match sea más rápido.</p>
+          <h1>{isEdit ? 'Editar propiedad' : isDuplicate ? 'Duplicar propiedad' : 'Nueva propiedad'}</h1>
+          <p className="subtitle">
+            {isDuplicate
+              ? 'Revisá y modificá los datos antes de guardar. Las fotos del original no se copian.'
+              : 'Cargá los datos clave y sumá material visual para que el match sea más rápido.'}
+          </p>
         </div>
-        <Link className="btn btn-secondary" to="/propiedades">
-          {isEdit ? '← Volver a propiedades' : 'Cancelar'}
+        <Link className="btn btn-secondary" to={isDuplicate ? `/propiedades/${duplicarDe}` : '/propiedades'}>
+          {isEdit ? '← Volver a propiedades' : isDuplicate ? '← Volver al original' : 'Cancelar'}
         </Link>
       </div>
 
@@ -589,6 +607,20 @@ export default function PropertyForm() {
               <input type="checkbox" id="barrioCerrado" name="barrioCerrado" checked={property.barrioCerrado} onChange={handleChange} />
               <label htmlFor="barrioCerrado" style={{ margin: 0, fontWeight: 'normal' }}>Esta propiedad pertenece a un country / barrio cerrado</label>
             </div>
+
+            {property.barrioCerrado && (
+              <div style={{ marginTop: 10 }}>
+                <label htmlFor="nombreBarrioCerrado">Nombre del barrio / country</label>
+                <input
+                  type="text"
+                  id="nombreBarrioCerrado"
+                  name="nombreBarrioCerrado"
+                  placeholder="Ej: Nordelta, Los Lagartos, Santa Bárbara..."
+                  value={property.nombreBarrioCerrado}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
 
             <div className="grid grid-3">
               <div>
@@ -970,7 +1002,7 @@ export default function PropertyForm() {
 
             {!isTerreno && (
               <CheckboxSearchList
-                sublabel="Servicios del edificio"
+                sublabel={property.barrioCerrado ? "Servicios del barrio" : "Servicios del edificio"}
                 name="serviciosEdificio"
                 options={SERVICIOS_EDIFICIO}
                 selected={property.serviciosEdificio}
@@ -980,7 +1012,7 @@ export default function PropertyForm() {
 
             {!isTerreno && (
               <CheckboxSearchList
-                sublabel="Amenities del edificio"
+                sublabel={property.barrioCerrado ? "Amenities del barrio" : "Amenities del edificio"}
                 name="amenitiesEdificio"
                 options={AMENITIES_EDIFICIO}
                 selected={property.amenitiesEdificio}

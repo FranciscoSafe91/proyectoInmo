@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Camera, ChevronLeft, ChevronRight, Film, Printer, X } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Copy, Film, Printer, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, formatDate } from '../utils.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -295,6 +295,11 @@ export default function PropertyDetail() {
               <Link className="btn btn-secondary btn-small" to={`/propiedades/${property.id}/ficha`} target="_blank">
                 <Printer size={15} aria-hidden="true" /> Ficha para imprimir
               </Link>
+              {isOwner && canDo('editar_propiedades') && (
+                <Link className="btn btn-secondary btn-small" to={`/propiedades/nueva?duplicarDe=${property.id}`}>
+                  <Copy size={15} aria-hidden="true" /> Duplicar propiedad
+                </Link>
+              )}
               {isOwner && canDo('eliminar_propiedades') && (
                 <button className="btn btn-danger btn-small" onClick={handleDelete} disabled={deleting}>
                   {deleting ? 'Eliminando...' : 'Eliminar'}

@@ -96,3 +96,10 @@ export const listAllSupportTickets = (...args) => impl.listAllSupportTickets(...
 export const countOpenSupportTickets = (...args) => impl.countOpenSupportTickets(...args);
 export const resolveSupportTicket = (...args) => impl.resolveSupportTicket(...args);
 export const reopenSupportTicket = (...args) => impl.reopenSupportTicket(...args);
+export const createGrupoSocios = (...args) => impl.createGrupoSocios(...args);
+export const getGrupoSocios = (...args) => impl.getGrupoSocios(...args);
+export const listGruposSocios = (...args) => impl.listGruposSocios(...args);
+export const updateGrupoSocios = (...args) => impl.updateGrupoSocios(...args);
+export const deleteGrupoSocios = (...args) => impl.deleteGrupoSocios(...args);
+export const addMemberToGrupo = (...args) => impl.addMemberToGrupo(...args);
+export const removeMemberFromGrupo = (...args) => impl.removeMemberFromGrupo(...args);

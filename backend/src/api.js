@@ -549,6 +549,70 @@ export function registerApiRoutes(router) {
   });
 
   // ---------------------------------------------------------------------------
+  // Grupos de socios
+  // ---------------------------------------------------------------------------
+  router.get('/api/grupos-socios', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const grupos = await db.listGruposSocios(session.agency.id);
+    json(res, { grupos });
+  });
+
+  router.post('/api/grupos-socios', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const name = (body.name || '').trim();
+    if (!name) return err(res, 'El nombre del grupo es requerido.', 400);
+    const grupo = await db.createGrupoSocios({ agencyId: session.agency.id, name });
+    json(res, { grupo });
+  });
+
+  router.put('/api/grupos-socios/:id', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const grupo = await db.getGrupoSocios(req.params.id);
+    if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
+    const body = await parseJson(req);
+    const name = (body.name || '').trim();
+    if (!name) return err(res, 'El nombre del grupo es requerido.', 400);
+    const updated = await db.updateGrupoSocios(grupo.id, name);
+    json(res, { grupo: updated });
+  });
+
+  router.delete('/api/grupos-socios/:id', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const grupo = await db.getGrupoSocios(req.params.id);
+    if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
+    await db.deleteGrupoSocios(grupo.id);
+    json(res, { ok: true });
+  });
+
+  router.post('/api/grupos-socios/:id/miembros', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const grupo = await db.getGrupoSocios(req.params.id);
+    if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
+    const body = await parseJson(req);
+    const partnerId = body.partnerId;
+    if (!partnerId) return err(res, 'partnerId requerido.', 400);
+    const partnerIds = await db.listPartnersOfAgency(session.agency.id);
+    if (!partnerIds.includes(partnerId)) return err(res, 'Ese agente no es tu socio.', 400);
+    await db.addMemberToGrupo(grupo.id, partnerId);
+    json(res, { ok: true });
+  });
+
+  router.delete('/api/grupos-socios/:id/miembros/:partnerId', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const grupo = await db.getGrupoSocios(req.params.id);
+    if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
+    await db.removeMemberFromGrupo(grupo.id, req.params.partnerId);
+    json(res, { ok: true });
+  });
+
+  // ---------------------------------------------------------------------------
   // Invitaciones
   // ---------------------------------------------------------------------------
   router.get('/api/invitaciones', async (req, res) => {

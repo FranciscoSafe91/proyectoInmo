@@ -54,6 +54,7 @@ function toProperty(r) {
     bedrooms: r.bedrooms, bathrooms: r.bathrooms, areaM2: Number(r.area_m2),
     status: r.status, createdAt: r.created_at, updatedAt: r.updated_at,
     barrioCerrado: Boolean(r.barrio_cerrado),
+    nombreBarrioCerrado: r.nombre_barrio_cerrado || '',
     zonaGeografica: r.zona_geografica || '',
     partido: r.partido || '',
     localidad: r.localidad || '',
@@ -468,6 +469,7 @@ export async function deleteSession(token) {
 async function ensurePropertyLocationColumns() {
   const cols = [
     "ALTER TABLE propiedades ADD COLUMN barrio_cerrado TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE propiedades ADD COLUMN nombre_barrio_cerrado VARCHAR(200) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN zona_geografica VARCHAR(100) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN partido VARCHAR(100) NOT NULL DEFAULT ''",
     "ALTER TABLE propiedades ADD COLUMN calle VARCHAR(200) NOT NULL DEFAULT ''",
@@ -586,7 +588,7 @@ export async function createProperty(data) {
     `INSERT INTO propiedades
       (id,agency_id,created_by_user_id,title,description,operation,type,price,currency,
        address,city,province,bedrooms,bathrooms,area_m2,status,
-       barrio_cerrado,zona_geografica,partido,localidad,calle,nro_calle,piso,depto,
+       barrio_cerrado,nombre_barrio_cerrado,zona_geografica,partido,localidad,calle,nro_calle,piso,depto,
        mostrar_portales,entre_calles,y_calles,cerca_de,latitud,longitud,
        ancho_terreno,largo_terreno,superficie_terreno,superficie_total,
        superficie_cubierta,superficie_descubierta,superficie_semicubierta,fondo_libre,
@@ -606,6 +608,7 @@ export async function createProperty(data) {
       Number(data.bedrooms) || 0, Number(data.bathrooms) || 0, Number(data.areaM2) || 0,
       data.status || 'publicada',
       data.barrioCerrado === 'true' || data.barrioCerrado === true ? 1 : 0,
+      data.nombreBarrioCerrado || '',
       zonaGeografica, partido, data.localidad || '', calle, nroCalle,
       data.piso || '', data.depto || '',
       data.mostrarPortales || data.mostrar_portales || 'aproximada',
@@ -718,6 +721,7 @@ export async function updateProperty(propertyId, patch) {
     province: 'province', bedrooms: 'bedrooms', bathrooms: 'bathrooms',
     areaM2: 'area_m2', status: 'status',
     zonaGeografica: 'zona_geografica', partido: 'partido', localidad: 'localidad',
+    nombreBarrioCerrado: 'nombre_barrio_cerrado',
     calle: 'calle', nroCalle: 'nro_calle', piso: 'piso', depto: 'depto',
     mostrarPortales: 'mostrar_portales',
     entreCalles: 'entre_calles', yCalles: 'y_calles', cercaDe: 'cerca_de',
@@ -1498,4 +1502,82 @@ export async function reopenSupportTicket(ticketId) {
     `UPDATE tickets_soporte SET status='abierto', responded_at=NULL WHERE id=?`, [ticketId]
   );
   return getSupportTicket(ticketId);
+}
+
+// ---------------------------------------------------------------------------
+// Grupos de socios
+// ---------------------------------------------------------------------------
+async function ensureGruposSociosTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS grupos_socios (
+      id VARCHAR(36) PRIMARY KEY,
+      agency_id VARCHAR(36) NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      created_at DATETIME NOT NULL
+    )
+  `).catch(() => {});
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS grupos_socios_members (
+      grupo_id VARCHAR(36) NOT NULL,
+      partner_id VARCHAR(36) NOT NULL,
+      PRIMARY KEY (grupo_id, partner_id)
+    )
+  `).catch(() => {});
+}
+
+function toGrupo(row, members = []) {
+  if (!row) return null;
+  return { id: row.id, agencyId: row.agency_id, name: row.name, createdAt: row.created_at, members };
+}
+
+export async function createGrupoSocios({ agencyId, name }) {
+  await ensureGruposSociosTable();
+  const id = uuid();
+  await pool.query(
+    `INSERT INTO grupos_socios (id, agency_id, name, created_at) VALUES (?, ?, ?, NOW())`,
+    [id, agencyId, name]
+  );
+  return getGrupoSocios(id);
+}
+
+export async function getGrupoSocios(grupoId) {
+  await ensureGruposSociosTable();
+  const [rows] = await pool.query('SELECT * FROM grupos_socios WHERE id=?', [grupoId]);
+  if (!rows[0]) return null;
+  const [memberRows] = await pool.query('SELECT partner_id FROM grupos_socios_members WHERE grupo_id=?', [grupoId]);
+  return toGrupo(rows[0], memberRows.map(r => r.partner_id));
+}
+
+export async function listGruposSocios(agencyId) {
+  await ensureGruposSociosTable();
+  const [rows] = await pool.query('SELECT * FROM grupos_socios WHERE agency_id=? ORDER BY created_at ASC', [agencyId]);
+  return Promise.all(rows.map(async row => {
+    const [memberRows] = await pool.query('SELECT partner_id FROM grupos_socios_members WHERE grupo_id=?', [row.id]);
+    return toGrupo(row, memberRows.map(r => r.partner_id));
+  }));
+}
+
+export async function updateGrupoSocios(grupoId, name) {
+  await ensureGruposSociosTable();
+  await pool.query('UPDATE grupos_socios SET name=? WHERE id=?', [name, grupoId]);
+  return getGrupoSocios(grupoId);
+}
+
+export async function deleteGrupoSocios(grupoId) {
+  await ensureGruposSociosTable();
+  await pool.query('DELETE FROM grupos_socios_members WHERE grupo_id=?', [grupoId]);
+  await pool.query('DELETE FROM grupos_socios WHERE id=?', [grupoId]);
+}
+
+export async function addMemberToGrupo(grupoId, partnerId) {
+  await ensureGruposSociosTable();
+  await pool.query(
+    'INSERT IGNORE INTO grupos_socios_members (grupo_id, partner_id) VALUES (?, ?)',
+    [grupoId, partnerId]
+  );
+}
+
+export async function removeMemberFromGrupo(grupoId, partnerId) {
+  await ensureGruposSociosTable();
+  await pool.query('DELETE FROM grupos_socios_members WHERE grupo_id=? AND partner_id=?', [grupoId, partnerId]);
 }

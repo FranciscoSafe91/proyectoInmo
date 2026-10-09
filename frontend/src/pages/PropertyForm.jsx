@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Camera, Home, ImagePlus, Loader, MapPin, Ruler, Search, Video } from 'lucide-react';
 import { api } from '../api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
 import { getBarriosCerrados } from '../barriosCerradosData.js';
@@ -438,7 +439,11 @@ export default function PropertyForm() {
   const duplicarDe = new URLSearchParams(location.search).get('duplicarDe');
   const isDuplicate = !isEdit && Boolean(duplicarDe);
 
-  const [property, setProperty] = useState(EMPTY_PROPERTY);
+  const { canDo } = useAuth();
+  const canPublish = canDo('publicar_propiedades');
+  const [property, setProperty] = useState(
+    canPublish ? EMPTY_PROPERTY : { ...EMPTY_PROPERTY, status: 'borrador' }
+  );
   const [allMedia, setAllMedia] = useState([]);
   const [activePreview, setActivePreview] = useState(0);
   const [error, setError] = useState('');
@@ -1191,8 +1196,10 @@ export default function PropertyForm() {
           </div>
 
           <label htmlFor="status">Estado</label>
-          <select id="status" name="status" value={property.status} onChange={handleChange}>
-            <option value="publicada">Publicada</option>
+          <select id="status" name="status" value={property.status} onChange={handleChange}
+                  disabled={!canPublish && isEdit}
+                  title={!canPublish ? 'No tenés permiso para publicar o despublicar' : undefined}>
+            <option value="publicada" disabled={!canPublish}>Publicada</option>
             <option value="borrador">Borrador</option>
             <option value="pausada">Pausada</option>
           </select>

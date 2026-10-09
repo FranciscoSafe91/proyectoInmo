@@ -1,5 +1,6 @@
 import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as db from './db.js';
+import { SESSION_MAX_AGE_DAYS } from './db-mysql.js';
 
 export function hashPassword(password) {
   const salt = randomBytes(16).toString('hex');
@@ -54,10 +55,13 @@ function cookieAttributes(req) {
 }
 
 export async function login(req, res, userId) {
+  // Si el navegador traía otra sesión, se descarta: cada login emite un token nuevo.
+  const previous = parseCookies(req)[COOKIE_NAME];
+  if (previous) await db.deleteSession(previous);
   const token = await db.createSession(userId);
   res.setHeader(
     'Set-Cookie',
-    `${COOKIE_NAME}=${token}; ${cookieAttributes(req)}; Max-Age=${60 * 60 * 24 * 7}`
+    `${COOKIE_NAME}=${token}; ${cookieAttributes(req)}; Max-Age=${60 * 60 * 24 * SESSION_MAX_AGE_DAYS}`
   );
 }
 

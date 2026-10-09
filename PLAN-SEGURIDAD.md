@@ -179,7 +179,11 @@
 | 0.4 | Cookie `Secure` + headers básicos (HSTS, nosniff, frame-options) | A5, A6 | S |
 | 0.5 | Regenerar las API keys de todas las agencias e invalidar todas las sesiones (supuesto: ya estuvieron expuestas) | C1, A4 | S |
 
-### Fase 1 — Pre-requisitos para activar Mercado Pago (~1 semana)
+### Fase 1 — Pre-requisitos para activar Mercado Pago (~1 semana) — ✅ código implementado 2026-10-09
+> Módulos nuevos: `backend/src/payments.js` (webhook, conciliación, control de suscripción) y `backend/src/security.js` (rate limiting, IP del cliente, CSRF).
+> Variables nuevas: `MP_WEBHOOK_SECRET` (obligatoria junto con `MP_ACCESS_TOKEN`), `ENFORCE_SUBSCRIPTION=true` (activar recién cuando MP esté operativo), `APP_URL` (opcional; si falta se usa `CORS_ORIGIN`).
+> No incluido: los endpoints de match-requests no tienen un permiso equivalente en el frontend y quedaron sin restricción por acción. El límite de tiempo sobre `ts` de la firma no se aplica: los reintentos de MP podrían reutilizarlo, y los replays ya no tienen efecto gracias a la idempotencia.
+
 | # | Tarea | Hallazgo | Esfuerzo |
 |---|---|---|---|
 | 1.1 | Rehacer el webhook: firma, idempotencia (UNIQUE), validación de monto, tópicos de preapproval, reembolsos/contracargos, 500 ante error | C2 | M |

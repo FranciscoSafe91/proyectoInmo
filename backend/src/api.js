@@ -7,6 +7,8 @@ import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
 import { randomUUID } from 'node:crypto';
 import * as mail from './mail.js';
+import * as payments from './payments.js';
+import * as security from './security.js';
 import { uploadBuffer, deleteResource, signUpload, uploadStreamToCloudinary } from './cloudinary.js';
 
 const LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
@@ -85,10 +87,45 @@ async function savePropertyMedia(propertyId, files) {
   return created;
 }
 
+// Rutas que siguen disponibles con la suscripción vencida: lo necesario para
+// entrar, ver el estado, pagar y pedir ayuda.
+const SUBSCRIPTION_EXEMPT_PREFIXES = [
+  '/api/session', '/api/logout', '/api/dashboard', '/api/configuracion',
+  '/api/suscripcion', '/api/soporte', '/api/mi-cuenta',
+];
+
 async function requireSession(req, res) {
   const session = await auth.getCurrentUser(req);
   if (!session) { err(res, 'No autenticado', 401); return null; }
+  const path = (req.url || '').split('?')[0];
+  if (!session.user.isPlatformAdmin
+      && !SUBSCRIPTION_EXEMPT_PREFIXES.some(p => path === p || path.startsWith(`${p}/`))
+      && !(await payments.hasActiveSubscription(session.agency.id))) {
+    json(res, { error: 'Tu suscripción no está activa. Renovala para seguir usando el sistema.', code: 'suscripcion_inactiva' }, 402);
+    return null;
+  }
   return session;
+}
+
+// Misma regla que canDo() en frontend/src/contexts/AuthContext.jsx: admin o sin
+// restricciones (null / formato viejo en array) = todo permitido.
+function canDo(session, action) {
+  const { role, menuPermisos } = session.user;
+  if (role === 'admin') return true;
+  if (!menuPermisos || Array.isArray(menuPermisos)) return true;
+  return Array.isArray(menuPermisos.acciones) && menuPermisos.acciones.includes(action);
+}
+
+function requireAction(res, session, ...actions) {
+  if (actions.some(a => canDo(session, a))) return true;
+  err(res, 'No tenés permiso para realizar esta acción.', 403);
+  return false;
+}
+
+function tooManyRequests(res, retryAfterSeconds) {
+  res.setHeader('Retry-After', String(retryAfterSeconds));
+  const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+  err(res, `Demasiados intentos. Probá de nuevo en ${minutes} minuto${minutes === 1 ? '' : 's'}.`, 429);
 }
 
 async function requirePlatformAdmin(req, res) {
@@ -138,10 +175,18 @@ export function registerApiRoutes(router) {
     const { email, password } = body;
     if (!email || !password) return err(res, 'Ingresá tu email y contraseña.', 400);
 
+    const ipWait = security.consume(`login:ip:${security.clientIp(req)}`, security.LIMITS.loginPerIp);
+    if (ipWait) return tooManyRequests(res, ipWait);
+    const emailKey = `login:fail:${String(email).trim().toLowerCase()}`;
+    const emailWait = security.isBlocked(emailKey, security.LIMITS.loginFailPerEmail);
+    if (emailWait) return tooManyRequests(res, emailWait);
+
     const credentials = await db.findUserCredentialsByEmail(email);
     if (!credentials || !auth.verifyPassword(password, credentials.passwordHash, credentials.passwordSalt)) {
+      security.consume(emailKey, security.LIMITS.loginFailPerEmail);
       return err(res, 'Email o contraseña incorrectos.', 401);
     }
+    security.reset(emailKey);
     const user = await db.getUser(credentials.id);
     await auth.login(req, res, user.id);
     const agency = await db.getAgency(user.agencyId);
@@ -156,6 +201,8 @@ export function registerApiRoutes(router) {
     if (!fullName || !email || !agencyName || !username || !password) {
       return err(res, 'Completá todos los campos obligatorios.');
     }
+    const regWait = security.consume(`register:ip:${security.clientIp(req)}`, security.LIMITS.registerPerIp);
+    if (regWait) return tooManyRequests(res, regWait);
 
     const existing = await db.findUserByEmail(email);
     if (existing) return err(res, 'Ya existe un usuario con ese email.');
@@ -196,11 +243,17 @@ export function registerApiRoutes(router) {
     const body = await parseJson(req);
     const { email } = body;
     if (!email) return err(res, 'Ingresá un email.', 400);
-    const user = await db.findUserByEmail(email);
+    const forgotWait = security.consume(`forgot:ip:${security.clientIp(req)}`, security.LIMITS.forgotPerIp);
+    if (forgotWait) return tooManyRequests(res, forgotWait);
+    // Por email se limita en silencio (sin 429) para no revelar si la cuenta existe
+    // y para que nadie pueda inundar la casilla de otra persona.
+    const emailLimited = security.consume(`forgot:email:${String(email).trim().toLowerCase()}`, security.LIMITS.forgotPerEmail);
+    const user = emailLimited ? null : await db.findUserByEmail(email);
     if (user && mail.isConfigured()) {
       const token = await db.createPasswordResetToken(user.id);
-      const frontendBase = process.env.CORS_ORIGIN || baseUrlFor(req);
-      const resetUrl = `${frontendBase}/reset-password?token=${token}`;
+      // Nunca derivar el dominio del header Host: un atacante podría hacer que el
+      // link de reseteo apunte a su servidor y robar el token.
+      const resetUrl = `${mail.APP_URL}/reset-password?token=${token}`;
       mail.sendPasswordReset(user.email, resetUrl).catch(() => {});
     }
     // Siempre responder ok para no revelar si el email existe
@@ -213,11 +266,15 @@ export function registerApiRoutes(router) {
     if (!token || !password || password.length < 6) {
       return err(res, 'La contraseña debe tener al menos 6 caracteres.', 400);
     }
+    const resetWait = security.consume(`reset:ip:${security.clientIp(req)}`, security.LIMITS.resetPerIp);
+    if (resetWait) return tooManyRequests(res, resetWait);
     const resetToken = await db.getPasswordResetToken(token);
     if (!resetToken) return err(res, 'El enlace expiró o ya fue usado.', 400);
     const { hash, salt } = auth.hashPassword(password);
     await db.updateUserPassword(resetToken.userId, hash, salt);
     await db.deletePasswordResetToken(token);
+    // Si alguien tenía la cuenta tomada, pierde el acceso en este momento.
+    await db.deleteSessionsForUser(resetToken.userId);
     return json(res, { ok: true });
   });
 
@@ -259,6 +316,7 @@ export function registerApiRoutes(router) {
   router.post('/api/propiedades', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_propiedades')) return;
     let body;
     let files = [];
     try {
@@ -269,6 +327,9 @@ export function registerApiRoutes(router) {
       return err(res, 'Error al procesar los archivos.');
     }
     if (!body.title) return err(res, 'El título es obligatorio.');
+    if ((body.status || 'publicada') === 'publicada' && !canDo(session, 'publicar_propiedades')) {
+      return err(res, 'No tenés permiso para publicar propiedades. Guardala como borrador.', 403);
+    }
     let property;
     try {
       property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
@@ -314,6 +375,7 @@ export function registerApiRoutes(router) {
   router.put('/api/propiedades/:id', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'editar_propiedades')) return;
     const property = await db.getProperty(req.params.id);
     if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
       return err(res, 'Propiedad no encontrada.', 404);
@@ -327,6 +389,9 @@ export function registerApiRoutes(router) {
     } catch {
       return err(res, 'Error al procesar los archivos.');
     }
+    if (body.status !== undefined && body.status !== property.status && !canDo(session, 'publicar_propiedades')) {
+      return err(res, 'No tenés permiso para publicar o despublicar propiedades.', 403);
+    }
     const updated = await db.updateProperty(property.id, body);
     const media = files.length
       ? await savePropertyMedia(property.id, files)
@@ -339,6 +404,7 @@ export function registerApiRoutes(router) {
   router.delete('/api/propiedades/:id', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'eliminar_propiedades')) return;
     const property = await db.getProperty(req.params.id);
     if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
       return err(res, 'Propiedad no encontrada.', 404);
@@ -351,6 +417,7 @@ export function registerApiRoutes(router) {
   router.post('/api/upload/video', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_propiedades', 'editar_propiedades')) return;
     const MAX_BYTES = 200 * 1024 * 1024; // 200 MB
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
     if (contentLength > MAX_BYTES) {
@@ -380,6 +447,7 @@ export function registerApiRoutes(router) {
   router.get('/api/cloudinary/sign', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_propiedades', 'editar_propiedades')) return;
     const timestamp = Math.round(Date.now() / 1000);
     const publicId = `spyderconnect/properties/${randomUUID()}`;
     const signature = signUpload({ timestamp, public_id: publicId });
@@ -396,8 +464,11 @@ export function registerApiRoutes(router) {
   router.post('/api/propiedades/:id/media-url', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_propiedades', 'editar_propiedades')) return;
     const property = await db.getProperty(req.params.id);
-    if (!property || property.agencyId !== session.agency.id) return err(res, 'No encontrada.', 404);
+    if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
+      return err(res, 'No encontrada.', 404);
+    }
     const body = await parseJson(req);
     if (!body.url || !body.type) return err(res, 'url y type son requeridos.', 400);
     const media = await db.createPropertyMedia({
@@ -413,6 +484,7 @@ export function registerApiRoutes(router) {
   router.post('/api/propiedades/:id/compartir', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'compartir_propiedades')) return;
     const property = await db.getProperty(req.params.id);
     if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
       return err(res, 'Propiedad no encontrada.', 404);
@@ -442,6 +514,7 @@ export function registerApiRoutes(router) {
   router.delete('/api/propiedades/:propertyId/compartir/:shareId', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'compartir_propiedades')) return;
     const property = await db.getProperty(req.params.propertyId);
     const share = await db.getPropertyShare(req.params.shareId);
     if (property && share && property.agencyId === session.agency.id && share.propertyId === property.id) {
@@ -454,6 +527,7 @@ export function registerApiRoutes(router) {
   router.post('/api/propiedades/:propertyId/compartir/:shareId/autorizar-web', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'compartir_propiedades')) return;
     const property = await db.getProperty(req.params.propertyId);
     const share = await db.getPropertyShare(req.params.shareId);
     if (property && share && property.agencyId === session.agency.id && share.propertyId === property.id) {
@@ -465,6 +539,7 @@ export function registerApiRoutes(router) {
   router.post('/api/propiedades/:propertyId/compartir/:shareId/quitar-autorizacion-web', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'compartir_propiedades')) return;
     const property = await db.getProperty(req.params.propertyId);
     const share = await db.getPropertyShare(req.params.shareId);
     if (property && share && property.agencyId === session.agency.id && share.propertyId === property.id) {
@@ -522,6 +597,7 @@ export function registerApiRoutes(router) {
   router.post('/api/socios/:agencyId/solicitar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const targetAgencyId = req.params.agencyId;
     const target = await db.getAgency(targetAgencyId);
     if (target && targetAgencyId !== session.agency.id && !await db.findPartnership(session.agency.id, targetAgencyId)) {
@@ -533,6 +609,7 @@ export function registerApiRoutes(router) {
   router.post('/api/socios/solicitud/:partnershipId/aceptar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const partnership = await db.getPartnership(req.params.partnershipId);
     if (partnership && partnership.agencyBId === session.agency.id && partnership.status === 'pendiente') {
       await db.respondPartnership(partnership.id, 'aceptada');
@@ -552,6 +629,7 @@ export function registerApiRoutes(router) {
   router.post('/api/socios/solicitud/:partnershipId/rechazar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const partnership = await db.getPartnership(req.params.partnershipId);
     if (partnership && partnership.agencyBId === session.agency.id && partnership.status === 'pendiente') {
       await db.respondPartnership(partnership.id, 'rechazada');
@@ -562,6 +640,7 @@ export function registerApiRoutes(router) {
   router.delete('/api/socios/:partnershipId', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const partnership = await db.getPartnership(req.params.partnershipId);
     if (!partnership || partnership.status !== 'aceptada') return err(res, 'Sociedad no encontrada.', 404);
     const belongs = partnership.agencyAId === session.agency.id || partnership.agencyBId === session.agency.id;
@@ -583,6 +662,7 @@ export function registerApiRoutes(router) {
   router.post('/api/grupos-socios', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const body = await parseJson(req);
     const name = (body.name || '').trim();
     if (!name) return err(res, 'El nombre del grupo es requerido.', 400);
@@ -593,6 +673,7 @@ export function registerApiRoutes(router) {
   router.put('/api/grupos-socios/:id', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const grupo = await db.getGrupoSocios(req.params.id);
     if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
     const body = await parseJson(req);
@@ -605,6 +686,7 @@ export function registerApiRoutes(router) {
   router.delete('/api/grupos-socios/:id', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const grupo = await db.getGrupoSocios(req.params.id);
     if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
     await db.deleteGrupoSocios(grupo.id);
@@ -614,6 +696,7 @@ export function registerApiRoutes(router) {
   router.post('/api/grupos-socios/:id/miembros', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const grupo = await db.getGrupoSocios(req.params.id);
     if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
     const body = await parseJson(req);
@@ -628,6 +711,7 @@ export function registerApiRoutes(router) {
   router.delete('/api/grupos-socios/:id/miembros/:partnerId', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'gestionar_socios')) return;
     const grupo = await db.getGrupoSocios(req.params.id);
     if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
     await db.removeMemberFromGrupo(grupo.id, req.params.partnerId);
@@ -658,6 +742,7 @@ export function registerApiRoutes(router) {
   router.post('/api/invitaciones/compartir/:shareId/aceptar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'responder_compartidas')) return;
     const share = await db.getPropertyShare(req.params.shareId);
     if (share && share.targetAgencyId === session.agency.id && share.status === 'pendiente') {
       const body = await parseJson(req);
@@ -669,6 +754,7 @@ export function registerApiRoutes(router) {
   router.post('/api/invitaciones/compartir/:shareId/rechazar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'responder_compartidas')) return;
     const share = await db.getPropertyShare(req.params.shareId);
     if (share && share.targetAgencyId === session.agency.id && share.status === 'pendiente') {
       const body = await parseJson(req);
@@ -715,6 +801,7 @@ export function registerApiRoutes(router) {
   router.post('/api/alertas', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_alertas')) return;
     const body = await parseJson(req);
     const alert = await db.createSearchAlert({ ...body, agencyId: session.agency.id });
     db.syncMatchRequestsForAlert(alert.id, session.agency.id).catch(() => {});
@@ -813,6 +900,7 @@ export function registerApiRoutes(router) {
   router.post('/api/alertas/:id/pausar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_alertas')) return;
     const alert = await db.getSearchAlert(req.params.id);
     if (alert && alert.agencyId === session.agency.id) await db.setSearchAlertActive(alert.id, false);
     json(res, { ok: true });
@@ -821,6 +909,7 @@ export function registerApiRoutes(router) {
   router.post('/api/alertas/:id/activar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_alertas')) return;
     const alert = await db.getSearchAlert(req.params.id);
     if (alert && alert.agencyId === session.agency.id) await db.setSearchAlertActive(alert.id, true);
     json(res, { ok: true });
@@ -829,6 +918,7 @@ export function registerApiRoutes(router) {
   router.delete('/api/alertas/:id', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'crear_alertas')) return;
     const alert = await db.getSearchAlert(req.params.id);
     if (alert && alert.agencyId === session.agency.id) await db.deleteSearchAlert(alert.id);
     json(res, { ok: true });
@@ -837,6 +927,7 @@ export function registerApiRoutes(router) {
   router.post('/api/alertas/:alertId/compartir/:propertyId', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAction(res, session, 'compartir_propiedades')) return;
     const alert = await db.getSearchAlert(req.params.alertId);
     const property = await db.getProperty(req.params.propertyId);
     if (alert && property && property.agencyId === session.agency.id && await db.arePartners(session.agency.id, alert.agencyId)) {
@@ -863,6 +954,7 @@ export function registerApiRoutes(router) {
   router.post('/api/mi-web/regenerar-clave', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAccountAdmin(req, res, session)) return;
     await db.regenerateApiKey(session.agency.id);
     json(res, { ok: true });
   });
@@ -895,6 +987,7 @@ export function registerApiRoutes(router) {
   router.put('/api/mi-cuenta', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAccountAdmin(req, res, session)) return;
     const body = await parseJson(req);
     const agency = await db.updateAgency(session.agency.id, {
       phone: body.phone || '',
@@ -907,6 +1000,7 @@ export function registerApiRoutes(router) {
   router.post('/api/mi-cuenta/logo', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAccountAdmin(req, res, session)) return;
     if (!isMultipart(req)) return err(res, 'Solicitud inválida.');
     let parsed;
     try { parsed = await parseMultipartFormData(req, { maxBytes: 8 * 1024 * 1024 }); } catch { return err(res, 'Error al procesar el archivo.'); }
@@ -924,6 +1018,7 @@ export function registerApiRoutes(router) {
   router.post('/api/mi-cuenta/logo/quitar', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    if (!requireAccountAdmin(req, res, session)) return;
     await deleteResource(`spyderconnect/logos/${session.agency.id}`);
     const agency = await db.updateAgency(session.agency.id, { logoPath: null });
     json(res, { agency });
@@ -1038,7 +1133,7 @@ export function registerApiRoutes(router) {
         const preapproval = await mercadopago.createPreapproval({
           reason: plan.name, payerEmail: session.agency.email, amount: plan.priceARS,
           externalReference: session.agency.id,
-          backUrl: `${CORS_ORIGIN}/suscripcion`,
+          backUrl: `${mail.APP_URL}/suscripcion`,
         });
         await db.updateSubscription(session.agency.id, { mpPreapprovalId: preapproval.id });
         return json(res, { ok: true, redirectUrl: preapproval.init_point });
@@ -1191,6 +1286,8 @@ export function registerApiRoutes(router) {
   });
 
   router.post('/api/unirse/:token', async (req, res) => {
+    const joinWait = security.consume(`join:ip:${security.clientIp(req)}`, security.LIMITS.invitePerIp);
+    if (joinWait) return tooManyRequests(res, joinWait);
     const invitation = await db.getInvitationByToken(req.params.token);
     if (!invitation || invitation.status !== 'pendiente') return err(res, 'Este link de invitación no es válido, ya fue usado o fue cancelado.', 410);
     const agency = await db.getAgency(invitation.agencyId);

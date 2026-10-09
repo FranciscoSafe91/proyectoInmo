@@ -5,7 +5,7 @@ const SMTP_PORT = Number(process.env.MAIL_SMTP_PORT) || 465;
 const SMTP_USER = process.env.MAIL_SMTP_USER || '';
 const SMTP_PASS = process.env.MAIL_SMTP_PASS || '';
 const FROM_ADDRESS = process.env.MAIL_FROM || SMTP_USER;
-const APP_URL = process.env.CORS_ORIGIN || 'https://spyderconnect.com';
+export const APP_URL = (process.env.APP_URL || process.env.CORS_ORIGIN || 'https://spyderconnect.com').replace(/\/+$/, '');
 
 let _transport = null;
 
@@ -37,7 +37,28 @@ function baseHtml(content) {
   `;
 }
 
+// Todo dato que viene de usuarios (nombres, títulos, mensajes) se escapa antes de
+// meterlo en el HTML: si no, una inmobiliaria podría inyectar links o formularios
+// falsos en emails que salen desde nuestro dominio (phishing).
+function esc(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Los asuntos van en un header: sin saltos de línea.
+function oneLine(value) {
+  return String(value ?? '').replace(/[\r\n]+/g, ' ').slice(0, 200);
+}
+
 export async function sendPasswordReset(to, resetUrl) {
+  // El link lo arma el backend con APP_URL; igual se valida que apunte a nuestra app.
+  if (!String(resetUrl).startsWith(`${APP_URL}/`)) {
+    throw new Error('URL de reseteo fuera del dominio de la aplicación.');
+  }
   await getTransport().sendMail({
     from: `"SpyderConnect" <${FROM_ADDRESS}>`,
     to,
@@ -46,7 +67,7 @@ export async function sendPasswordReset(to, resetUrl) {
       <h2 style="margin-top:0">Recuperar contraseña</h2>
       <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta.</p>
       <p style="margin:24px 0">
-        <a href="${resetUrl}"
+        <a href="${esc(resetUrl)}"
            style="background:#1f6f54;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold">
           Restablecer contraseña
         </a>
@@ -65,7 +86,7 @@ export async function sendWelcome(to, name) {
     to,
     subject: '¡Bienvenido a SpyderConnect!',
     html: baseHtml(`
-      <h2 style="margin-top:0">¡Bienvenido, ${name}!</h2>
+      <h2 style="margin-top:0">¡Bienvenido, ${esc(name)}!</h2>
       <p>Tu cuenta en SpyderConnect fue creada exitosamente.</p>
       <p>Ya podés ingresar y empezar a gestionar y compartir tus propiedades con otras inmobiliarias.</p>
       <p style="margin:24px 0">
@@ -87,12 +108,12 @@ export async function sendAlertMatch(to, { partnerAgencyName, propertyTitle, ale
   await getTransport().sendMail({
     from: `"SpyderConnect" <${FROM_ADDRESS}>`,
     to,
-    subject: `Nueva coincidencia${mudanzaInmediata ? ' 🚚 MUDANZA INMEDIATA' : ''}: ${alertTitle || propertyTitle}`,
+    subject: oneLine(`Nueva coincidencia${mudanzaInmediata ? ' 🚚 MUDANZA INMEDIATA' : ''}: ${alertTitle || propertyTitle}`),
     html: baseHtml(`
       <h2 style="margin-top:0">¡Encontramos una coincidencia!</h2>
       ${urgencyBanner}
-      <p>La inmobiliaria <strong>${partnerAgencyName}</strong> tiene una propiedad que coincide con tu alerta <strong>"${alertTitle || 'sin título'}"</strong>:</p>
-      <p style="font-size:1.1rem;margin:16px 0"><strong>${propertyTitle}</strong></p>
+      <p>La inmobiliaria <strong>${esc(partnerAgencyName)}</strong> tiene una propiedad que coincide con tu alerta <strong>"${esc(alertTitle || 'sin título')}"</strong>:</p>
+      <p style="font-size:1.1rem;margin:16px 0"><strong>${esc(propertyTitle)}</strong></p>
       <p>Entrá a SpyderConnect para pedirle que te la comparta.</p>
       <p style="margin:24px 0">
         <a href="${APP_URL}/alertas"
@@ -108,16 +129,16 @@ export async function sendSupportTicket({ agencyName, userName, email, phone, su
   await getTransport().sendMail({
     from: `"SpyderConnect" <${FROM_ADDRESS}>`,
     to: 'soporte@spyderconnect.com',
-    subject: `[Soporte] ${subject}`,
+    subject: oneLine(`[Soporte] ${subject}`),
     html: baseHtml(`
       <h2 style="margin-top:0">Nueva consulta de soporte</h2>
-      <p><strong>Inmobiliaria:</strong> ${agencyName}</p>
-      <p><strong>Usuario:</strong> ${userName}</p>
-      <p><strong>Email:</strong> ${email || '-'}</p>
-      <p><strong>Teléfono:</strong> ${phone || '-'}</p>
-      <p><strong>Asunto:</strong> ${subject}</p>
+      <p><strong>Inmobiliaria:</strong> ${esc(agencyName)}</p>
+      <p><strong>Usuario:</strong> ${esc(userName)}</p>
+      <p><strong>Email:</strong> ${esc(email || '-')}</p>
+      <p><strong>Teléfono:</strong> ${esc(phone || '-')}</p>
+      <p><strong>Asunto:</strong> ${esc(subject)}</p>
       <hr style="border:none;border-top:1px solid #e0e0e0;margin:16px 0">
-      <p style="white-space:pre-wrap">${message}</p>
+      <p style="white-space:pre-wrap">${esc(message)}</p>
     `),
   });
 }

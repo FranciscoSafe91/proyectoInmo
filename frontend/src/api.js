@@ -232,6 +232,10 @@ async function req(method, path, body) {
     const res = await fetch(BASE + path, opts);
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
+      // Suscripción vencida: el backend corta el acceso y se lleva al usuario a pagar.
+      if (res.status === 402 && !window.location.pathname.startsWith('/suscripcion')) {
+        window.location.assign('/suscripcion');
+      }
       throw Object.assign(new Error(err.error || 'Error'), { status: res.status, data: err });
     }
     return res.json();

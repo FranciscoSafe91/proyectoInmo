@@ -29,6 +29,8 @@ export const deletePasswordResetToken = (...args) => impl.deletePasswordResetTok
 export const createSession = (...args) => impl.createSession(...args);
 export const getSession = (...args) => impl.getSession(...args);
 export const deleteSession = (...args) => impl.deleteSession(...args);
+export const deleteSessionsForUser = (...args) => impl.deleteSessionsForUser(...args);
+export const deleteExpiredSessions = (...args) => impl.deleteExpiredSessions(...args);
 export const createProperty = (...args) => impl.createProperty(...args);
 export const createPropertyMedia = (...args) => impl.createPropertyMedia(...args);
 export const listPropertyMedia = (...args) => impl.listPropertyMedia(...args);
@@ -83,6 +85,8 @@ export const getSubscriptionByAgency = (...args) => impl.getSubscriptionByAgency
 export const updateSubscription = (...args) => impl.updateSubscription(...args);
 export const effectiveSubscriptionStatus = (...args) => impl.effectiveSubscriptionStatus(...args);
 export const applySuccessfulPayment = (...args) => impl.applySuccessfulPayment(...args);
+export const revertPayment = (...args) => impl.revertPayment(...args);
+export const listSubscriptionsWithPreapproval = (...args) => impl.listSubscriptionsWithPreapproval(...args);
 export const createPayment = (...args) => impl.createPayment(...args);
 export const listPaymentsByAgency = (...args) => impl.listPaymentsByAgency(...args);
 export const listAgenciesWithSubscriptions = (...args) => impl.listAgenciesWithSubscriptions(...args);

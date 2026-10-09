@@ -487,13 +487,29 @@ export async function createSession(userId) {
   return token;
 }
 
+// Misma duración que la cookie (auth.js). Se controla en el servidor para que un
+// token robado no sirva para siempre aunque alguien guarde la cookie.
+export const SESSION_MAX_AGE_DAYS = 7;
+
 export async function getSession(token) {
-  const [rows] = await pool.query('SELECT * FROM sesiones WHERE token=?', [token]);
+  const [rows] = await pool.query(
+    `SELECT * FROM sesiones WHERE token=? AND created_at > (NOW() - INTERVAL ${SESSION_MAX_AGE_DAYS} DAY)`,
+    [token]
+  );
   return toSession(rows[0] || null);
 }
 
 export async function deleteSession(token) {
   await pool.query('DELETE FROM sesiones WHERE token=?', [token]);
+}
+
+// Cierra todas las sesiones de un usuario (p. ej. al resetear la contraseña).
+export async function deleteSessionsForUser(userId) {
+  await pool.query('DELETE FROM sesiones WHERE user_id=?', [userId]);
+}
+
+export async function deleteExpiredSessions() {
+  await pool.query(`DELETE FROM sesiones WHERE created_at <= (NOW() - INTERVAL ${SESSION_MAX_AGE_DAYS} DAY)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1417,21 +1433,110 @@ export function effectiveSubscriptionStatus(subscription) {
   return 'activa';
 }
 
+// Índice único sobre mp_payment_id: segunda barrera (además del SELECT ... FOR
+// UPDATE de abajo) para que un mismo pago de Mercado Pago no se acredite dos veces.
+// Varios NULL (pagos manuales/simulados) están permitidos por un UNIQUE.
+let pagosConstraintsEnsured = false;
+async function ensurePagosConstraints() {
+  if (pagosConstraintsEnsured) return;
+  try {
+    await pool.query('ALTER TABLE pagos ADD UNIQUE KEY uq_pagos_mp_payment (mp_payment_id)');
+  } catch (e) {
+    // ER_DUP_KEYNAME = ya existe. Cualquier otro error (p. ej. duplicados previos) se loguea.
+    if (e.code !== 'ER_DUP_KEYNAME') console.error('[pagos] No se pudo crear el índice único de mp_payment_id:', e.message);
+  }
+  pagosConstraintsEnsured = true;
+}
+
+/**
+ * Acredita un pago y extiende la suscripción BILLING_PERIOD_DAYS. Idempotente:
+ * si mpPaymentId ya fue registrado, no hace nada y devuelve { duplicate: true }.
+ */
 export async function applySuccessfulPayment(agencyId, { amount, currency, method, mpPaymentId }) {
-  const subscription = await getSubscriptionByAgency(agencyId);
-  if (!subscription) return null;
+  await ensurePagosConstraints();
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
 
-  const base =
-    subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > new Date()
-      ? subscription.currentPeriodEnd
-      : now();
+    if (mpPaymentId) {
+      const [dup] = await conn.query('SELECT id FROM pagos WHERE mp_payment_id=? FOR UPDATE', [mpPaymentId]);
+      if (dup.length) { await conn.commit(); return { duplicate: true }; }
+    }
 
-  await updateSubscription(agencyId, {
-    status: 'activa',
-    currentPeriodEnd: addDays(base, BILLING_PERIOD_DAYS),
-  });
+    const [subRows] = await conn.query('SELECT * FROM suscripciones WHERE agency_id=? FOR UPDATE', [agencyId]);
+    let subscription = toSubscription(subRows[0] || null);
+    if (!subscription) {
+      // Agencias viejas sin fila de suscripción: se crea al primer pago.
+      const id = uuid();
+      await conn.query(
+        `INSERT INTO suscripciones (id,agency_id,status,trial_ends_at,created_at) VALUES (?,?,'activa',NULL,NOW())`,
+        [id, agencyId]
+      );
+      subscription = { id, currentPeriodEnd: null };
+    }
 
-  return createPayment({ agencyId, subscriptionId: subscription.id, amount, currency, status: 'aprobado', method, mpPaymentId });
+    const base =
+      subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > new Date()
+        ? subscription.currentPeriodEnd
+        : now();
+
+    const paymentId = uuid();
+    await conn.query(
+      `INSERT INTO pagos (id,agency_id,subscription_id,amount,currency,status,method,mp_payment_id,created_at)
+       VALUES (?,?,?,?,?,'aprobado',?,?,NOW())`,
+      [paymentId, agencyId, subscription.id, amount, currency || 'ARS', method || 'simulado', mpPaymentId || null]
+    );
+    await conn.query(
+      `UPDATE suscripciones SET status='activa', current_period_end=? WHERE agency_id=?`,
+      [addDays(base, BILLING_PERIOD_DAYS), agencyId]
+    );
+
+    await conn.commit();
+    const [rows] = await pool.query('SELECT * FROM pagos WHERE id=?', [paymentId]);
+    return toPayment(rows[0]);
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    if (e.code === 'ER_DUP_ENTRY') return { duplicate: true }; // carrera entre dos webhooks iguales
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Revierte un pago ya acreditado (reembolso o contracargo): marca el pago y le
+ * resta a la suscripción el período que ese pago había comprado. Idempotente:
+ * solo actúa si el pago todavía figura como 'aprobado'.
+ */
+export async function revertPayment(mpPaymentId, newStatus) {
+  await ensurePagosConstraints();
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query('SELECT * FROM pagos WHERE mp_payment_id=? FOR UPDATE', [mpPaymentId]);
+    const pago = rows[0];
+    if (!pago || pago.status !== 'aprobado') { await conn.commit(); return null; }
+
+    await conn.query('UPDATE pagos SET status=? WHERE id=?', [newStatus, pago.id]);
+    const [subRows] = await conn.query('SELECT * FROM suscripciones WHERE agency_id=? FOR UPDATE', [pago.agency_id]);
+    const sub = subRows[0];
+    if (sub && sub.current_period_end) {
+      await conn.query('UPDATE suscripciones SET current_period_end=? WHERE agency_id=?',
+        [addDays(sub.current_period_end, -BILLING_PERIOD_DAYS), pago.agency_id]);
+    }
+    await conn.commit();
+    return { agencyId: pago.agency_id };
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+export async function listSubscriptionsWithPreapproval() {
+  const [rows] = await pool.query('SELECT * FROM suscripciones WHERE mp_preapproval_id IS NOT NULL');
+  return rows.map(toSubscription);
 }
 
 export async function createPayment({ agencyId, subscriptionId, amount, currency, status, method, mpPaymentId }) {

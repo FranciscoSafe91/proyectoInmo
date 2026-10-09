@@ -458,38 +458,59 @@ export default function PropertyDetail() {
                               {isOpen && (
                                 <>
                                   <div className="share-pct-cols">
-                                    <div className="share-pct-col">
-                                      <label className="share-pct-label">Del vendedor</label>
-                                      <div className="share-pct-field">
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          max="100"
-                                          step="0.01"
-                                          placeholder="1 al 4"
-                                          className="share-pct-input"
-                                          value={percentagesVendedor[a.id] ?? ''}
-                                          onChange={e => setPercentagesVendedor(prev => ({ ...prev, [a.id]: e.target.value }))}
-                                        />
-                                        <span className="share-pct-unit">%</span>
+                                    {property.operation === 'alquiler' ? (
+                                      <div className="share-pct-col">
+                                        <label className="share-pct-label">Honorarios</label>
+                                        <div className="share-pct-field">
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            placeholder="1 al 4"
+                                            className="share-pct-input"
+                                            value={percentages[a.id] ?? ''}
+                                            onChange={e => setPercentages(prev => ({ ...prev, [a.id]: e.target.value }))}
+                                          />
+                                          <span className="share-pct-unit">%</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div className="share-pct-col">
-                                      <label className="share-pct-label">Del comprador</label>
-                                      <div className="share-pct-field">
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          max="100"
-                                          step="0.01"
-                                          placeholder="1 al 4"
-                                          className="share-pct-input"
-                                          value={percentagesComprador[a.id] ?? ''}
-                                          onChange={e => setPercentagesComprador(prev => ({ ...prev, [a.id]: e.target.value }))}
-                                        />
-                                        <span className="share-pct-unit">%</span>
-                                      </div>
-                                    </div>
+                                    ) : (
+                                      <>
+                                        <div className="share-pct-col">
+                                          <label className="share-pct-label">Del vendedor</label>
+                                          <div className="share-pct-field">
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              step="0.01"
+                                              placeholder="1 al 4"
+                                              className="share-pct-input"
+                                              value={percentagesVendedor[a.id] ?? ''}
+                                              onChange={e => setPercentagesVendedor(prev => ({ ...prev, [a.id]: e.target.value }))}
+                                            />
+                                            <span className="share-pct-unit">%</span>
+                                          </div>
+                                        </div>
+                                        <div className="share-pct-col">
+                                          <label className="share-pct-label">Del comprador</label>
+                                          <div className="share-pct-field">
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              step="0.01"
+                                              placeholder="1 al 4"
+                                              className="share-pct-input"
+                                              value={percentagesComprador[a.id] ?? ''}
+                                              onChange={e => setPercentagesComprador(prev => ({ ...prev, [a.id]: e.target.value }))}
+                                            />
+                                            <span className="share-pct-unit">%</span>
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
                                     <div className="share-pct-bolsa">
                                       <label className="share-pct-label">&nbsp;</label>
                                       <label className="checkbox-row" style={{ margin: 0, gap: 6 }}>

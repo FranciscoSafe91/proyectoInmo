@@ -4,6 +4,7 @@ import { Camera, Home, ImagePlus, Loader, MapPin, Ruler, Search, Video } from 'l
 import { api } from '../api.js';
 import { TYPE_LABELS, money, operationLabel, typeLabel } from '../utils.js';
 import GEO_DATA from '../geoData.js';
+import { getBarriosCerrados } from '../barriosCerradosData.js';
 
 function loadLeaflet(cb) {
   if (window.L) { cb(); return; }
@@ -356,6 +357,79 @@ function mapPropertyToForm(p) {
   };
 }
 
+function BarrioCerradoField({ zona, partido, localidad, value, onChange }) {
+  const opciones = getBarriosCerrados(zona, partido, localidad);
+  const tieneOpciones = opciones.length > 0;
+  // "otro" mode: activo cuando el value guardado no es una de las opciones del listado
+  const esOtro = tieneOpciones && value !== '' && !opciones.includes(value);
+  const [modoOtro, setModoOtro] = React.useState(esOtro);
+
+  // Resetear modo "otro" cuando cambia la combinación geográfica
+  React.useEffect(() => {
+    setModoOtro(false);
+  }, [zona, partido, localidad]);
+
+  function handleSelectChange(e) {
+    if (e.target.value === '__otro__') {
+      setModoOtro(true);
+      // Limpia el valor guardado para que el user empiece a tipear
+      onChange({ target: { name: 'nombreBarrioCerrado', value: '' } });
+    } else {
+      setModoOtro(false);
+      onChange(e);
+    }
+  }
+
+  const selectValue = modoOtro ? '__otro__' : (opciones.includes(value) ? value : '');
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <label htmlFor="nombreBarrioCerrado">Nombre del barrio / country</label>
+      {tieneOpciones ? (
+        <>
+          <select
+            id="nombreBarrioCerrado"
+            name="nombreBarrioCerrado"
+            value={selectValue}
+            onChange={handleSelectChange}
+          >
+            <option value="">Seleccioná un barrio / country</option>
+            {opciones.map(b => <option key={b} value={b}>{b}</option>)}
+            <option value="__otro__">Otro (escribir manualmente)</option>
+          </select>
+          {modoOtro && (
+            <input
+              type="text"
+              name="nombreBarrioCerrado"
+              placeholder="Escribí el nombre del barrio..."
+              value={value}
+              onChange={onChange}
+              style={{ marginTop: 6 }}
+              autoFocus
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <input
+            type="text"
+            id="nombreBarrioCerrado"
+            name="nombreBarrioCerrado"
+            placeholder="Ej: Nordelta, Los Lagartos, Santa Bárbara..."
+            value={value}
+            onChange={onChange}
+          />
+          {(zona && partido && localidad) ? null : (
+            <p className="muted small" style={{ marginTop: 4 }}>
+              Seleccioná zona, partido y localidad para ver barrios disponibles en el listado.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function PropertyForm() {
   const { id } = useParams();
   const location = useLocation();
@@ -608,20 +682,6 @@ export default function PropertyForm() {
               <label htmlFor="barrioCerrado" style={{ margin: 0, fontWeight: 'normal' }}>Esta propiedad pertenece a un country / barrio cerrado</label>
             </div>
 
-            {property.barrioCerrado && (
-              <div style={{ marginTop: 10 }}>
-                <label htmlFor="nombreBarrioCerrado">Nombre del barrio / country</label>
-                <input
-                  type="text"
-                  id="nombreBarrioCerrado"
-                  name="nombreBarrioCerrado"
-                  placeholder="Ej: Nordelta, Los Lagartos, Santa Bárbara..."
-                  value={property.nombreBarrioCerrado}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
-
             <div className="grid grid-3">
               <div>
                 <label htmlFor="zonaGeografica">Zona Geográfica</label>
@@ -661,6 +721,16 @@ export default function PropertyForm() {
                 )}
               </div>
             </div>
+
+            {property.barrioCerrado && (
+              <BarrioCerradoField
+                zona={property.zonaGeografica}
+                partido={property.partido}
+                localidad={property.localidad}
+                value={property.nombreBarrioCerrado}
+                onChange={handleChange}
+              />
+            )}
 
             <label htmlFor="calle">Calle</label>
             <input type="text" id="calle" name="calle" required value={property.calle} onChange={handleChange} placeholder="Nombre de la calle" />

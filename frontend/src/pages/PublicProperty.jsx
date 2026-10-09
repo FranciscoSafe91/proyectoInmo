@@ -191,7 +191,7 @@ export default function PublicProperty() {
   if (error) return <div className="card"><h1>Propiedad no disponible</h1><p className="muted">Esta propiedad no existe o ya no está publicada.</p></div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { property, media, owner, contactAgency = owner } = data;
+  const { property, media, owner, viaAgency, contactAgency = owner } = data;
   const imageMedia = (media || []).filter(m => m.type === 'image');
   const esBarrioCerrado = !!property.barrioCerrado;
 

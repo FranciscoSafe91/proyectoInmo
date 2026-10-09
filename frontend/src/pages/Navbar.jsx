@@ -58,12 +58,12 @@ export default function Navbar() {
     canSee('matcheadas')   && { to: '/matcheadas',   label: 'Matcheadas',      icon: Sparkles, className: active('/matcheadas') },
     canSee('propiedades')  && { to: '/propiedades',  label: 'Publicadas',      icon: Building2, className: active('/propiedades') },
     canSee('compartidas')  && { to: '/compartidas',  label: 'Carpeta compartida', icon: Handshake, className: activeExact('/compartidas') },
+    canSee('buscar_match') && { to: '/alertas/nueva', label: 'Alertas', icon: Bell, className: active('/alertas/nueva') },
   ].filter(Boolean);
 
   const networkLinks = [
     canSee('socios')       && { to: '/socios',       label: 'Socios',       icon: UsersRound, className: activeExact('/socios') },
     canSee('invitaciones') && { to: '/invitaciones', label: 'Invitaciones', icon: ChevronRight, className: activeExact('/invitaciones') },
-    canSee('buscar_match') && { to: '/alertas/nueva', label: 'Buscar match', icon: Search, className: active('/alertas/nueva') },
   ].filter(Boolean);
 
   const accountLinks = [

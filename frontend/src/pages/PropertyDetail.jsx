@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Camera, ChevronLeft, ChevronRight, Copy, Film, Printer, X } from 'lucide-react';
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, Copy, Film, Printer, Search, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel, formatDate } from '../utils.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -222,6 +222,22 @@ export default function PropertyDetail() {
   const [wholeBolsa, setWholeBolsa] = useState({});
   const [comments, setComments] = useState({});
   const [deleting, setDeleting] = useState(false);
+  const [expandedPartners, setExpandedPartners] = useState(new Set());
+  const [partnerSearch, setPartnerSearch] = useState('');
+  const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
+
+  function toggleExpand(id) {
+    setExpandedPartners(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function handlePartnerSearch(e) {
+    e.preventDefault();
+    setPartnerSearchQuery(partnerSearch.trim());
+  }
 
   async function handleDelete() {
     if (!window.confirm('¿Seguro que querés eliminar esta propiedad? Esta acción no se puede deshacer.')) return;
@@ -379,72 +395,105 @@ export default function PropertyDetail() {
                 ) : (
                   <form onSubmit={handleCompartir}>
                     <fieldset>
-                      <legend>Elegí con quién compartir</legend>
-                      {availablePartners.map(a => (
-                        <div key={a.id} className="share-partner-block">
-                          <div className="checkbox-row">
-                            <input
-                              type="checkbox"
-                              id={`share-${a.id}`}
-                              checked={selectedPartners.includes(a.id)}
-                              onChange={() => togglePartner(a.id)}
-                            />
-                            <label htmlFor={`share-${a.id}`} style={{ margin: 0, fontWeight: 600 }}>{a.name}</label>
-                          </div>
-                          <div className="share-pct-cols">
-                            <div className="share-pct-col">
-                              <label className="share-pct-label">Del vendedor</label>
-                              <div className="share-pct-field">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.01"
-                                  placeholder="0"
-                                  className="share-pct-input"
-                                  value={percentagesVendedor[a.id] ?? ''}
-                                  onChange={e => setPercentagesVendedor(prev => ({ ...prev, [a.id]: e.target.value }))}
-                                />
-                                <span className="share-pct-unit">%</span>
-                              </div>
-                            </div>
-                            <div className="share-pct-col">
-                              <label className="share-pct-label">Del comprador</label>
-                              <div className="share-pct-field">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.01"
-                                  placeholder="0"
-                                  className="share-pct-input"
-                                  value={percentagesComprador[a.id] ?? ''}
-                                  onChange={e => setPercentagesComprador(prev => ({ ...prev, [a.id]: e.target.value }))}
-                                />
-                                <span className="share-pct-unit">%</span>
-                              </div>
-                            </div>
-                            <div className="share-pct-bolsa">
-                              <label className="share-pct-label">&nbsp;</label>
-                              <label className="checkbox-row" style={{ margin: 0, gap: 6 }}>
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(wholeBolsa[a.id])}
-                                  onChange={e => setWholeBolsa(prev => ({ ...prev, [a.id]: e.target.checked }))}
-                                />
-                                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Toda la bolsa</span>
-                              </label>
-                            </div>
-                          </div>
+                      <div className="share-legend-row">
+                        <legend>Elegí con quién compartir</legend>
+                        <form className="share-search-bar" onSubmit={handlePartnerSearch}>
                           <input
                             type="text"
-                            placeholder="Comentarios"
-                            className="share-comment-input"
-                            value={comments[a.id] ?? ''}
-                            onChange={e => setComments(prev => ({ ...prev, [a.id]: e.target.value }))}
+                            placeholder="Buscar socio..."
+                            value={partnerSearch}
+                            onChange={e => setPartnerSearch(e.target.value)}
                           />
-                        </div>
-                      ))}
+                          <button type="submit" className="btn btn-small btn-secondary">
+                            <Search size={14} aria-hidden="true" /> Buscar
+                          </button>
+                        </form>
+                      </div>
+                      {availablePartners
+                        .filter(a => !partnerSearchQuery || a.name.toLowerCase().includes(partnerSearchQuery.toLowerCase()))
+                        .map(a => {
+                          const isOpen = expandedPartners.has(a.id);
+                          return (
+                            <div key={a.id} className="share-partner-block">
+                              <div className="share-partner-header">
+                                <div className="checkbox-row" style={{ margin: 0 }}>
+                                  <input
+                                    type="checkbox"
+                                    id={`share-${a.id}`}
+                                    checked={selectedPartners.includes(a.id)}
+                                    onChange={() => togglePartner(a.id)}
+                                  />
+                                  <label htmlFor={`share-${a.id}`} style={{ margin: 0, fontWeight: 600 }}>{a.name}</label>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`share-expand-btn${isOpen ? ' open' : ''}`}
+                                  onClick={() => toggleExpand(a.id)}
+                                  aria-expanded={isOpen}
+                                  aria-label={isOpen ? 'Colapsar' : 'Expandir'}
+                                >
+                                  <ChevronDown size={16} aria-hidden="true" />
+                                </button>
+                              </div>
+                              {isOpen && (
+                                <>
+                                  <div className="share-pct-cols">
+                                    <div className="share-pct-col">
+                                      <label className="share-pct-label">Del vendedor</label>
+                                      <div className="share-pct-field">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          step="0.01"
+                                          placeholder="del 1 al 4"
+                                          className="share-pct-input"
+                                          value={percentagesVendedor[a.id] ?? ''}
+                                          onChange={e => setPercentagesVendedor(prev => ({ ...prev, [a.id]: e.target.value }))}
+                                        />
+                                        <span className="share-pct-unit">%</span>
+                                      </div>
+                                    </div>
+                                    <div className="share-pct-col">
+                                      <label className="share-pct-label">Del comprador</label>
+                                      <div className="share-pct-field">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          step="0.01"
+                                          placeholder="del 1 al 4"
+                                          className="share-pct-input"
+                                          value={percentagesComprador[a.id] ?? ''}
+                                          onChange={e => setPercentagesComprador(prev => ({ ...prev, [a.id]: e.target.value }))}
+                                        />
+                                        <span className="share-pct-unit">%</span>
+                                      </div>
+                                    </div>
+                                    <div className="share-pct-bolsa">
+                                      <label className="share-pct-label">&nbsp;</label>
+                                      <label className="checkbox-row" style={{ margin: 0, gap: 6 }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={Boolean(wholeBolsa[a.id])}
+                                          onChange={e => setWholeBolsa(prev => ({ ...prev, [a.id]: e.target.checked }))}
+                                        />
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Toda la bolsa</span>
+                                      </label>
+                                    </div>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    placeholder="Comentarios"
+                                    className="share-comment-input"
+                                    value={comments[a.id] ?? ''}
+                                    onChange={e => setComments(prev => ({ ...prev, [a.id]: e.target.value }))}
+                                  />
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                     </fieldset>
                     <button type="submit" className="btn btn-small" disabled={selectedPartners.length === 0}>Enviar invitación</button>
                   </form>

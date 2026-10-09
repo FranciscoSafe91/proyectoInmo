@@ -191,8 +191,7 @@ export default function PublicProperty() {
   if (error) return <div className="card"><h1>Propiedad no disponible</h1><p className="muted">Esta propiedad no existe o ya no está publicada.</p></div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { property, media, owner, viaAgency, contactAgency = owner } = data;
-  const brandColor = (viaAgency && viaAgency.brandColor) || '#1f6f54';
+  const { property, media, owner, contactAgency = owner } = data;
   const imageMedia = (media || []).filter(m => m.type === 'image');
   const esBarrioCerrado = !!property.barrioCerrado;
 
@@ -250,15 +249,6 @@ export default function PublicProperty() {
 
   return (
     <>
-      {viaAgency && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          {viaAgency.logoPath && (
-            <img src={viaAgency.logoPath} alt={viaAgency.name} style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6 }} />
-          )}
-          <span style={{ fontWeight: 700, color: brandColor }}>{viaAgency.name}</span>
-        </div>
-      )}
-
       <h1>{property.title}</h1>
       <p className="subtitle">{typeLabel(property.type)} · {operationLabel(property.operation)}</p>
 

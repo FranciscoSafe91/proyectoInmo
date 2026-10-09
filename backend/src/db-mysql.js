@@ -493,7 +493,7 @@ async function ensurePropertyLocationColumns() {
     "ALTER TABLE propiedades ADD COLUMN localidad VARCHAR(100) NOT NULL DEFAULT ''",
   ];
   for (const sql of cols) {
-    await pool.query(sql).catch(() => {});
+    await pool.query(sql).catch(e => { if (e.errno !== 1060) console.warn('ensurePropertyLocationColumns:', e.message); });
   }
 }
 
@@ -542,7 +542,7 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN expensas_moneda VARCHAR(5) NOT NULL DEFAULT 'ARS'",
   ];
   for (const sql of cols) {
-    await pool.query(sql).catch(() => {});
+    await pool.query(sql).catch(e => { if (e.errno !== 1060) console.warn('ensurePropertyCharacteristicsColumns:', e.message); });
   }
 }
 

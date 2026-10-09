@@ -268,7 +268,13 @@ export function registerApiRoutes(router) {
       return err(res, 'Error al procesar los archivos.');
     }
     if (!body.title) return err(res, 'El título es obligatorio.');
-    const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
+    let property;
+    try {
+      property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
+    } catch (e) {
+      console.error('Error al crear propiedad:', e);
+      return err(res, `Error al guardar la propiedad: ${e.message}`, 500);
+    }
     const media = await savePropertyMedia(property.id, files);
     notifyAlertMatches(property, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(property).catch(() => {});

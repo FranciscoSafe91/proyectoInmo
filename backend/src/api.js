@@ -138,11 +138,12 @@ export function registerApiRoutes(router) {
     const { email, password } = body;
     if (!email || !password) return err(res, 'Ingresá tu email y contraseña.', 400);
 
-    const user = await db.findUserByEmail(email);
-    if (!user || !auth.verifyPassword(password, user.passwordHash, user.passwordSalt)) {
+    const credentials = await db.findUserCredentialsByEmail(email);
+    if (!credentials || !auth.verifyPassword(password, credentials.passwordHash, credentials.passwordSalt)) {
       return err(res, 'Email o contraseña incorrectos.', 401);
     }
-    await auth.login(res, user.id);
+    const user = await db.getUser(credentials.id);
+    await auth.login(req, res, user.id);
     const agency = await db.getAgency(user.agencyId);
     json(res, { user, agency });
   });
@@ -179,7 +180,7 @@ export function registerApiRoutes(router) {
       passwordHash: hash, passwordSalt: salt, role: 'admin',
     });
 
-    await auth.login(res, user.id);
+    await auth.login(req, res, user.id);
     if (mail.isConfigured()) {
       mail.sendWelcome(email, `${nombre} ${apellido}`.trim()).catch(() => {});
     }
@@ -852,8 +853,9 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const backendUrl = baseUrlFor(req);
-    const feedUrl = `${backendUrl}/api/v1/feed/${session.agency.id}?key=${session.agency.apiKey}`;
-    const widgetSrc = `${backendUrl}/widget.js?agency=${session.agency.id}&key=${session.agency.apiKey}`;
+    const apiKey = await db.getAgencyApiKey(session.agency.id);
+    const feedUrl = `${backendUrl}/api/v1/feed/${session.agency.id}?key=${apiKey}`;
+    const widgetSrc = `${backendUrl}/widget.js?agency=${session.agency.id}&key=${apiKey}`;
     const embedCode = `<div id="propiedades-compartidas"></div>\n<script src="${widgetSrc}" async></script>`;
     json(res, { agency: session.agency, feedUrl, widgetSrc, embedCode });
   });
@@ -1022,6 +1024,7 @@ export function registerApiRoutes(router) {
       status: db.effectiveSubscriptionStatus(subscription),
       payments: await db.listPaymentsByAgency(session.agency.id),
       mpConfigured: mercadopago.isConfigured(),
+      paymentsSimulated: mercadopago.simulatedPaymentsAllowed(),
     });
   });
 
@@ -1042,6 +1045,10 @@ export function registerApiRoutes(router) {
       } catch {
         return err(res, 'Error al crear la suscripción en Mercado Pago.');
       }
+    }
+    if (!mercadopago.simulatedPaymentsAllowed()) {
+      console.error('[pagos] Intento de pago sin Mercado Pago configurado (MP_ACCESS_TOKEN ausente).');
+      return err(res, 'Los pagos no están disponibles en este momento. Contactá a soporte.', 503);
     }
     await db.applySuccessfulPayment(session.agency.id, { amount: plan.priceARS, currency: 'ARS', method: 'simulado' });
     json(res, { ok: true });
@@ -1197,7 +1204,7 @@ export function registerApiRoutes(router) {
       await db.updateUserMenuPermisos(user.id, invitation.menuPermisos);
     }
     await db.acceptInvitation(invitation.id);
-    await auth.login(res, user.id);
+    await auth.login(req, res, user.id);
     json(res, { user, agency }, 201);
   });
 }

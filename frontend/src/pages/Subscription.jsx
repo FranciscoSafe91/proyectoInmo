@@ -40,7 +40,8 @@ export default function Subscription() {
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { plan, subscription, status, payments, mpConfigured } = data;
+  const { plan, subscription, status, payments, mpConfigured, paymentsSimulated } = data;
+  const paymentsAvailable = mpConfigured || paymentsSimulated;
 
   const statusLine =
     status === 'trial' ? <>Tu prueba gratis termina el <strong>{formatDate(subscription.trialEndsAt)}</strong>.</> :
@@ -64,14 +65,16 @@ export default function Subscription() {
         {status !== 'activa' && (
           <>
             <div className="btn-row">
-              <button className="btn" onClick={handlePay} disabled={paying}>
+              <button className="btn" onClick={handlePay} disabled={paying || !paymentsAvailable}>
                 {paying ? 'Procesando...' : status === 'trial' ? 'Activar suscripción ahora' : 'Pagar y renovar'}
               </button>
             </div>
             <p className="small muted" style={{ marginTop: 8 }}>
               {mpConfigured
                 ? 'Vas a ser redirigido a Mercado Pago para completar el pago.'
-                : '⚠️ Mercado Pago todavía no está configurado en este servidor: este botón simula un pago aprobado, para poder probar el flujo completo. Ver el README para activar pagos reales.'}
+                : paymentsSimulated
+                  ? '⚠️ Modo de pago simulado (solo desarrollo): este botón registra un pago aprobado sin cobrar.'
+                  : 'Los pagos online todavía no están disponibles. Contactá a soporte para activar tu suscripción.'}
             </p>
           </>
         )}

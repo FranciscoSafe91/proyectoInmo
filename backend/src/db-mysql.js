@@ -23,10 +23,12 @@ function toAgency(r) {
   return {
     id: r.id, name: r.name, slug: r.slug, email: r.email,
     phone: r.phone, city: r.city, accountType: r.account_type,
-    logoPath: r.logo_path, brandColor: r.brand_color, apiKey: r.api_key,
+    logoPath: r.logo_path, brandColor: r.brand_color,
     createdAt: r.created_at,
   };
 }
+// La api_key NO va en toAgency(): ese objeto se devuelve a terceros (socios,
+// ficha pública). Se lee aparte con getAgencyApiKey() solo donde hace falta.
 
 function toUser(r) {
   if (!r) return null;
@@ -35,10 +37,11 @@ function toUser(r) {
   return {
     id: r.id, agencyId: r.agency_id,
     name: r.name || `${r.nombre || ''} ${r.apellido || ''}`.trim(),
-    nombre: r.nombre, apellido: r.apellido, documento: r.documento,
+    nombre: r.nombre, apellido: r.apellido,
     email: r.email, username: r.username,
     accountType: r.account_type, agencyName: r.agency_name, direccion: r.direccion,
-    passwordHash: r.password_hash, passwordSalt: r.password_salt,
+    // password_hash, password_salt y documento NO se exponen: este objeto se
+    // serializa en las respuestas de la API. Ver findUserCredentialsByEmail().
     role: r.role, isPlatformAdmin: Boolean(r.is_platform_admin), createdAt: r.created_at,
     menuPermisos,
   };
@@ -313,10 +316,16 @@ export async function updateAgency(agencyId, patch) {
   return getAgency(agencyId);
 }
 
+export async function getAgencyApiKey(agencyId) {
+  const [rows] = await pool.query('SELECT api_key FROM inmobiliarias WHERE id=?', [agencyId]);
+  return rows[0] ? rows[0].api_key : null;
+}
+
 export async function verifyAgencyApiKey(agencyId, apiKey) {
   const agency = await getAgency(agencyId);
-  if (!agency || !agency.apiKey || !apiKey) return null;
-  const a = Buffer.from(agency.apiKey);
+  const storedKey = agency ? await getAgencyApiKey(agency.id) : null;
+  if (!agency || !storedKey || !apiKey) return null;
+  const a = Buffer.from(storedKey);
   const b = Buffer.from(String(apiKey));
   if (a.length !== b.length) return null;
   let diff = 0;
@@ -378,6 +387,15 @@ export async function createUser({ agencyId, name, nombre, apellido, documento, 
 export async function findUserByEmail(email) {
   const [rows] = await pool.query('SELECT * FROM usuarios WHERE LOWER(email)=LOWER(?)', [email]);
   return toUser(rows[0] || null);
+}
+
+// Solo para verificar la contraseña en el login. Nunca devolver este objeto al cliente.
+export async function findUserCredentialsByEmail(email) {
+  const [rows] = await pool.query(
+    'SELECT id, password_hash, password_salt FROM usuarios WHERE LOWER(email)=LOWER(?)', [email]
+  );
+  if (!rows[0]) return null;
+  return { id: rows[0].id, passwordHash: rows[0].password_hash, passwordSalt: rows[0].password_salt };
 }
 
 export async function getUser(userId) {

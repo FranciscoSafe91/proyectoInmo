@@ -17,6 +17,15 @@ export function isConfigured() {
   return Boolean(process.env.MP_ACCESS_TOKEN);
 }
 
+// El pago simulado tiene que pedirse explícitamente y nunca corre en producción:
+// si falta MP_ACCESS_TOKEN por un error de configuración, el sistema NO debe
+// regalar suscripciones (fail-closed).
+export function simulatedPaymentsAllowed() {
+  return !isConfigured()
+    && process.env.PAYMENTS_SIMULATED === 'true'
+    && process.env.NODE_ENV !== 'production';
+}
+
 function request(method, path, body) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null;

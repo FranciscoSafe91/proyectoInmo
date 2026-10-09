@@ -11,6 +11,7 @@ import { Router } from './router.js';
 import * as db from './db.js';
 import * as mercadopago from './mercadopago.js';
 import { registerApiRoutes } from './api.js';
+import { isSecureRequest } from './auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -114,7 +115,22 @@ function serveStatic(req, res, pathname) {
   return false;
 }
 
+// Headers de seguridad comunes a todas las respuestas. res.setHeader() se combina
+// con lo que después pase cada handler a res.writeHead().
+// La CSP queda para la fase 2 (hay que relevar Google Maps, Cloudinary, YouTube y MP).
+function setSecurityHeaders(req, res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (isSecureRequest(req)) {
+    // Sin includeSubDomains hasta confirmar que todos los subdominios tienen HTTPS.
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  }
+}
+
 const server = http.createServer(async (req, res) => {
+  setSecurityHeaders(req, res);
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const pathname = decodeURIComponent(url.pathname);

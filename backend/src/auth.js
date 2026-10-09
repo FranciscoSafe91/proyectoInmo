@@ -41,11 +41,23 @@ export async function getCurrentUser(req) {
   return { user, agency };
 }
 
-export async function login(res, userId) {
+// En producción (detrás del proxy HTTPS de Hostinger) la cookie solo debe viajar
+// por HTTPS. En local (http://localhost) se omite para no romper el desarrollo.
+export function isSecureRequest(req) {
+  return req.headers['x-forwarded-proto'] === 'https'
+    || Boolean(req.socket && req.socket.encrypted)
+    || process.env.NODE_ENV === 'production';
+}
+
+function cookieAttributes(req) {
+  return `HttpOnly; Path=/; SameSite=Lax${isSecureRequest(req) ? '; Secure' : ''}`;
+}
+
+export async function login(req, res, userId) {
   const token = await db.createSession(userId);
   res.setHeader(
     'Set-Cookie',
-    `${COOKIE_NAME}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`
+    `${COOKIE_NAME}=${token}; ${cookieAttributes(req)}; Max-Age=${60 * 60 * 24 * 7}`
   );
 }
 
@@ -53,5 +65,5 @@ export async function logout(req, res) {
   const cookies = parseCookies(req);
   const token = cookies[COOKIE_NAME];
   if (token) await db.deleteSession(token);
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0`);
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; ${cookieAttributes(req)}; Max-Age=0`);
 }

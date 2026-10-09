@@ -196,6 +196,7 @@ async function mockReq(method, path, body) {
       status: 'trial',
       payments: [],
       mpConfigured: false,
+      paymentsSimulated: true,
     };
   }
 

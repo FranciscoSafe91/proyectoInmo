@@ -9,6 +9,7 @@
 
 import * as db from './db.js';
 import * as mercadopago from './mercadopago.js';
+import * as mail from './mail.js';
 
 // ---------------------------------------------------------------------------
 // Control de suscripción activa
@@ -64,8 +65,34 @@ async function creditApprovedPayment(payment, preapprovalId) {
     mpPaymentId: String(payment.id),
   });
   if (result && result.duplicate) return 'ya procesado';
-  await db.updateSubscription(agency.id, { mpPreapprovalId: String(preapprovalId) });
+
+  const card = payment.card || {};
+  await db.updateSubscription(agency.id, {
+    mpPreapprovalId: String(preapprovalId),
+    ...(card.last_four_digits ? { cardLastFour: String(card.last_four_digits).slice(-4) } : {}),
+    ...(payment.payment_method_id ? { cardBrand: String(payment.payment_method_id).slice(0, 40) } : {}),
+  });
+  await audit(agency.id, 'pago.acreditado', { mpPaymentId: String(payment.id), amount: paid });
+  notifyBilling(agency, 'Recibimos tu pago', [
+    `Se acreditó un pago de $${paid.toLocaleString('es-AR')} a tu suscripción.`,
+    card.last_four_digits ? `Tarjeta terminada en ${String(card.last_four_digits).slice(-4)}.` : '',
+  ]);
   return `acreditado a ${agency.id}`;
+}
+
+// La auditoría nunca debe romper el procesamiento de un pago.
+async function audit(agencyId, action, details) {
+  try {
+    await db.createAuditLog({ agencyId, action, ip: 'mercadopago', details });
+  } catch (e) {
+    console.error(`[auditoría] No se pudo registrar ${action}:`, e.message);
+  }
+}
+
+function notifyBilling(agency, title, lines) {
+  if (!agency || !agency.email || !mail.isConfigured()) return;
+  mail.sendBillingNotice(agency.email, { title, lines: lines.filter(Boolean) })
+    .catch(e => console.error('[pagos] No se pudo enviar el aviso por email:', e.message));
 }
 
 async function handlePaymentState(payment, preapprovalId) {
@@ -73,7 +100,13 @@ async function handlePaymentState(payment, preapprovalId) {
   const reversal = REVERSAL_STATUS[payment.status];
   if (reversal) {
     const reverted = await db.revertPayment(String(payment.id), reversal);
-    return reverted ? `revertido (${reversal}) en ${reverted.agencyId}` : 'nada que revertir';
+    if (!reverted) return 'nada que revertir';
+    await audit(reverted.agencyId, 'pago.revertido', { mpPaymentId: String(payment.id), estado: reversal });
+    notifyBilling(await db.getAgency(reverted.agencyId), 'Se revirtió un pago', [
+      `El pago ${payment.id} figura como ${reversal} en Mercado Pago.`,
+      'Se descontó de tu suscripción el período que ese pago cubría.',
+    ]);
+    return `revertido (${reversal}) en ${reverted.agencyId}`;
   }
   return `sin acción (estado ${payment.status})`;
 }

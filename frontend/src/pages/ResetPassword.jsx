@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api.js';
+import { PASSWORD_MIN_LENGTH } from '../utils.js';
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -18,8 +19,8 @@ export default function ResetPassword() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (password.length < 6) {
-      setErrorMsg('La contraseña debe tener al menos 6 caracteres.');
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setErrorMsg(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`);
       return;
     }
     if (password !== confirm) {
@@ -32,8 +33,11 @@ export default function ResetPassword() {
       await api.post('/reset-password', { token, password });
       setStatus('ok');
     } catch (err) {
-      setErrorMsg(err.data?.error || 'El enlace expiró o ya fue usado.');
-      setStatus('error');
+      // Los errores de validación (contraseña débil) se muestran en el formulario;
+      // solo un enlace vencido lleva a la pantalla de "Enlace inválido".
+      const msg = err.data?.error || 'El enlace expiró o ya fue usado.';
+      setErrorMsg(msg);
+      setStatus(/enlace/i.test(msg) ? 'error' : '');
     }
   }
 
@@ -72,7 +76,7 @@ export default function ResetPassword() {
         <label htmlFor="password">Nueva contraseña</label>
         <input
           type="password" id="password" required
-          placeholder="Mínimo 6 caracteres"
+          placeholder={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres`}
           value={password}
           onChange={e => setPassword(e.target.value)}
         />

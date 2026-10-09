@@ -143,6 +143,51 @@ export async function sendSupportTicket({ agencyName, userName, email, phone, su
   });
 }
 
+export async function sendEmailVerification(to, verifyUrl) {
+  if (!String(verifyUrl).startsWith(`${APP_URL}/`)) {
+    throw new Error('URL de verificación fuera del dominio de la aplicación.');
+  }
+  await getTransport().sendMail({
+    from: `"SpyderConnect" <${FROM_ADDRESS}>`,
+    to,
+    subject: 'Confirmá tu email',
+    html: baseHtml(`
+      <h2 style="margin-top:0">Confirmá tu email</h2>
+      <p>Para poder gestionar pagos y medios de pago en SpyderConnect necesitamos confirmar que este email es tuyo.</p>
+      <p style="margin:24px 0">
+        <a href="${esc(verifyUrl)}"
+           style="background:#1f6f54;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold">
+          Confirmar email
+        </a>
+      </p>
+      <p style="color:#666;font-size:0.88rem">El enlace vence en 48 horas. Si no creaste una cuenta, ignorá este email.</p>
+    `),
+  });
+}
+
+// Aviso de cualquier movimiento de facturación (pago, reverso, cambio de tarjeta).
+// Si alguien toca los medios de pago sin permiso, el titular se entera.
+export async function sendBillingNotice(to, { title, lines }) {
+  await getTransport().sendMail({
+    from: `"SpyderConnect" <${FROM_ADDRESS}>`,
+    to,
+    subject: oneLine(`[SpyderConnect] ${title}`),
+    html: baseHtml(`
+      <h2 style="margin-top:0">${esc(title)}</h2>
+      ${(lines || []).map(l => `<p>${esc(l)}</p>`).join('')}
+      <p style="color:#666;font-size:0.88rem">
+        Si no reconocés este movimiento, cambiá tu contraseña y escribinos a soporte@spyderconnect.com.
+      </p>
+      <p style="margin:24px 0">
+        <a href="${APP_URL}/suscripcion"
+           style="background:#1f6f54;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold">
+          Ver mi suscripción
+        </a>
+      </p>
+    `),
+  });
+}
+
 export function isConfigured() {
   return Boolean(SMTP_USER && SMTP_PASS);
 }

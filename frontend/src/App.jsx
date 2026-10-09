@@ -34,6 +34,7 @@ import AdminPlan from './pages/AdminPlan.jsx';
 import PublicProperty from './pages/PublicProperty.jsx';
 import JoinInvite from './pages/JoinInvite.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
+import VerifyEmail from './pages/VerifyEmail.jsx';
 
 function PrivateRoute({ children }) {
   const { session } = useAuth();
@@ -118,6 +119,7 @@ function AppRoutes() {
           <Route path="/registro" element={<PublicOnly><Register /></PublicOnly>} />
           <Route path="/unirse/:token" element={<JoinInvite />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verificar-email" element={<VerifyEmail />} />
           <Route path="/public/propiedades/:id" element={<PublicProperty />} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/propiedades" element={<PrivateRoute><Properties /></PrivateRoute>} />

@@ -87,6 +87,10 @@ export const effectiveSubscriptionStatus = (...args) => impl.effectiveSubscripti
 export const applySuccessfulPayment = (...args) => impl.applySuccessfulPayment(...args);
 export const revertPayment = (...args) => impl.revertPayment(...args);
 export const listSubscriptionsWithPreapproval = (...args) => impl.listSubscriptionsWithPreapproval(...args);
+export const createAuditLog = (...args) => impl.createAuditLog(...args);
+export const listAuditLogByAgency = (...args) => impl.listAuditLogByAgency(...args);
+export const createEmailVerificationToken = (...args) => impl.createEmailVerificationToken(...args);
+export const consumeEmailVerificationToken = (...args) => impl.consumeEmailVerificationToken(...args);
 export const createPayment = (...args) => impl.createPayment(...args);
 export const listPaymentsByAgency = (...args) => impl.listPaymentsByAgency(...args);
 export const listAgenciesWithSubscriptions = (...args) => impl.listAgenciesWithSubscriptions(...args);

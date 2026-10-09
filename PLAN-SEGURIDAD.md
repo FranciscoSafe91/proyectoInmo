@@ -196,7 +196,14 @@
 | 1.8 | Validación de `Origin` + `Content-Type` en endpoints mutables | A5 | S |
 | 1.9 | Job de reconciliación con MP | §6.2 | M |
 
-### Fase 2 — Antes de habilitar la gestión de tarjetas (~1–2 semanas)
+### Fase 2 — Antes de habilitar la gestión de tarjetas (~1–2 semanas) — ✅ código implementado 2026-10-09
+> **2.1 Tarjetas:** el alta sigue por el checkout de MP (redirección). "Cambiar tarjeta" usa el Card Payment Brick y `PUT /preapproval/{id}` con `card_token_id`. En la base solo quedan `card_brand` y `card_last_four`. Requiere `MP_PUBLIC_KEY`.
+> **2.2 CSP:** en modo `Report-Only` con reportes en `/api/csp-report`. Pendiente antes de pasar a `CSP_ENFORCE=true`: el SDK de MP ejecuta un script inline propio (cookies/huella antifraude). Hay que decidir si se habilita con hash (cambia con cada versión del SDK) o con `'unsafe-inline'` solo en `script-src`, y revisar los reportes con la clave real en producción.
+> **2.3 Reautenticación:** cambiar la tarjeta pide la contraseña, con un límite de 5 fallos cada 15 min y 5 cambios por día por agencia.
+> **2.4 Auditoría:** tabla `audit_log` (solo INSERT) visible en "Mi suscripción". Avisos por email en pagos, reversos y cambios de tarjeta.
+> **2.5 Email y contraseñas:** la verificación de email se exige solo para pagar y cambiar la tarjeta. Mínimo de 10 caracteres más una lista de contraseñas comunes, solo para contraseñas nuevas.
+> **2.6 DoS:** máximo 3 subidas pesadas simultáneas (`MAX_CONCURRENT_UPLOADS`), estáticos en streaming, el body excedido ya no deja la request colgada, y timeouts de headers y requests.
+
 | # | Tarea | Hallazgo | Esfuerzo |
 |---|---|---|---|
 | 2.1 | Integrar Card Payment Brick / Secure Fields + Customers & Cards API (solo tokens) | §6.1 | L |

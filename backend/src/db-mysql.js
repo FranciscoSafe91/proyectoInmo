@@ -43,6 +43,7 @@ function toUser(r) {
     // password_hash, password_salt y documento NO se exponen: este objeto se
     // serializa en las respuestas de la API. Ver findUserCredentialsByEmail().
     role: r.role, isPlatformAdmin: Boolean(r.is_platform_admin), createdAt: r.created_at,
+    emailVerified: Boolean(r.email_verified_at),
     menuPermisos,
   };
 }
@@ -212,6 +213,8 @@ function toSubscription(r) {
     id: r.id, agencyId: r.agency_id, status: r.status,
     trialEndsAt: r.trial_ends_at, currentPeriodEnd: r.current_period_end,
     mpPreapprovalId: r.mp_preapproval_id, createdAt: r.created_at,
+    // Solo datos enmascarados: nunca se guarda el número completo ni el CVV.
+    cardLastFour: r.card_last_four || null, cardBrand: r.card_brand || null,
   };
 }
 
@@ -591,6 +594,7 @@ let _usuariosColumnsMigrated = false;
 async function ensureUsuariosColumns() {
   if (_usuariosColumnsMigrated) return;
   await pool.query("ALTER TABLE usuarios ADD COLUMN menu_permisos TEXT DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE usuarios ADD COLUMN email_verified_at DATETIME DEFAULT NULL").catch(() => {});
   _usuariosColumnsMigrated = true;
 }
 
@@ -1416,6 +1420,9 @@ export async function updateSubscription(agencyId, patch) {
   if (patch.trialEndsAt !== undefined)      { fields.push('trial_ends_at=?');      vals.push(patch.trialEndsAt); }
   if (patch.currentPeriodEnd !== undefined) { fields.push('current_period_end=?'); vals.push(patch.currentPeriodEnd); }
   if (patch.mpPreapprovalId !== undefined)  { fields.push('mp_preapproval_id=?');  vals.push(patch.mpPreapprovalId); }
+  if (patch.cardLastFour !== undefined || patch.cardBrand !== undefined) await ensureSuscripcionesCardColumns();
+  if (patch.cardLastFour !== undefined)     { fields.push('card_last_four=?');     vals.push(patch.cardLastFour); }
+  if (patch.cardBrand !== undefined)        { fields.push('card_brand=?');         vals.push(patch.cardBrand); }
   if (fields.length === 0) return getSubscriptionByAgency(agencyId);
   vals.push(agencyId);
   await pool.query(`UPDATE suscripciones SET ${fields.join(',')} WHERE agency_id=?`, vals);
@@ -1532,6 +1539,97 @@ export async function revertPayment(mpPaymentId, newStatus) {
   } finally {
     conn.release();
   }
+}
+
+let _suscripcionesCardColumnsMigrated = false;
+async function ensureSuscripcionesCardColumns() {
+  if (_suscripcionesCardColumnsMigrated) return;
+  await pool.query('ALTER TABLE suscripciones ADD COLUMN card_last_four VARCHAR(4) DEFAULT NULL').catch(() => {});
+  await pool.query('ALTER TABLE suscripciones ADD COLUMN card_brand VARCHAR(40) DEFAULT NULL').catch(() => {});
+  _suscripcionesCardColumnsMigrated = true;
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría — registro solo de inserción (el código nunca modifica ni borra filas)
+// ---------------------------------------------------------------------------
+let _auditTableEnsured = false;
+async function ensureAuditTable() {
+  if (_auditTableEnsured) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id          VARCHAR(36)  PRIMARY KEY,
+      created_at  DATETIME     NOT NULL DEFAULT NOW(),
+      agency_id   VARCHAR(36),
+      user_id     VARCHAR(36),
+      action      VARCHAR(64)  NOT NULL,
+      ip          VARCHAR(64),
+      user_agent  VARCHAR(255),
+      details     TEXT,
+      INDEX idx_audit_agency (agency_id, created_at)
+    )
+  `);
+  _auditTableEnsured = true;
+}
+
+export async function createAuditLog({ agencyId, userId, action, ip, userAgent, details }) {
+  await ensureAuditTable();
+  await pool.query(
+    `INSERT INTO audit_log (id,created_at,agency_id,user_id,action,ip,user_agent,details)
+     VALUES (?,NOW(),?,?,?,?,?,?)`,
+    [uuid(), agencyId || null, userId || null, action, ip || null,
+     userAgent ? String(userAgent).slice(0, 255) : null, details ? JSON.stringify(details) : null]
+  );
+}
+
+export async function listAuditLogByAgency(agencyId, limit = 50) {
+  await ensureAuditTable();
+  const [rows] = await pool.query(
+    'SELECT * FROM audit_log WHERE agency_id=? ORDER BY created_at DESC LIMIT ?', [agencyId, Number(limit) || 50]
+  );
+  return rows.map(r => ({
+    id: r.id, createdAt: r.created_at, agencyId: r.agency_id, userId: r.user_id,
+    action: r.action, ip: r.ip, userAgent: r.user_agent, details: tryParseJson(r.details),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Verificación de email
+// ---------------------------------------------------------------------------
+async function ensureEmailVerificationTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      token      VARCHAR(64)  PRIMARY KEY,
+      user_id    VARCHAR(36)  NOT NULL,
+      expires_at DATETIME     NOT NULL,
+      created_at DATETIME     NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+export async function createEmailVerificationToken(userId) {
+  await ensureEmailVerificationTable();
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 horas
+  await pool.query('DELETE FROM email_verification_tokens WHERE user_id=?', [userId]);
+  await pool.query(
+    'INSERT INTO email_verification_tokens (token,user_id,expires_at,created_at) VALUES (?,?,?,NOW())',
+    [token, userId, expiresAt]
+  );
+  return token;
+}
+
+/** Marca el email como verificado. Devuelve el userId o null si el token no sirve. */
+export async function consumeEmailVerificationToken(token) {
+  await ensureEmailVerificationTable();
+  await ensureUsuariosColumns();
+  const [rows] = await pool.query(
+    'SELECT user_id FROM email_verification_tokens WHERE token=? AND expires_at > NOW()', [token]
+  );
+  if (!rows[0]) return null;
+  const userId = rows[0].user_id;
+  await pool.query('UPDATE usuarios SET email_verified_at=NOW() WHERE id=? AND email_verified_at IS NULL', [userId]);
+  await pool.query('DELETE FROM email_verification_tokens WHERE user_id=?', [userId]);
+  return userId;
 }
 
 export async function listSubscriptionsWithPreapproval() {

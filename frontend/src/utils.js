@@ -27,5 +27,8 @@ export function formatARS(amount) {
   return '$ ' + Number(amount).toLocaleString('es-AR');
 }
 
+// Debe coincidir con PASSWORD_MIN_LENGTH en backend/src/security.js.
+export const PASSWORD_MIN_LENGTH = 10;
+
 const ACCOUNT_TYPE_LABELS = { inmobiliaria: 'Inmobiliaria', agente_independiente: 'Agente independiente' };
 export function accountTypeLabel(type) { return ACCOUNT_TYPE_LABELS[type] || type; }

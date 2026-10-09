@@ -35,7 +35,11 @@ function err(res, message, status = 400) {
 async function rawBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (chunk) => { data += chunk; if (data.length > 2_000_000) req.destroy(); });
+    req.on('data', (chunk) => {
+      data += chunk;
+      // Antes se cortaba la conexión pero la promesa quedaba colgada para siempre.
+      if (data.length > 2_000_000) { reject(new Error('Body demasiado grande')); req.destroy(); }
+    });
     req.on('end', () => resolve(data));
     req.on('error', reject);
   });
@@ -63,8 +67,37 @@ function slugify(text) {
 
 async function parsePropertyRequest(req) {
   if (!isMultipart(req)) return { fields: await parseJson(req), files: [] };
-  const parsed = await parseMultipartFormData(req, { maxBytes: 80 * 1024 * 1024 });
+  const slot = await security.withUploadSlot(() => parseMultipartFormData(req, { maxBytes: 80 * 1024 * 1024 }));
+  if (!slot) throw Object.assign(new Error('Servidor ocupado procesando otras subidas'), { code: 'BUSY' });
+  const parsed = slot.value;
   return { fields: parsed.fields, files: Object.values(parsed.files || {}) };
+}
+
+function uploadError(res, e) {
+  if (e && e.code === 'BUSY') {
+    res.setHeader('Retry-After', '10');
+    return err(res, 'Hay muchas subidas en curso. Probá de nuevo en unos segundos.', 503);
+  }
+  return err(res, 'Error al procesar los archivos.');
+}
+
+// Registro de auditoría. Nunca debe hacer fallar la operación que se audita.
+function audit(req, session, action, details) {
+  db.createAuditLog({
+    agencyId: session && session.agency ? session.agency.id : (details && details.agencyId) || null,
+    userId: session && session.user ? session.user.id : (details && details.userId) || null,
+    action,
+    ip: security.clientIp(req),
+    userAgent: req.headers['user-agent'],
+    details,
+  }).catch(e => console.error(`[auditoría] No se pudo registrar ${action}:`, e.message));
+}
+
+async function sendVerificationEmail(user) {
+  if (!mail.isConfigured()) return false;
+  const token = await db.createEmailVerificationToken(user.id);
+  await mail.sendEmailVerification(user.email, `${mail.APP_URL}/verificar-email?token=${token}`);
+  return true;
 }
 
 async function savePropertyMedia(propertyId, files) {
@@ -91,7 +124,7 @@ async function savePropertyMedia(propertyId, files) {
 // entrar, ver el estado, pagar y pedir ayuda.
 const SUBSCRIPTION_EXEMPT_PREFIXES = [
   '/api/session', '/api/logout', '/api/dashboard', '/api/configuracion',
-  '/api/suscripcion', '/api/soporte', '/api/mi-cuenta',
+  '/api/suscripcion', '/api/soporte', '/api/mi-cuenta', '/api/verificar-email',
 ];
 
 async function requireSession(req, res) {
@@ -201,6 +234,8 @@ export function registerApiRoutes(router) {
     if (!fullName || !email || !agencyName || !username || !password) {
       return err(res, 'Completá todos los campos obligatorios.');
     }
+    const passwordProblem = security.validateNewPassword(password, email);
+    if (passwordProblem) return err(res, passwordProblem);
     const regWait = security.consume(`register:ip:${security.clientIp(req)}`, security.LIMITS.registerPerIp);
     if (regWait) return tooManyRequests(res, regWait);
 
@@ -230,7 +265,9 @@ export function registerApiRoutes(router) {
     await auth.login(req, res, user.id);
     if (mail.isConfigured()) {
       mail.sendWelcome(email, `${nombre} ${apellido}`.trim()).catch(() => {});
+      sendVerificationEmail(user).catch(e => console.error('[verificación] No se pudo enviar el email:', e.message));
     }
+    audit(req, { user, agency }, 'cuenta.registrada', {});
     json(res, { user, agency }, 201);
   });
 
@@ -263,18 +300,48 @@ export function registerApiRoutes(router) {
   router.post('/api/reset-password', async (req, res) => {
     const body = await parseJson(req);
     const { token, password } = body;
-    if (!token || !password || password.length < 6) {
-      return err(res, 'La contraseña debe tener al menos 6 caracteres.', 400);
-    }
+    if (!token || !password) return err(res, 'Completá la nueva contraseña.', 400);
     const resetWait = security.consume(`reset:ip:${security.clientIp(req)}`, security.LIMITS.resetPerIp);
     if (resetWait) return tooManyRequests(res, resetWait);
     const resetToken = await db.getPasswordResetToken(token);
     if (!resetToken) return err(res, 'El enlace expiró o ya fue usado.', 400);
+    const user = await db.getUser(resetToken.userId);
+    if (!user) return err(res, 'El enlace expiró o ya fue usado.', 400);
+    const passwordProblem = security.validateNewPassword(password, user.email);
+    if (passwordProblem) return err(res, passwordProblem);
     const { hash, salt } = auth.hashPassword(password);
-    await db.updateUserPassword(resetToken.userId, hash, salt);
+    await db.updateUserPassword(user.id, hash, salt);
     await db.deletePasswordResetToken(token);
     // Si alguien tenía la cuenta tomada, pierde el acceso en este momento.
-    await db.deleteSessionsForUser(resetToken.userId);
+    await db.deleteSessionsForUser(user.id);
+    audit(req, null, 'contraseña.reseteada', { agencyId: user.agencyId, userId: user.id });
+    return json(res, { ok: true });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Verificación de email
+  // ---------------------------------------------------------------------------
+  router.post('/api/verificar-email', async (req, res) => {
+    const wait = security.consume(`verify:ip:${security.clientIp(req)}`, security.LIMITS.verifyPerIp);
+    if (wait) return tooManyRequests(res, wait);
+    const body = await parseJson(req);
+    if (!body.token) return err(res, 'Falta el código de verificación.', 400);
+    const userId = await db.consumeEmailVerificationToken(String(body.token));
+    if (!userId) return err(res, 'El enlace expiró o ya fue usado.', 400);
+    const user = await db.getUser(userId);
+    audit(req, null, 'email.verificado', { agencyId: user && user.agencyId, userId });
+    return json(res, { ok: true });
+  });
+
+  router.post('/api/verificar-email/reenviar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    if (session.user.emailVerified) return json(res, { ok: true, alreadyVerified: true });
+    const wait = security.consume(`verify:resend:${session.user.id}`, security.LIMITS.verifyResendPerUser);
+    if (wait) return tooManyRequests(res, wait);
+    if (!(await sendVerificationEmail(session.user))) {
+      return err(res, 'El envío de emails no está disponible en este momento. Contactá a soporte.', 503);
+    }
     return json(res, { ok: true });
   });
 
@@ -323,8 +390,8 @@ export function registerApiRoutes(router) {
       const parsed = await parsePropertyRequest(req);
       body = parsed.fields;
       files = parsed.files;
-    } catch {
-      return err(res, 'Error al procesar los archivos.');
+    } catch (e) {
+      return uploadError(res, e);
     }
     if (!body.title) return err(res, 'El título es obligatorio.');
     if ((body.status || 'publicada') === 'publicada' && !canDo(session, 'publicar_propiedades')) {
@@ -386,8 +453,8 @@ export function registerApiRoutes(router) {
       const parsed = await parsePropertyRequest(req);
       body = parsed.fields;
       files = parsed.files;
-    } catch {
-      return err(res, 'Error al procesar los archivos.');
+    } catch (e) {
+      return uploadError(res, e);
     }
     if (body.status !== undefined && body.status !== property.status && !canDo(session, 'publicar_propiedades')) {
       return err(res, 'No tenés permiso para publicar o despublicar propiedades.', 403);
@@ -956,6 +1023,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAccountAdmin(req, res, session)) return;
     await db.regenerateApiKey(session.agency.id);
+    audit(req, session, 'mi_web.api_key_regenerada', {});
     json(res, { ok: true });
   });
 
@@ -1053,6 +1121,7 @@ export function registerApiRoutes(router) {
       }
     }
     const invitation = await db.createInvitation({ agencyId: session.agency.id, role: body.role, note: body.note, menuPermisos });
+    audit(req, session, 'equipo.invitacion_creada', { role: invitation.role });
     json(res, { invitation }, 201);
   });
 
@@ -1074,6 +1143,7 @@ export function registerApiRoutes(router) {
     if (target && target.agencyId === session.agency.id && target.id !== session.user.id) {
       if (!(target.role === 'admin' && body.role !== 'admin' && await db.countAdminsInAgency(session.agency.id) <= 1)) {
         await db.updateUserRole(target.id, body.role);
+        audit(req, session, 'equipo.rol_cambiado', { targetUserId: target.id, role: body.role });
       }
     }
     json(res, { ok: true });
@@ -1087,6 +1157,7 @@ export function registerApiRoutes(router) {
     if (target && target.agencyId === session.agency.id && target.id !== session.user.id) {
       if (!(target.role === 'admin' && await db.countAdminsInAgency(session.agency.id) <= 1)) {
         await db.deleteUser(target.id);
+        audit(req, session, 'equipo.usuario_eliminado', { targetUserId: target.id, email: target.email });
       }
     }
     json(res, { ok: true });
@@ -1102,6 +1173,7 @@ export function registerApiRoutes(router) {
     const body = await parseJson(req);
     const permisos = (body.permisos !== null && body.permisos !== undefined) ? body.permisos : null;
     const updated = await db.updateUserMenuPermisos(target.id, permisos);
+    audit(req, session, 'equipo.permisos_cambiados', { targetUserId: target.id, permisos });
     json(res, { user: updated });
   });
 
@@ -1120,7 +1192,87 @@ export function registerApiRoutes(router) {
       payments: await db.listPaymentsByAgency(session.agency.id),
       mpConfigured: mercadopago.isConfigured(),
       paymentsSimulated: mercadopago.simulatedPaymentsAllowed(),
+      // La public key de MP es pública por diseño (la usa el Brick en el navegador).
+      mpPublicKey: mercadopago.isConfigured() ? mercadopago.publicKey() : null,
+      emailVerified: session.user.emailVerified,
+      canChangeCard: Boolean(mercadopago.isConfigured() && mercadopago.publicKey() && subscription && subscription.mpPreapprovalId),
+      activity: (await db.listAuditLogByAgency(session.agency.id, 20)).map(a => ({
+        createdAt: a.createdAt, action: a.action, ip: a.ip, details: a.details,
+      })),
     });
+  });
+
+  // Cambiar la tarjeta de la suscripción. El navegador manda SOLO el token que
+  // genera el Card Payment Brick de Mercado Pago; número, vencimiento y CVV
+  // nunca llegan a este servidor.
+  router.post('/api/suscripcion/tarjeta', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    if (!requireAccountAdmin(req, res, session)) return;
+    if (!session.user.emailVerified) {
+      return err(res, 'Confirmá tu email antes de gestionar medios de pago.', 403);
+    }
+    if (!mercadopago.isConfigured() || !mercadopago.publicKey()) {
+      return err(res, 'La gestión de tarjetas no está disponible en este momento.', 503);
+    }
+
+    const body = await parseJson(req);
+    const cardToken = typeof body.token === 'string' ? body.token.trim() : '';
+    if (!/^[A-Za-z0-9]{16,64}$/.test(cardToken)) return err(res, 'No se recibió una tarjeta válida.', 400);
+
+    // Reautenticación: un tercero con la sesión abierta (computadora compartida,
+    // cookie robada) no puede cambiar la tarjeta sin la contraseña.
+    const failKey = `reauth:fail:${session.user.id}`;
+    const failWait = security.isBlocked(failKey, security.LIMITS.reauthFailPerUser);
+    if (failWait) return tooManyRequests(res, failWait);
+    const credentials = await db.findUserCredentialsByEmail(session.user.email);
+    if (!credentials || !body.password || !auth.verifyPassword(String(body.password), credentials.passwordHash, credentials.passwordSalt)) {
+      security.consume(failKey, security.LIMITS.reauthFailPerUser);
+      audit(req, session, 'tarjeta.reautenticacion_fallida', {});
+      return err(res, 'La contraseña no es correcta.', 401);
+    }
+    security.reset(failKey);
+
+    const changeWait = security.consume(`card:agency:${session.agency.id}`, security.LIMITS.cardChangePerAgency);
+    if (changeWait) return tooManyRequests(res, changeWait);
+
+    const subscription = await db.getSubscriptionByAgency(session.agency.id);
+    if (!subscription || !subscription.mpPreapprovalId) {
+      return err(res, 'Primero tenés que activar la suscripción con Mercado Pago.', 400);
+    }
+
+    try {
+      await mercadopago.updatePreapprovalCard(subscription.mpPreapprovalId, cardToken);
+    } catch (e) {
+      console.error('[tarjeta] Mercado Pago rechazó el cambio:', e.message);
+      audit(req, session, 'tarjeta.cambio_rechazado', {});
+      return err(res, 'Mercado Pago no aceptó la tarjeta. Revisá los datos o probá con otra.', 502);
+    }
+
+    // Datos enmascarados para mostrar. Si MP no los devuelve, se completan con el próximo cobro.
+    let lastFour = null;
+    try {
+      const tokenInfo = await mercadopago.getCardToken(cardToken);
+      lastFour = tokenInfo && tokenInfo.last_four_digits ? String(tokenInfo.last_four_digits).slice(-4) : null;
+    } catch { /* opcional */ }
+    const brand = typeof body.paymentMethodId === 'string' ? body.paymentMethodId.replace(/[^a-z0-9_]/gi, '').slice(0, 40) : null;
+    const updated = await db.updateSubscription(session.agency.id, { cardLastFour: lastFour, cardBrand: brand });
+
+    audit(req, session, 'tarjeta.cambiada', { cardBrand: brand, cardLastFour: lastFour });
+    if (mail.isConfigured()) {
+      const recipients = [...new Set([session.agency.email, session.user.email].filter(Boolean))];
+      for (const to of recipients) {
+        mail.sendBillingNotice(to, {
+          title: 'Se cambió la tarjeta de tu suscripción',
+          lines: [
+            `${session.user.name || session.user.email} cambió la tarjeta con la que se cobra la suscripción.`,
+            lastFour ? `Nueva tarjeta: ${brand || ''} terminada en ${lastFour}.` : '',
+            `IP: ${security.clientIp(req)}.`,
+          ].filter(Boolean),
+        }).catch(e => console.error('[tarjeta] No se pudo enviar el aviso:', e.message));
+      }
+    }
+    json(res, { ok: true, subscription: updated });
   });
 
   router.post('/api/suscripcion/pagar', async (req, res) => {
@@ -1129,13 +1281,22 @@ export function registerApiRoutes(router) {
     if (!requireAccountAdmin(req, res, session)) return;
     const plan = await db.getPlan();
     if (mercadopago.isConfigured()) {
+      if (!session.user.emailVerified) {
+        return err(res, 'Confirmá tu email antes de pagar. Te podemos reenviar el link desde esta pantalla.', 403);
+      }
       try {
         const preapproval = await mercadopago.createPreapproval({
           reason: plan.name, payerEmail: session.agency.email, amount: plan.priceARS,
           externalReference: session.agency.id,
           backUrl: `${mail.APP_URL}/suscripcion`,
         });
-        await db.updateSubscription(session.agency.id, { mpPreapprovalId: preapproval.id });
+        // No pisar una suscripción que ya está cobrando: el webhook actualiza el id
+        // cuando la nueva efectivamente se paga.
+        const current = await db.getSubscriptionByAgency(session.agency.id);
+        if (db.effectiveSubscriptionStatus(current) !== 'activa' || !current.mpPreapprovalId) {
+          await db.updateSubscription(session.agency.id, { mpPreapprovalId: preapproval.id });
+        }
+        audit(req, session, 'suscripcion.checkout_iniciado', { preapprovalId: preapproval.id, amount: plan.priceARS });
         return json(res, { ok: true, redirectUrl: preapproval.init_point });
       } catch {
         return err(res, 'Error al crear la suscripción en Mercado Pago.');
@@ -1237,6 +1398,7 @@ export function registerApiRoutes(router) {
     if (agency) {
       const plan = await db.getPlan();
       await db.applySuccessfulPayment(agency.id, { amount: plan.priceARS, currency: 'ARS', method: 'manual' });
+      audit(req, null, 'pago.manual_admin', { agencyId: agency.id, adminUserId: session.user.id, amount: plan.priceARS });
     }
     json(res, { ok: true });
   });
@@ -1252,6 +1414,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const body = await parseJson(req);
     if (body.name && body.priceARS) await db.updatePlan({ name: body.name, priceARS: Number(body.priceARS) || 0 });
+    if (body.name && body.priceARS) audit(req, null, 'plan.modificado', { adminUserId: session.user.id, name: body.name, priceARS: Number(body.priceARS) || 0 });
     json(res, { plan: await db.getPlan() });
   });
 
@@ -1293,7 +1456,9 @@ export function registerApiRoutes(router) {
     const agency = await db.getAgency(invitation.agencyId);
     const body = await parseJson(req);
     const { name, email, password } = body;
-    if (!name || !email || !password || password.length < 6) return err(res, 'Completá tu nombre, email y una contraseña de al menos 6 caracteres.');
+    if (!name || !email || !password) return err(res, 'Completá tu nombre, email y contraseña.');
+    const passwordProblem = security.validateNewPassword(password, email);
+    if (passwordProblem) return err(res, passwordProblem);
     if (await db.findUserByEmail(email)) return err(res, 'Ya existe un usuario con ese email.');
     const { hash, salt } = auth.hashPassword(password);
     const user = await db.createUser({ agencyId: agency.id, nombre: name, email, passwordHash: hash, passwordSalt: salt, role: invitation.role });
@@ -1302,6 +1467,8 @@ export function registerApiRoutes(router) {
     }
     await db.acceptInvitation(invitation.id);
     await auth.login(req, res, user.id);
+    sendVerificationEmail(user).catch(e => console.error('[verificación] No se pudo enviar el email:', e.message));
+    audit(req, { user, agency }, 'equipo.invitacion_aceptada', { role: invitation.role });
     json(res, { user, agency }, 201);
   });
 }

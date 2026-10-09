@@ -76,7 +76,66 @@ export const LIMITS = {
   resetPerIp:        { max: 10, windowMs: 15 * 60 * 1000 },
   invitePerIp:       { max: 10, windowMs: 15 * 60 * 1000 },
   webhookPerIp:      { max: 120, windowMs: 60 * 1000 },
+  // Contraseña mal ingresada al confirmar una operación sensible (cambiar tarjeta).
+  reauthFailPerUser: { max: 5,  windowMs: 15 * 60 * 1000 },
+  // Cambios de tarjeta por agencia: frena el "card testing" (probar tarjetas robadas).
+  cardChangePerAgency: { max: 5, windowMs: 24 * 60 * 60 * 1000 },
+  verifyResendPerUser: { max: 3, windowMs: 60 * 60 * 1000 },
+  verifyPerIp:       { max: 20, windowMs: 15 * 60 * 1000 },
+  cspReportPerIp:    { max: 60, windowMs: 60 * 1000 },
 };
+
+// ---------------------------------------------------------------------------
+// Política de contraseñas (solo para contraseñas nuevas: no afecta a las actuales)
+// ---------------------------------------------------------------------------
+export const PASSWORD_MIN_LENGTH = 10;
+
+// Las más usadas en filtraciones (y variantes locales). No pretende ser completa:
+// combinada con el largo mínimo y el rate limiting alcanza para frenar lo obvio.
+const COMMON_PASSWORDS = new Set([
+  '1234567890', '12345678910', '0123456789', '1111111111', '0000000000', 'qwertyuiop',
+  'password123', 'password1234', 'contraseña', 'contrasena', 'contraseña123', 'contrasena123',
+  'iloveyou123', 'qwerty1234', 'qwerty12345', 'abc1234567', 'abcdefghij', 'asdfghjkl1',
+  'spyderconnect', 'spiderconnect', 'inmobiliaria', 'inmobiliaria1', 'inmobiliaria123',
+  'argentina123', 'bocajuniors', 'riverplate', 'administrador', 'admin12345',
+]);
+
+/** Devuelve un mensaje de error, o null si la contraseña es aceptable. */
+export function validateNewPassword(password, email = '') {
+  const pwd = String(password || '');
+  if (pwd.length < PASSWORD_MIN_LENGTH) {
+    return `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`;
+  }
+  if (pwd.length > 200) return 'La contraseña es demasiado larga.';
+  const lower = pwd.toLowerCase();
+  if (COMMON_PASSWORDS.has(lower) || /^(.)\1+$/.test(pwd)) {
+    return 'Esa contraseña es demasiado común. Elegí otra.';
+  }
+  const localPart = String(email).split('@')[0].toLowerCase();
+  if (localPart.length >= 4 && lower.includes(localPart)) {
+    return 'La contraseña no puede contener tu email.';
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Concurrencia de subidas pesadas
+// ---------------------------------------------------------------------------
+// Cada formulario de propiedad con fotos se carga entero en memoria. Limitar
+// cuántos se procesan a la vez evita que unas pocas requests tiren el proceso.
+const MAX_CONCURRENT_UPLOADS = Number(process.env.MAX_CONCURRENT_UPLOADS) || 3;
+let uploadsInProgress = 0;
+
+/** Ejecuta fn si hay lugar; si no, devuelve null sin ejecutarla. */
+export async function withUploadSlot(fn) {
+  if (uploadsInProgress >= MAX_CONCURRENT_UPLOADS) return null;
+  uploadsInProgress += 1;
+  try {
+    return { value: await fn() };
+  } finally {
+    uploadsInProgress -= 1;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // CSRF: validación del header Origin

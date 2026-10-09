@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
+import { PASSWORD_MIN_LENGTH } from '../utils.js';
 
 const INITIAL = {
   nombre: '', apellido: '', documento: '', email: '',
@@ -26,8 +27,8 @@ export default function Register() {
     if (values.password !== values.confirmPassword) {
       return setError('Las contraseñas no coinciden.');
     }
-    if (values.password.length < 6) {
-      return setError('La contraseña debe tener al menos 6 caracteres.');
+    if (values.password.length < PASSWORD_MIN_LENGTH) {
+      return setError(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`);
     }
     if (!values.terms) {
       return setError('Debés aceptar los términos y condiciones para continuar.');
@@ -142,7 +143,7 @@ export default function Register() {
             <label htmlFor="password">Contraseña *</label>
             <input
               type="password" id="password" name="password" required
-              minLength={6} placeholder="Mínimo 6 caracteres"
+              minLength={PASSWORD_MIN_LENGTH} placeholder={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres`}
               autoComplete="new-password"
               value={values.password} onChange={handleChange}
             />

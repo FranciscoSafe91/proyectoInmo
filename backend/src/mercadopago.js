@@ -135,6 +135,24 @@ export async function getAuthorizedPayment(authorizedPaymentId) {
   return request('GET', `/authorized_payments/${encodeURIComponent(authorizedPaymentId)}`);
 }
 
+// Reemplaza la tarjeta con la que se cobra la suscripción. cardTokenId lo genera
+// el Card Payment Brick en el navegador: los datos de la tarjeta nunca pasan por
+// nuestro servidor.
+// https://www.mercadopago.com.ar/developers/es/reference/online-payments/subscriptions/update-preapproval/put
+export async function updatePreapprovalCard(preapprovalId, cardTokenId) {
+  return request('PUT', `/preapproval/${encodeURIComponent(preapprovalId)}`, { card_token_id: cardTokenId });
+}
+
+// Datos enmascarados del token (últimos 4 dígitos, vencimiento). Solo se usan
+// para mostrarle al usuario qué tarjeta tiene cargada.
+export async function getCardToken(cardTokenId) {
+  return request('GET', `/v1/card_tokens/${encodeURIComponent(cardTokenId)}`);
+}
+
+export function publicKey() {
+  return process.env.MP_PUBLIC_KEY || null;
+}
+
 export async function searchAuthorizedPayments(preapprovalId) {
   return request('GET', `/authorized_payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&limit=50`);
 }

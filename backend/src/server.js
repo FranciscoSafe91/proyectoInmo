@@ -2,9 +2,9 @@
 
 import 'dotenv/config';
 import http from 'node:http';
-import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, mkdirSync, createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, extname } from 'node:path';
+import { dirname, join, extname, sep } from 'node:path';
 import { URL } from 'node:url';
 
 import { Router } from './router.js';
@@ -66,6 +66,26 @@ router.get('/api/v1/feed/:agencyId', async (req, res) => {
     generadoEn: new Date().toISOString(),
     propiedades: items,
   }));
+});
+
+// Reportes de violaciones de la CSP (los manda el navegador solo). Sirven para
+// ajustar la política antes de pasarla a modo estricto.
+router.post('/api/csp-report', async (req, res) => {
+  const reply = () => { res.writeHead(204); res.end(); };
+  if (security.consume(`csp:${security.clientIp(req)}`, security.LIMITS.cspReportPerIp)) return reply();
+  let raw = '';
+  try { raw = await readLimitedBody(req, 16 * 1024); } catch { return reply(); }
+  try {
+    const parsed = JSON.parse(raw);
+    const r = parsed['csp-report'] || (Array.isArray(parsed) && parsed[0] && parsed[0].body) || parsed;
+    const directive = r['violated-directive'] || r.effectiveDirective || r['effective-directive'];
+    const blocked = r['blocked-uri'] || r.blockedURL;
+    const page = r['document-uri'] || r.documentURL;
+    // Sin query string: algunos recursos (p. ej. el antifraude de MP) llevan datos del navegador en la URL.
+    const clean = (u) => String(u || '').split('?')[0].slice(0, 200);
+    console.warn(`[csp] ${directive} bloquearía ${clean(blocked)} en ${clean(page)}`);
+  } catch { /* reporte malformado: se ignora */ }
+  reply();
 });
 
 // Webhook Mercado Pago
@@ -132,34 +152,66 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+  // Con X-Content-Type-Options: nosniff el navegador ya no adivina el tipo: cada
+  // extensión que se sirva tiene que estar declarada.
+  '.html': 'text/html; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
 };
+
+// Content-Security-Policy para las páginas HTML. Arranca en modo Report-Only:
+// no bloquea nada, solo reporta a /api/csp-report lo que bloquearía. Cuando el
+// log quede limpio (incluido el Brick de Mercado Pago en uso real) se pasa a
+// modo estricto con CSP_ENFORCE=true.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' https://sdk.mercadopago.com https://*.mercadopago.com https://*.mlstatic.com https://cdnjs.cloudflare.com",
+  // 'unsafe-inline' en estilos: React usa atributos style={...} en muchos componentes.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://*.mlstatic.com",
+  "font-src 'self' data: https://fonts.gstatic.com https://*.mlstatic.com",
+  // *.mercadolivre.com: el SDK de MP carga desde ahí su huella antifraude del dispositivo.
+  "img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://img.youtube.com https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://*.mlstatic.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com",
+  "media-src 'self' blob: https://res.cloudinary.com",
+  "connect-src 'self' https://api.cloudinary.com https://nominatim.openstreetmap.org https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://*.mlstatic.com",
+  "frame-src https://www.youtube.com https://*.mercadopago.com https://*.mercadolibre.com https://www.mercadolibre.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://*.mercadopago.com",
+  "object-src 'none'",
+  'report-uri /api/csp-report',
+].join('; ');
+
+function setHtmlSecurityHeaders(res) {
+  const header = process.env.CSP_ENFORCE === 'true' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
+  res.setHeader(header, CSP);
+}
+
+// Se sirve en streaming: antes se leía el archivo entero a memoria (un video de
+// cientos de MB por request podía tirar el proceso).
+function sendFile(res, filePath, size) {
+  const ext = extname(filePath);
+  if (ext === '.html') setHtmlSecurityHeaders(res);
+  res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Content-Length': size });
+  createReadStream(filePath).on('error', () => res.destroy()).pipe(res);
+}
 
 function serveStatic(req, res, pathname) {
   if (pathname === '/' || pathname.endsWith('/')) return false;
-  // Primero busca en public/ (uploads, widget.js, etc.)
-  const filePath = join(PUBLIC_DIR, pathname);
-  if (filePath.startsWith(PUBLIC_DIR) && existsSync(filePath) && statSync(filePath).isFile()) {
-    const ext = extname(filePath);
-    const content = readFileSync(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(content);
-    return true;
-  }
-  // Luego busca en public/app/ (assets del build de React)
-  const spaFile = join(SPA_DIR, pathname);
-  if (spaFile.startsWith(SPA_DIR) && existsSync(spaFile) && statSync(spaFile).isFile()) {
-    const ext = extname(spaFile);
-    const content = readFileSync(spaFile);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(content);
+  // Primero busca en public/ (uploads, widget.js, etc.), luego en public/app/ (build de React).
+  for (const baseDir of [PUBLIC_DIR, SPA_DIR]) {
+    const filePath = join(baseDir, pathname);
+    if (!filePath.startsWith(baseDir + sep) || !existsSync(filePath)) continue;
+    const stats = statSync(filePath);
+    if (!stats.isFile()) continue;
+    sendFile(res, filePath, stats.size);
     return true;
   }
   return false;
 }
 
 // Headers de seguridad comunes a todas las respuestas. res.setHeader() se combina
-// con lo que después pase cada handler a res.writeHead().
-// La CSP queda para la fase 2 (hay que relevar Google Maps, Cloudinary, YouTube y MP).
+// con lo que después pase cada handler a res.writeHead(). La CSP va solo en HTML
+// (ver setHtmlSecurityHeaders).
 function setSecurityHeaders(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -192,7 +244,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && serveStatic(req, res, pathname)) return;
 
     // CSRF: ninguna operación que modifica datos de la API puede venir de otro sitio.
-    if (pathname.startsWith('/api/') && !['GET', 'HEAD'].includes(req.method) && !security.isAllowedOrigin(req)) {
+    if (pathname.startsWith('/api/') && pathname !== '/api/csp-report'
+        && !['GET', 'HEAD'].includes(req.method) && !security.isAllowedOrigin(req)) {
       console.warn(`[csrf] ${req.method} ${pathname} rechazado: Origin ${req.headers.origin}`);
       res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
       return res.end(JSON.stringify({ error: 'Origen no permitido.' }));
@@ -203,6 +256,7 @@ const server = http.createServer(async (req, res) => {
       // En producción: cualquier ruta no encontrada devuelve el index.html del SPA
       if (req.method === 'GET' && existsSync(join(SPA_DIR, 'index.html'))) {
         const html = readFileSync(join(SPA_DIR, 'index.html'));
+        setHtmlSecurityHeaders(res);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         return res.end(html);
       }
@@ -219,6 +273,12 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: 'Error interno del servidor' }));
   }
 });
+
+// Timeouts: cortan conexiones que mandan headers o bodies a cuentagotas (slowloris).
+// requestTimeout es amplio porque hay subidas de video de hasta 200 MB.
+server.headersTimeout = 30 * 1000;
+server.requestTimeout = 20 * 60 * 1000;
+server.keepAliveTimeout = 5 * 1000;
 
 server.listen(PORT, () => {
   console.log(`\n✔ Backend SpiderConect corriendo en http://localhost:${PORT}\n`);

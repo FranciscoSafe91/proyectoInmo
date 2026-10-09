@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { PASSWORD_MIN_LENGTH } from '../utils.js';
 
 export default function JoinInvite() {
   const { token } = useParams();
@@ -57,7 +58,7 @@ export default function JoinInvite() {
         <label htmlFor="email">Tu email</label>
         <input type="email" id="email" required value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
         <label htmlFor="password">Contraseña</label>
-        <input type="password" id="password" required minLength={6} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+        <input type="password" id="password" required minLength={PASSWORD_MIN_LENGTH} placeholder={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres`} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
         <div className="btn-row">
           <button type="submit" className="btn" disabled={submitting}>
             {submitting ? 'Uniéndome...' : `Unirme a ${agency.name}`}

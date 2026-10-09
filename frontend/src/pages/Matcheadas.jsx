@@ -83,8 +83,8 @@ function MatchRequestsReceived() {
 
   if (data.items.length === 0) {
     return (
-      <div className="card">
-        <div className="empty-state" style={{ padding: '32px 0' }}>
+      <div className="card" style={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="empty-state" style={{ padding: '24px 16px' }}>
           <Bell size={34} aria-hidden="true" />
           <h2>Sin alertas recibidas pendientes</h2>
           <p>Cuando un socio busque algo y una de tus propiedades coincida, aparecerá acá para que puedas aceptar o rechazar.</p>
@@ -375,8 +375,8 @@ function MatcheadasList() {
           </h2>
 
           {alerts.length === 0 ? (
-            <div className="card">
-              <div className="empty-state">
+            <div className="card" style={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="empty-state" style={{ padding: '24px 16px' }}>
                 <Bell size={38} aria-hidden="true" />
                 <h2>Todavía no creaste ninguna alerta</h2>
                 <p>Creá una alerta para buscar propiedades en toda la red y ver los resultados acá.</p>
@@ -422,7 +422,6 @@ function MatcheadasList() {
           <h2 className="page-col-heading">
             <Bell size={17} aria-hidden="true" /> Alertas que coinciden
           </h2>
-          <p className="muted small" style={{ marginBottom: 12 }}>Alertas recibidas</p>
           <MatchRequestsReceived />
           <MatcheadasRecibidas />
         </div>

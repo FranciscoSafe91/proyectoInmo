@@ -219,7 +219,7 @@ function WebPublishCell({ property, share, onUpdate }) {
 export default function PropertyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { canDo } = useAuth();
+  const { canDo, session } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [selectedPartners, setSelectedPartners] = useState([]);
@@ -354,7 +354,7 @@ export default function PropertyDetail() {
               <a
                 className="btn btn-small"
                 style={{ background: '#25D366', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${property.id}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${property.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

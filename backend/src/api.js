@@ -1567,13 +1567,17 @@ export function registerApiRoutes(router) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const viaAgencyId = url.searchParams.get('via');
     let viaAgency = owner;
+    let contactAgency = owner;
     if (viaAgencyId && viaAgencyId !== owner.id) {
       const candidate = await db.getAgency(viaAgencyId);
       const share = candidate && await db.getShareForPropertyAndTarget(property.id, viaAgencyId);
-      if (candidate && share && share.status === 'aceptada' && share.webPublishAuthorized) viaAgency = candidate;
+      if (candidate && share && share.status === 'aceptada') {
+        contactAgency = candidate;
+        if (share.webPublishAuthorized) viaAgency = candidate;
+      }
     }
     const media = await db.listPropertyMedia(property.id);
-    json(res, { property, media, owner, viaAgency });
+    json(res, { property, media, owner, viaAgency, contactAgency });
   });
 
   // ---------------------------------------------------------------------------

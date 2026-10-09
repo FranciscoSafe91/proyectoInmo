@@ -40,7 +40,7 @@ const AMBIENTES_OPTIONS = [
 ];
 
 export default function Properties() {
-  const { canDo } = useAuth();
+  const { canDo, session } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -250,7 +250,7 @@ export default function Properties() {
                     <a
                       className="btn btn-small"
                       style={{ background: '#25D366', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                      href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${p.id}`)}`}
+                      href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${p.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

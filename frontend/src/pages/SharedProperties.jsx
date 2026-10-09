@@ -10,6 +10,7 @@ function WhatsAppIcon({ size = 14 }) {
   );
 }
 import { api } from '../api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { money, typeLabel, operationLabel, TYPE_LABELS } from '../utils.js';
 
 const SORT_OPTIONS = [
@@ -137,6 +138,7 @@ function BtnGroup({ options, value, onChange, suffix = '+', zeroLabel }) {
 }
 
 export default function SharedProperties() {
+  const { session } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -449,7 +451,7 @@ export default function SharedProperties() {
                       <a
                         className="btn btn-small"
                         style={{ background: '#25D366', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                        href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${property.id}`)}`}
+                        href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${property.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

@@ -43,9 +43,9 @@ export default function Dashboard() {
       tone: 'orange',
     },
     {
-      label: 'Alertas que coinciden',
+      label: 'Alertas pendientes',
       value: stats.alertMatches,
-      hint: 'Socios buscando propiedades parecidas a las tuyas',
+      hint: 'Socios buscando propiedades parecidas a las tuyas y alertas enviadas',
       to: '/alertas',
       icon: Bell,
       tone: 'ink',
@@ -89,12 +89,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <Link to="/alertas" className="btn btn-alerta-bar">
-        {stats.alertMatches > 0 && (
-          <span className="metric-notification" aria-label={`${stats.alertMatches} alerta${stats.alertMatches === 1 ? '' : 's'} por ver`}>
-            {stats.alertMatches}
-          </span>
-        )}
+      <Link to="/alertas/nueva" className="btn btn-alerta-bar">
         <Bell size={17} aria-hidden="true" />
         Crear alerta
       </Link>
@@ -155,8 +150,8 @@ export default function Dashboard() {
             <Link to="/alertas" className="task-row task-success">
               <span>{stats.alertMatches}</span>
               <div>
-                <strong>Alertas que coinciden</strong>
-                <p>Socios buscando propiedades parecidas a las tuyas.</p>
+                <strong>Alertas pendientes</strong>
+                <p>Socios buscando propiedades parecidas a las tuyas y alertas enviadas.</p>
               </div>
               <ArrowRight size={18} aria-hidden="true" />
             </Link>

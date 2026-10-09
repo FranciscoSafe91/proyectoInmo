@@ -63,6 +63,9 @@ export default function Invitations() {
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
+  const [acceptModal, setAcceptModal] = useState(null);
+  const [acceptComment, setAcceptComment] = useState('');
+  const [accepting, setAccepting] = useState(false);
 
   const [previewTarget, setPreviewTarget] = useState(null); // { share, property, ownerAgency }
   const [previewFull, setPreviewFull] = useState(null);     // datos completos del endpoint
@@ -98,8 +101,24 @@ export default function Invitations() {
       closePreview();
       return;
     }
+    if (action === 'aceptar') {
+      setAcceptModal({ shareId });
+      setAcceptComment('');
+      closePreview();
+      return;
+    }
     await api.post(`/invitaciones/compartir/${shareId}/${action}`);
     closePreview();
+    load();
+  }
+
+  async function handleConfirmAccept() {
+    if (!acceptModal) return;
+    setAccepting(true);
+    await api.post(`/invitaciones/compartir/${acceptModal.shareId}/aceptar`, { comment: acceptComment });
+    setAcceptModal(null);
+    setAcceptComment('');
+    setAccepting(false);
     load();
   }
 
@@ -234,6 +253,30 @@ export default function Invitations() {
                 onClick={() => handleShare(previewTarget.share.id, 'aceptar')}
               >
                 Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de comentario al aceptar */}
+      {acceptModal && (
+        <div className="modal-backdrop" onClick={() => setAcceptModal(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>Aceptar propiedad compartida</h3>
+            <p className="muted">Opcional — podés dejarle un comentario a la inmobiliaria.</p>
+            <textarea
+              rows={4}
+              placeholder="Ej: Todo perfecto, la vamos a publicar en nuestra web esta semana."
+              value={acceptComment}
+              onChange={e => setAcceptComment(e.target.value)}
+            />
+            <div className="btn-row">
+              <button className="btn" onClick={handleConfirmAccept} disabled={accepting}>
+                {accepting ? 'Aceptando...' : 'Confirmar aceptación'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setAcceptModal(null)} disabled={accepting}>
+                Cancelar
               </button>
             </div>
           </div>

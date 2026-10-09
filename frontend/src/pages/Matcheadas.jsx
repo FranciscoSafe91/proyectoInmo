@@ -36,6 +36,9 @@ function MatchRequestsReceived() {
   const [error, setError] = useState('');
   const [responding, setResponding] = useState({});
   const [sortBy, setSortBy] = useState('recientes');
+  const [acceptModal, setAcceptModal] = useState(null);
+  const [acceptComment, setAcceptComment] = useState('');
+  const [accepting, setAccepting] = useState(false);
 
   const load = () => {
     api.get('/match-requests').then(setData).catch(e => setError(e.message));
@@ -44,6 +47,11 @@ function MatchRequestsReceived() {
   useEffect(() => { load(); }, []);
 
   const respond = async (id, action) => {
+    if (action === 'aceptar') {
+      setAcceptModal({ id });
+      setAcceptComment('');
+      return;
+    }
     setResponding(r => ({ ...r, [id]: true }));
     try {
       await api.post(`/match-requests/${id}/${action}`);
@@ -52,6 +60,21 @@ function MatchRequestsReceived() {
       setError(e.message);
     } finally {
       setResponding(r => ({ ...r, [id]: false }));
+    }
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!acceptModal) return;
+    setAccepting(true);
+    try {
+      await api.post(`/match-requests/${acceptModal.id}/aceptar`, { comment: acceptComment });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAccepting(false);
+      setAcceptModal(null);
+      setAcceptComment('');
     }
   };
 
@@ -73,6 +96,29 @@ function MatchRequestsReceived() {
   const displayItems = sortBy === 'precio_desc' ? sortByPrice(data.items) : data.items;
 
   return (
+    <>
+      {acceptModal && (
+        <div className="modal-backdrop" onClick={() => setAcceptModal(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>Aceptar solicitud de match</h3>
+            <p className="muted">Opcional — podés dejarle un comentario al socio que busca esta propiedad.</p>
+            <textarea
+              rows={4}
+              placeholder="Ej: Perfecto, pueden contactar al propietario esta semana."
+              value={acceptComment}
+              onChange={e => setAcceptComment(e.target.value)}
+            />
+            <div className="btn-row">
+              <button className="btn btn-success" onClick={handleConfirmAccept} disabled={accepting}>
+                {accepting ? 'Aceptando...' : 'Confirmar aceptación'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setAcceptModal(null)} disabled={accepting}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <p className="muted small" style={{ margin: 0 }}>
@@ -120,13 +166,14 @@ function MatchRequestsReceived() {
         ))}
       </div>
     </div>
+    </>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Tarjeta de propiedad aceptada (detalle de alerta)
 // ---------------------------------------------------------------------------
-function PropertyCard({ property, ownerAgency }) {
+function PropertyCard({ property, ownerAgency, ownerComment }) {
   const thumb = property.coverUrl || null;
   return (
     <Link to={`/propiedades/${property.id}`} className="matcheadas-property-card">
@@ -145,6 +192,11 @@ function PropertyCard({ property, ownerAgency }) {
           </span>
         )}
         <span className="muted small">Publicada por: {ownerAgency.name}</span>
+        {ownerComment && (
+          <div style={{ marginTop: 6, background: 'var(--app-surface, #f5f5f5)', borderRadius: 6, padding: '6px 10px', fontSize: '0.85rem' }}>
+            <span style={{ fontWeight: 600 }}>Comentario del socio:</span> {ownerComment}
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -212,8 +264,8 @@ function AlertDetail({ alertId }) {
               </select>
             </div>
             <div className="matcheadas-property-list">
-              {displayProperties.map(({ property, ownerAgency }) => (
-                <PropertyCard key={property.id} property={property} ownerAgency={ownerAgency} />
+              {displayProperties.map(({ property, ownerAgency, ownerComment }) => (
+                <PropertyCard key={property.id} property={property} ownerAgency={ownerAgency} ownerComment={ownerComment} />
               ))}
             </div>
           </>

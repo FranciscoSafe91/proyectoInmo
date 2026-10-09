@@ -397,6 +397,13 @@ export default function PropertyDetail() {
                               </td>
                             </tr>
                           )}
+                          {s.status === 'aceptada' && s.acceptComment && (
+                            <tr key={`${s.id}-comment`} className="rejection-reason-row">
+                              <td colSpan={5}>
+                                <span className="rejection-reason-label">Comentario:</span> {s.acceptComment}
+                              </td>
+                            </tr>
+                          )}
                         </>
                       ))}
                     </tbody>

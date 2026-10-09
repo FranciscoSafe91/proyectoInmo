@@ -231,7 +231,7 @@ export default function Properties() {
 
                   <div className="estate-meta">
                     <span><BedDouble size={15} aria-hidden="true" />{p.bedrooms || 0} dorm.</span>
-                    <span><Ruler size={15} aria-hidden="true" />{p.areaM2 || 0} m²</span>
+                    <span><Ruler size={15} aria-hidden="true" />{p.superficieTotal || p.areaM2 || 0} m²</span>
                     <span><Share2 size={15} aria-hidden="true" />{sharedCount > 0 ? `${sharedCount} socio${sharedCount === 1 ? '' : 's'}` : 'Sin compartir'}</span>
                   </div>
 

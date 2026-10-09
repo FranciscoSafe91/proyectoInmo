@@ -31,6 +31,9 @@ export default function Alerts() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [responding, setResponding] = useState({});
+  const [acceptModal, setAcceptModal] = useState(null);
+  const [acceptComment, setAcceptComment] = useState('');
+  const [accepting, setAccepting] = useState(false);
 
   function load() {
     api.get('/alertas').then(setData).catch(e => setError(e.message));
@@ -51,6 +54,11 @@ export default function Alerts() {
     load();
   }
   async function handleRespond(matchRequestId, action) {
+    if (action === 'aceptar') {
+      setAcceptModal({ id: matchRequestId });
+      setAcceptComment('');
+      return;
+    }
     setResponding(r => ({ ...r, [matchRequestId]: true }));
     try {
       await api.post(`/match-requests/${matchRequestId}/${action}`);
@@ -62,6 +70,21 @@ export default function Alerts() {
     }
   }
 
+  async function handleConfirmAccept() {
+    if (!acceptModal) return;
+    setAccepting(true);
+    try {
+      await api.post(`/match-requests/${acceptModal.id}/aceptar`, { comment: acceptComment });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAccepting(false);
+      setAcceptModal(null);
+      setAcceptComment('');
+    }
+  }
+
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
@@ -69,6 +92,28 @@ export default function Alerts() {
 
   return (
     <>
+      {acceptModal && (
+        <div className="modal-backdrop" onClick={() => setAcceptModal(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>Aceptar solicitud de match</h3>
+            <p className="muted">Opcional — podés dejarle un comentario al socio que busca esta propiedad.</p>
+            <textarea
+              rows={4}
+              placeholder="Ej: Perfecto, pueden contactar al propietario esta semana."
+              value={acceptComment}
+              onChange={e => setAcceptComment(e.target.value)}
+            />
+            <div className="btn-row">
+              <button className="btn btn-success" onClick={handleConfirmAccept} disabled={accepting}>
+                {accepting ? 'Aceptando...' : 'Confirmar aceptación'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setAcceptModal(null)} disabled={accepting}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <section className="page-hero compact-hero">
         <div>
           <span className="section-kicker">Búsquedas activas</span>

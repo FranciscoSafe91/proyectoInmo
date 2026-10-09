@@ -128,8 +128,23 @@ export default function AlertForm() {
     setAlert(v => ({ ...v, [name]: val }));
   }
 
+  const REQUIRED_FIELDS = [
+    { key: 'operation', label: 'Operación' },
+    { key: 'type', label: 'Tipo de propiedad' },
+    { key: 'zonaGeografica', label: 'Zona geográfica' },
+  ];
+
+  function getMissingFields() {
+    return REQUIRED_FIELDS.filter(f => !alert[f.key]);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    const missing = getMissingFields();
+    if (missing.length > 0) {
+      setError(missing.map(f => f.label).join(', '));
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -152,7 +167,11 @@ export default function AlertForm() {
         <Link className="btn btn-secondary" to="/alertas">Ver mis alertas</Link>
       </section>
 
-      {error && <div className="banner banner-error">{error}</div>}
+      {error && (
+        <div className="banner banner-error">
+          <strong>Faltan los siguientes campos obligatorios:</strong> {error}
+        </div>
+      )}
 
       <div className="card">
         <form onSubmit={handleSubmit}>
@@ -169,7 +188,7 @@ export default function AlertForm() {
 
           <div className="grid grid-2">
             <div>
-              <label htmlFor="operation">Operación</label>
+              <label htmlFor="operation">Operación <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               <select id="operation" name="operation" value={alert.operation} onChange={handleChange}>
                 <option value="">Cualquiera</option>
                 <option value="venta">Venta</option>
@@ -177,7 +196,7 @@ export default function AlertForm() {
               </select>
             </div>
             <div>
-              <label htmlFor="type">Tipo de propiedad</label>
+              <label htmlFor="type">Tipo de propiedad <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               <select id="type" name="type" value={alert.type} onChange={handleChange}>
                 <option value="">Cualquiera</option>
                 {Object.entries(TYPE_LABELS).map(([value, label]) => (
@@ -189,7 +208,7 @@ export default function AlertForm() {
 
           <div className="grid grid-3">
             <div>
-              <label htmlFor="zonaGeografica">Zona geográfica</label>
+              <label htmlFor="zonaGeografica">Zona geográfica <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               <select id="zonaGeografica" name="zonaGeografica" value={alert.zonaGeografica} onChange={handleChange}>
                 <option value="">Cualquier zona</option>
                 {PROVINCIAS_AR.map(p => <option key={p} value={p}>{p}</option>)}

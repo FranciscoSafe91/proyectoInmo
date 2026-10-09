@@ -157,6 +157,7 @@ function toShare(r) {
     percentageComprador: r.percentage_comprador != null ? Number(r.percentage_comprador) : null,
     wholeBolsa: Boolean(r.toda_bolsa),
     shareComment: r.share_comment || null,
+    acceptComment: r.accept_comment || null,
     rejectionReason: r.rejection_reason || null,
     source: r.source || 'directa',
     createdAt: r.created_at, respondedAt: r.responded_at,
@@ -171,6 +172,7 @@ async function ensureCompartidasColumns() {
   await pool.query("ALTER TABLE compartidas ADD COLUMN percentage_comprador DECIMAL(5,2) DEFAULT NULL").catch(() => {});
   await pool.query("ALTER TABLE compartidas ADD COLUMN toda_bolsa TINYINT(1) NOT NULL DEFAULT 0").catch(() => {});
   await pool.query("ALTER TABLE compartidas ADD COLUMN share_comment TEXT DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE compartidas ADD COLUMN accept_comment TEXT DEFAULT NULL").catch(() => {});
 }
 
 function toAlert(r) {
@@ -253,6 +255,7 @@ function toMatchRequest(r) {
     ownerAgencyId: r.owner_agency_id,
     status: r.status,
     alerteeStatus: r.alertee_status || null,
+    ownerComment: r.owner_comment || null,
     createdAt: r.created_at,
     respondedAt: r.responded_at,
   };
@@ -953,10 +956,12 @@ export async function cancelShare(shareId) {
   await pool.query('DELETE FROM compartidas WHERE id=?', [shareId]);
 }
 
-export async function respondPropertyShare(shareId, status, rejectionReason) {
+export async function respondPropertyShare(shareId, status, rejectionReason, acceptComment) {
   await ensureCompartidasColumns();
   if (status === 'rechazada' && rejectionReason) {
     await pool.query('UPDATE compartidas SET status=?, rejection_reason=?, responded_at=NOW() WHERE id=?', [status, rejectionReason, shareId]);
+  } else if (status === 'aceptada' && acceptComment) {
+    await pool.query('UPDATE compartidas SET status=?, accept_comment=?, responded_at=NOW() WHERE id=?', [status, acceptComment, shareId]);
   } else {
     await pool.query('UPDATE compartidas SET status=?, responded_at=NOW() WHERE id=?', [status, shareId]);
   }
@@ -1079,6 +1084,7 @@ async function ensureMatchRequestsTable() {
     )
   `);
   try { await pool.query(`ALTER TABLE match_requests ADD COLUMN alertee_status VARCHAR(20) NULL`); } catch (_) {}
+  try { await pool.query(`ALTER TABLE match_requests ADD COLUMN owner_comment TEXT NULL`); } catch (_) {}
   matchRequestsTableEnsured = true;
 }
 
@@ -1148,11 +1154,11 @@ export async function getMatchRequest(matchRequestId) {
   return toMatchRequest(rows[0] || null);
 }
 
-export async function respondMatchRequest(matchRequestId, status) {
+export async function respondMatchRequest(matchRequestId, status, ownerComment) {
   if (status === 'aceptado') {
     await pool.query(
-      'UPDATE match_requests SET status=?, alertee_status=?, responded_at=NOW() WHERE id=?',
-      [status, 'aceptado', matchRequestId]
+      'UPDATE match_requests SET status=?, alertee_status=?, owner_comment=?, responded_at=NOW() WHERE id=?',
+      [status, 'aceptado', ownerComment || null, matchRequestId]
     );
   } else {
     await pool.query(
@@ -1203,14 +1209,14 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
   const alert = await getSearchAlert(alertId);
   if (!alert || alert.agencyId !== requestingAgencyId) return [];
   const [rows] = await pool.query(
-    `SELECT property_id, owner_agency_id FROM match_requests WHERE alert_id=? AND status='aceptado'`,
+    `SELECT id, property_id, owner_agency_id, owner_comment FROM match_requests WHERE alert_id=? AND status='aceptado'`,
     [alertId]
   );
   const results = [];
   for (const row of rows) {
     const property = await getProperty(row.property_id);
     if (property && property.status === 'publicada') {
-      results.push({ property, ownerAgencyId: row.owner_agency_id });
+      results.push({ property, ownerAgencyId: row.owner_agency_id, ownerComment: row.owner_comment || null });
     }
   }
   return results;

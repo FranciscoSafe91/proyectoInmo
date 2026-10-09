@@ -659,7 +659,8 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const share = await db.getPropertyShare(req.params.shareId);
     if (share && share.targetAgencyId === session.agency.id && share.status === 'pendiente') {
-      await db.respondPropertyShare(share.id, 'aceptada');
+      const body = await parseJson(req);
+      await db.respondPropertyShare(share.id, 'aceptada', null, body.comment || '');
     }
     json(res, { ok: true });
   });
@@ -736,9 +737,10 @@ export function registerApiRoutes(router) {
     if (!alert || alert.agencyId !== session.agency.id) return json(res, { alert: null, properties: [] });
     const raw = await db.findMatchingPropertiesForAlert(req.params.alertId, session.agency.id);
     const properties = (await Promise.all(
-      raw.map(async ({ property, ownerAgencyId }) => ({
+      raw.map(async ({ property, ownerAgencyId, ownerComment }) => ({
         property,
         ownerAgency: await db.getAgency(ownerAgencyId),
+        ownerComment: ownerComment || null,
       }))
     )).filter(e => e.ownerAgency);
     json(res, { alert, properties });
@@ -762,7 +764,8 @@ export function registerApiRoutes(router) {
     if (!session) return;
     const mr = await db.getMatchRequest(req.params.id);
     if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
-    await db.respondMatchRequest(mr.id, 'aceptado');
+    const body = await parseJson(req);
+    await db.respondMatchRequest(mr.id, 'aceptado', body.comment || '');
     json(res, { ok: true });
   });
 

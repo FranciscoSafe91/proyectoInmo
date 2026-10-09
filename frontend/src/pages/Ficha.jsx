@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { money, typeLabel, operationLabel } from '../utils.js';
+import {
+  money, typeLabel, operationLabel,
+  ESTADO_LABELS, AGUA_CALIENTE_LABELS, CALEFACCION_LABELS, LUMINOSIDAD_LABELS,
+  VIGILANCIA_LABELS, PISO_LABELS, TECHO_LABELS, COSTA_LABELS, VISTA_LABELS, ORIENTACION_LABELS,
+} from '../utils.js';
 
 function moneyExpensas(amount, moneda) {
   const n = Number(amount) || 0;
@@ -116,21 +120,31 @@ export default function Ficha() {
   const locationParts = [property.zonaGeografica, property.partido || property.city].filter(Boolean);
 
   const chars1 = [
-    { label: 'Apto crédito', value: property.aptoCredito ? 'Sí' : 'No' },
-    { label: 'Apto prof.', value: property.aptoProf ? 'Sí' : 'No' },
-    { label: 'Estado', value: property.estadoPropiedad },
-    { label: 'Antigüedad', value: property.aEstrenar ? 'A estrenar' : property.antiguedad != null ? `${property.antiguedad} año${property.antiguedad !== 1 ? 's' : ''}` : null },
-    { label: 'Cant. plantas', value: property.plantas },
-    { label: 'Disposición', value: property.disposicion },
-    { label: 'Orientación', value: property.orientacion },
     { label: 'Dormitorio/s', value: property.bedrooms || null },
     { label: 'Baño/s', value: property.bathrooms || null },
-    { label: 'Agua caliente', value: property.aguaCaliente },
-    { label: 'Calefacción', value: property.calefaccion },
+    { label: 'Cocheras cubiertas', value: property.cocherasCubiertas || null },
+    { label: 'Cocheras descubiertas', value: property.cocherasDescubiertas || null },
+    { label: 'Cocheras semicubiertas', value: property.cocherasSemicubiertas || null },
+    { label: 'Estado', value: ESTADO_LABELS[property.estadoPropiedad] || property.estadoPropiedad || null },
+    { label: 'Antigüedad', value: property.aEstrenar ? 'A estrenar' : (property.antiguedad != null && property.antiguedad !== '') ? `${property.antiguedad} año${property.antiguedad !== 1 ? 's' : ''}` : null },
+    { label: 'Plantas', value: property.plantas || null },
+    { label: 'Disposición', value: property.disposicion || null },
+    { label: 'Orientación', value: ORIENTACION_LABELS[property.orientacion] || property.orientacion || null },
+    { label: 'Agua caliente', value: AGUA_CALIENTE_LABELS[property.aguaCaliente] || property.aguaCaliente || null },
+    { label: 'Calefacción', value: CALEFACCION_LABELS[property.calefaccion] || property.calefaccion || null },
+    { label: 'Luminosidad', value: LUMINOSIDAD_LABELS[property.luminosidad] || property.luminosidad || null },
+    { label: 'Vigilancia', value: VIGILANCIA_LABELS[property.tipoVigilancia] || property.tipoVigilancia || null },
+    { label: 'Tipo de piso', value: PISO_LABELS[property.tipoPiso] || property.tipoPiso || null },
+    { label: 'Tipo de techo', value: TECHO_LABELS[property.tipoTecho] || property.tipoTecho || null },
+    { label: 'Costa', value: COSTA_LABELS[property.tipoCosta] || property.tipoCosta || null },
+    { label: 'Vista', value: VISTA_LABELS[property.tipoVista] || property.tipoVista || null },
+    { label: 'Apto crédito', value: property.aptoCredito ? 'Sí' : null },
+    { label: 'Apto prof.', value: property.aptoProf ? 'Sí' : null },
+    { label: 'Zonificación', value: property.zonificacion || null },
   ].filter(c => c.value != null && c.value !== '');
 
   const charsEdificio = [
-    { label: 'Categoría edificio', value: property.categoriaEdificio },
+    { label: 'Categoría edificio', value: property.categoriaEdificio || null },
     { label: 'Pisos', value: property.pisosEdificio != null ? String(property.pisosEdificio) : null },
     { label: 'Deptos. por piso', value: property.deptosPorPiso != null ? String(property.deptosPorPiso) : null },
     { label: 'Ascensores', value: property.ascensoresPrincipales != null ? String(property.ascensoresPrincipales) : null },
@@ -139,13 +153,19 @@ export default function Ficha() {
   const superficies = [
     { label: 'Sup. total', value: property.superficieTotal ? `${property.superficieTotal} m²` : (property.areaM2 ? `${property.areaM2} m²` : null) },
     { label: 'Sup. cubierta', value: property.superficieCubierta ? `${property.superficieCubierta} m²` : null },
-    { label: 'Sup. descubierta', value: property.superficieDescubierta ? `${property.superficieDescubierta} m²` : null },
     { label: 'Sup. semicubierta', value: property.superficieSemicubierta ? `${property.superficieSemicubierta} m²` : null },
+    { label: 'Sup. descubierta', value: property.superficieDescubierta ? `${property.superficieDescubierta} m²` : null },
     { label: 'Terreno', value: property.superficieTerreno ? `${property.superficieTerreno} m²` : null },
+    { label: 'Ancho terreno', value: property.anchoTerreno ? `${property.anchoTerreno} m` : null },
+    { label: 'Largo terreno', value: property.largoTerreno ? `${property.largoTerreno} m` : null },
+    { label: 'Fondo libre', value: property.fondoLibre ? `${property.fondoLibre} m²` : null },
   ].filter(c => c.value != null);
 
   const serviciosList = Array.isArray(property.servicios) ? property.servicios : [];
+  const instalacionesList = Array.isArray(property.instalaciones) ? property.instalaciones : [];
+  const serviciosEdificioList = Array.isArray(property.serviciosEdificio) ? property.serviciosEdificio : [];
   const amenitiesList = Array.isArray(property.amenitiesEdificio) ? property.amenitiesEdificio : [];
+  const esBarrioCerrado = !!property.barrioCerrado;
 
   const photoCount = photos.length;
   const gridClass = ['zero', 'one', 'two', 'three', 'four'][photoCount] || 'four';
@@ -226,18 +246,35 @@ export default function Ficha() {
               </div>
             )}
 
-            {/* Servicios */}
-            {(serviciosList.length > 0 || amenitiesList.length > 0) && (
+            {/* Servicios de la propiedad */}
+            {serviciosList.length > 0 && (
               <div className="section">
                 <div className="section-title">Servicios</div>
-                {serviciosList.length > 0 && (
-                  <p className="services-line">{serviciosList.join(' - ')}</p>
-                )}
-                {amenitiesList.length > 0 && (
-                  <p className="services-others">
-                    <strong>Otros: </strong>{amenitiesList.join(' - ')}
-                  </p>
-                )}
+                <p className="services-line">{serviciosList.join(' · ')}</p>
+              </div>
+            )}
+
+            {/* Instalaciones */}
+            {instalacionesList.length > 0 && (
+              <div className="section">
+                <div className="section-title">Instalaciones</div>
+                <p className="services-line">{instalacionesList.join(' · ')}</p>
+              </div>
+            )}
+
+            {/* Servicios del barrio / edificio */}
+            {serviciosEdificioList.length > 0 && (
+              <div className="section">
+                <div className="section-title">{esBarrioCerrado ? 'Servicios del barrio' : 'Servicios del edificio'}</div>
+                <p className="services-line">{serviciosEdificioList.join(' · ')}</p>
+              </div>
+            )}
+
+            {/* Amenities del barrio / edificio */}
+            {amenitiesList.length > 0 && (
+              <div className="section">
+                <div className="section-title">{esBarrioCerrado ? 'Amenities del barrio' : 'Amenities del edificio'}</div>
+                <p className="services-line">{amenitiesList.join(' · ')}</p>
               </div>
             )}
 

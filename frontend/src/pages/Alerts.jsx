@@ -193,9 +193,6 @@ export default function Alerts() {
                 <Bell size={38} aria-hidden="true" />
                 <h2>Todavía no creaste ninguna alerta</h2>
                 <p>Cuando busques algo puntual para un cliente, creá una alerta y tus socios te avisarán si tienen algo compatible.</p>
-                <Link className="btn" to="/alertas/nueva">
-                  <Plus size={17} aria-hidden="true" /> Crear primera alerta
-                </Link>
               </div>
             ) : (
               <div className="table-wrap">

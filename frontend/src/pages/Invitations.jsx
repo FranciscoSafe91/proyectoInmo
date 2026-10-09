@@ -319,7 +319,7 @@ export default function Invitations() {
             <table>
               <thead>
                 <tr>
-                  <th>Propiedad</th><th>Tipo</th><th>Precio</th><th>Inmobiliaria</th><th>Publicación</th><th>Porcentaje</th><th></th>
+                  <th>Propiedad</th><th>Tipo</th><th>Precio</th><th>Inmobiliaria</th><th>Publicación</th><th>Del vendedor</th><th>Del comprador</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -343,7 +343,14 @@ export default function Invitations() {
                         ? <span className="badge badge-aceptada">Podrás publicarla en tu web</span>
                         : <span className="badge badge-borrador">Solo uso interno</span>}
                     </td>
-                    <td className="muted">{share.percentage != null ? `${share.percentage}%` : '—'}</td>
+                    <td className="muted">
+                      {share.wholeBolsa
+                        ? <span className="badge badge-aceptada">Toda la bolsa</span>
+                        : share.percentageVendedor != null ? `${share.percentageVendedor}%` : (share.percentage != null ? `${share.percentage}%` : '—')}
+                    </td>
+                    <td className="muted">
+                      {share.wholeBolsa ? '—' : share.percentageComprador != null ? `${share.percentageComprador}%` : '—'}
+                    </td>
                     <td>
                       <button className="btn btn-small" onClick={() => handleShare(share.id, 'aceptar')}>Aceptar</button>{' '}
                       <button className="btn btn-small btn-secondary" onClick={() => handleShare(share.id, 'rechazar')}>Rechazar</button>

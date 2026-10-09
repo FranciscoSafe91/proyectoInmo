@@ -229,7 +229,7 @@ export default function SharedProperties() {
           <h1>Compartidas conmigo</h1>
           <p className="subtitle">Propiedades de inmobiliarias socias que aceptaste sumar a tu cartera. Se actualizan automáticamente.</p>
         </div>
-        <Link className="btn btn-secondary" to="/invitaciones">
+        <Link className="btn" to="/invitaciones" style={{ background: '#1dbc8b', borderColor: '#1dbc8b' }}>
           Ver invitaciones <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </section>
@@ -239,9 +239,6 @@ export default function SharedProperties() {
           <ShieldCheck size={38} aria-hidden="true" />
           <h2>No tenés propiedades compartidas</h2>
           <p>Cuando una inmobiliaria socia te comparta una propiedad y la aceptes, va a aparecer acá.</p>
-          <Link className="btn" to="/invitaciones">
-            Revisar invitaciones <ArrowRight size={16} aria-hidden="true" />
-          </Link>
         </div>
       ) : (
         <>

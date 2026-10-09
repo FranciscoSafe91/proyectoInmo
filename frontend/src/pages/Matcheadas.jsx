@@ -380,9 +380,6 @@ function MatcheadasList() {
                 <Bell size={38} aria-hidden="true" />
                 <h2>Todavía no creaste ninguna alerta</h2>
                 <p>Creá una alerta para buscar propiedades en toda la red y ver los resultados acá.</p>
-                <Link className="btn" to="/alertas/nueva">
-                  <Sparkles size={17} aria-hidden="true" /> Crear alerta
-                </Link>
               </div>
             </div>
           ) : (

@@ -129,13 +129,23 @@ export default function AlertForm() {
   }
 
   const REQUIRED_FIELDS = [
+    { key: 'title', label: 'Título' },
     { key: 'operation', label: 'Operación' },
     { key: 'type', label: 'Tipo de propiedad' },
     { key: 'zonaGeografica', label: 'Zona geográfica' },
+    { key: 'partido', label: 'Partido' },
+    { key: 'localidades', label: 'Localidades' },
+    { key: 'currency', label: 'Moneda' },
+    { key: 'minPrice', label: 'Precio mínimo' },
+    { key: 'maxPrice', label: 'Precio máximo' },
   ];
 
   function getMissingFields() {
-    return REQUIRED_FIELDS.filter(f => !alert[f.key]);
+    return REQUIRED_FIELDS.filter(f => {
+      const val = alert[f.key];
+      if (Array.isArray(val)) return val.length === 0;
+      return !val;
+    });
   }
 
   async function handleSubmit(e) {
@@ -175,7 +185,7 @@ export default function AlertForm() {
 
       <div className="card">
         <form onSubmit={handleSubmit}>
-          <label htmlFor="title">Título (para identificarla, opcional)</label>
+          <label htmlFor="title">Título <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
           <input
             type="text"
             id="title"
@@ -215,7 +225,7 @@ export default function AlertForm() {
               </select>
             </div>
             <div>
-              <label htmlFor="partido">Partido</label>
+              <label htmlFor="partido">Partido <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               {GEO_DATA[alert.zonaGeografica] ? (
                 <select id="partido" name="partido" value={alert.partido} onChange={handleChange}>
                   <option value="">Cualquier partido</option>
@@ -230,7 +240,7 @@ export default function AlertForm() {
               )}
             </div>
             <div>
-              <label>Localidades</label>
+              <label>Localidades <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               {alert.partido && GEO_DATA[alert.zonaGeografica]?.localidades[alert.partido] ? (
                 <>
                   <LocalidadPicker
@@ -259,19 +269,19 @@ export default function AlertForm() {
 
           <div className="grid grid-3">
             <div>
-              <label htmlFor="currency">Moneda</label>
+              <label htmlFor="currency">Moneda <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               <select id="currency" name="currency" value={alert.currency} onChange={handleChange}>
-                <option value="">Sin filtro de precio</option>
+                <option value="">Seleccionar moneda</option>
                 <option value="USD">USD</option>
                 <option value="ARS">ARS</option>
               </select>
             </div>
             <div>
-              <label htmlFor="minPrice">Precio mínimo</label>
+              <label htmlFor="minPrice">Precio mínimo <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               <input type="number" id="minPrice" name="minPrice" min="0" value={alert.minPrice} onChange={handleChange} />
             </div>
             <div>
-              <label htmlFor="maxPrice">Precio máximo</label>
+              <label htmlFor="maxPrice">Precio máximo <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
               <input type="number" id="maxPrice" name="maxPrice" min="0" value={alert.maxPrice} onChange={handleChange} />
             </div>
           </div>

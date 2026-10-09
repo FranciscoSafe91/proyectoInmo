@@ -45,7 +45,7 @@ export default function Dashboard() {
     {
       label: 'Alertas pendientes',
       value: stats.alertMatches,
-      hint: 'Socios buscando propiedades parecidas a las tuyas y alertas enviadas',
+      hint: 'Coincidencias de alertas de socios pendientes de aprobar o rechazar',
       to: '/alertas',
       icon: Bell,
       tone: 'ink',
@@ -151,7 +151,7 @@ export default function Dashboard() {
               <span>{stats.alertMatches}</span>
               <div>
                 <strong>Alertas pendientes</strong>
-                <p>Socios buscando propiedades parecidas a las tuyas y alertas enviadas.</p>
+                <p>Coincidencias de alertas de socios pendientes de aprobar o rechazar.</p>
               </div>
               <ArrowRight size={18} aria-hidden="true" />
             </Link>

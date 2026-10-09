@@ -956,6 +956,101 @@
   .share-partner-row { align-items: center; }
   .share-pct-input { width: 72px; padding: 5px 8px; font-size: 0.85rem; text-align: right; flex-shrink: 0; }
 
+  .share-partner-block {
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .share-pct-cols {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .share-pct-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .share-pct-bolsa {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .share-pct-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--app-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .share-pct-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .share-pct-field .share-pct-input {
+    width: 80px;
+    text-align: right;
+  }
+
+  .share-pct-unit {
+    font-size: 0.85rem;
+    color: var(--app-muted);
+    font-weight: 600;
+  }
+
+  .share-comment-input {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 0.85rem;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    color: var(--app-ink);
+    background: var(--app-bg);
+  }
+
+  .share-comment-input::placeholder {
+    color: var(--app-muted);
+  }
+
+  .share-comment-display {
+    background: var(--app-card-bg);
+    border-left: 3px solid var(--app-green);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 4px;
+  }
+
+  .share-comment-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--app-green);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+
+  .share-comment-display p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--app-ink);
+    line-height: 1.4;
+  }
+
   /* Responsive table wrapper */
   .table-wrap { overflow-x: auto; width: 100%; }
 
@@ -3021,6 +3116,16 @@
       grid-column: 1 / -1;
       width: 100%;
       text-align: left;
+    }
+
+    .share-pct-cols {
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .share-pct-field .share-pct-input {
+      width: 100%;
+      flex: 1;
     }
 
     .modal-backdrop {

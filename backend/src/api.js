@@ -414,10 +414,18 @@ export function registerApiRoutes(router) {
     const targetIds = toArray(body.targetAgencyIds);
     const authorizeWeb = Boolean(body.allowWebPublish);
     const percentages = body.percentages || {};
+    const percentagesVendedor = body.percentagesVendedor || {};
+    const percentagesComprador = body.percentagesComprador || {};
+    const wholeBolsaMap = body.wholeBolsa || {};
+    const comments = body.comments || {};
     await Promise.all(targetIds.map(async targetAgencyId => {
       if (await db.arePartners(session.agency.id, targetAgencyId)) {
         const percentage = percentages[targetAgencyId] ?? null;
-        const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId, percentage });
+        const percentageVendedor = percentagesVendedor[targetAgencyId] ?? null;
+        const percentageComprador = percentagesComprador[targetAgencyId] ?? null;
+        const wholeBolsa = Boolean(wholeBolsaMap[targetAgencyId]);
+        const shareComment = comments[targetAgencyId] ?? null;
+        const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId, percentage, percentageVendedor, percentageComprador, wholeBolsa, shareComment });
         if (authorizeWeb) await db.setSharePublishAuthorization(share.id, true);
       }
     }));

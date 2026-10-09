@@ -153,6 +153,10 @@ function toShare(r) {
     ownerAgencyId: r.owner_agency_id, targetAgencyId: r.target_agency_id,
     status: r.status, webPublishAuthorized: Boolean(r.web_publish_authorized),
     percentage: r.percentage != null ? Number(r.percentage) : null,
+    percentageVendedor: r.percentage_vendedor != null ? Number(r.percentage_vendedor) : null,
+    percentageComprador: r.percentage_comprador != null ? Number(r.percentage_comprador) : null,
+    wholeBolsa: Boolean(r.toda_bolsa),
+    shareComment: r.share_comment || null,
     rejectionReason: r.rejection_reason || null,
     source: r.source || 'directa',
     createdAt: r.created_at, respondedAt: r.responded_at,
@@ -163,6 +167,10 @@ async function ensureCompartidasColumns() {
   await pool.query("ALTER TABLE compartidas ADD COLUMN rejection_reason TEXT DEFAULT NULL").catch(() => {});
   await pool.query("ALTER TABLE compartidas ADD COLUMN percentage DECIMAL(5,2) DEFAULT NULL").catch(() => {});
   await pool.query("ALTER TABLE compartidas ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'directa'").catch(() => {});
+  await pool.query("ALTER TABLE compartidas ADD COLUMN percentage_vendedor DECIMAL(5,2) DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE compartidas ADD COLUMN percentage_comprador DECIMAL(5,2) DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE compartidas ADD COLUMN toda_bolsa TINYINT(1) NOT NULL DEFAULT 0").catch(() => {});
+  await pool.query("ALTER TABLE compartidas ADD COLUMN share_comment TEXT DEFAULT NULL").catch(() => {});
 }
 
 function toAlert(r) {
@@ -897,7 +905,7 @@ export async function listPendingPartnershipRequestsSent(agencyId) {
 // ---------------------------------------------------------------------------
 // Property shares
 // ---------------------------------------------------------------------------
-export async function createPropertyShare({ propertyId, ownerAgencyId, targetAgencyId, percentage, source }) {
+export async function createPropertyShare({ propertyId, ownerAgencyId, targetAgencyId, percentage, percentageVendedor, percentageComprador, wholeBolsa, shareComment, source }) {
   await ensureCompartidasColumns();
   const [existing] = await pool.query(
     `SELECT * FROM compartidas WHERE property_id=? AND target_agency_id=? AND status<>'rechazada'`,
@@ -906,11 +914,15 @@ export async function createPropertyShare({ propertyId, ownerAgencyId, targetAge
   if (existing.length > 0) return toShare(existing[0]);
   const id = uuid();
   const pct = (percentage !== undefined && percentage !== null && percentage !== '') ? Number(percentage) : null;
+  const pctV = (percentageVendedor !== undefined && percentageVendedor !== null && percentageVendedor !== '') ? Number(percentageVendedor) : null;
+  const pctC = (percentageComprador !== undefined && percentageComprador !== null && percentageComprador !== '') ? Number(percentageComprador) : null;
+  const bolsa = wholeBolsa ? 1 : 0;
+  const comment = shareComment || null;
   const src = source || 'directa';
   await pool.query(
-    `INSERT INTO compartidas (id,property_id,owner_agency_id,target_agency_id,status,web_publish_authorized,percentage,source,created_at)
-     VALUES (?,?,?,?,'pendiente',0,?,?,NOW())`,
-    [id, propertyId, ownerAgencyId, targetAgencyId, pct, src]
+    `INSERT INTO compartidas (id,property_id,owner_agency_id,target_agency_id,status,web_publish_authorized,percentage,percentage_vendedor,percentage_comprador,toda_bolsa,share_comment,source,created_at)
+     VALUES (?,?,?,?,'pendiente',0,?,?,?,?,?,?,NOW())`,
+    [id, propertyId, ownerAgencyId, targetAgencyId, pct, pctV, pctC, bolsa, comment, src]
   );
   return getPropertyShare(id);
 }

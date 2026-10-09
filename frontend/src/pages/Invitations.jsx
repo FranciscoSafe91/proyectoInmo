@@ -192,8 +192,30 @@ export default function Invitations() {
                           : <span className="badge badge-borrador">Solo uso interno</span>}
                       </td>
                     </tr>
-                    {previewTarget.share.percentage != null && (
-                      <tr><td>Porcentaje</td><td>{previewTarget.share.percentage}%</td></tr>
+                    {previewTarget.share.wholeBolsa ? (
+                      <tr><td>Comisión</td><td><span className="badge badge-aceptada">Toda la bolsa</span></td></tr>
+                    ) : (
+                      <>
+                        {previewTarget.share.percentageVendedor != null && (
+                          <tr><td>Del vendedor</td><td>{previewTarget.share.percentageVendedor}%</td></tr>
+                        )}
+                        {previewTarget.share.percentageComprador != null && (
+                          <tr><td>Del comprador</td><td>{previewTarget.share.percentageComprador}%</td></tr>
+                        )}
+                        {previewTarget.share.percentage != null && !previewTarget.share.percentageVendedor && !previewTarget.share.percentageComprador && (
+                          <tr><td>Porcentaje</td><td>{previewTarget.share.percentage}%</td></tr>
+                        )}
+                      </>
+                    )}
+                    {previewTarget.share.shareComment && (
+                      <tr>
+                        <td colSpan={2}>
+                          <div className="share-comment-display">
+                            <span className="share-comment-label">Comentario del socio</span>
+                            <p>{previewTarget.share.shareComment}</p>
+                          </div>
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>

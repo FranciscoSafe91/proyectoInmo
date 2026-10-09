@@ -175,6 +175,9 @@ async function ensureCompartidasColumns() {
 
 function toAlert(r) {
   if (!r) return null;
+  const localidades = r.localidades
+    ? tryParseJson(r.localidades)
+    : (r.localidad ? [r.localidad] : []);
   return {
     id: r.id, agencyId: r.agency_id, title: r.title,
     operation: r.operation, type: r.type, city: r.city, currency: r.currency,
@@ -182,6 +185,7 @@ function toAlert(r) {
     zonaGeografica: r.zona_geografica || '',
     partido: r.partido || '',
     localidad: r.localidad || '',
+    localidades: Array.isArray(localidades) ? localidades : [],
     minBathrooms: r.min_bathrooms || null,
     minAreaM2: r.min_area_m2 ? Number(r.min_area_m2) : null,
     minCocheras: r.min_cocheras != null ? Number(r.min_cocheras) : null,
@@ -564,6 +568,7 @@ async function ensureAlertasColumns() {
     "ALTER TABLE alertas_busqueda ADD COLUMN servicios_requeridos TEXT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN instalaciones_requeridas TEXT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN mudanza_inmediata TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE alertas_busqueda ADD COLUMN localidades TEXT DEFAULT NULL",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(() => {});
@@ -1002,12 +1007,14 @@ export async function listSharesByOwnerAgency(agencyId) {
 export async function createSearchAlert(data) {
   await ensureAlertasColumns();
   const id = uuid();
+  const localidades = Array.isArray(data.localidades) ? data.localidades : [];
+  const localidad = localidades.length === 1 ? localidades[0] : (data.localidad || '');
   await pool.query(
     `INSERT INTO alertas_busqueda
       (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,
-       zona_geografica,partido,localidad,min_bathrooms,min_area_m2,
+       zona_geografica,partido,localidad,localidades,min_bathrooms,min_area_m2,
        min_cocheras,servicios_requeridos,instalaciones_requeridas,mudanza_inmediata,active,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
     [
       id, data.agencyId, data.title || '', data.operation || '', data.type || '',
       (data.city || '').trim(), data.currency || '',
@@ -1016,7 +1023,8 @@ export async function createSearchAlert(data) {
       data.minBedrooms ? Number(data.minBedrooms) : null,
       data.zonaGeografica || '',
       data.partido || '',
-      data.localidad || '',
+      localidad,
+      localidades.length > 0 ? JSON.stringify(localidades) : null,
       data.minBathrooms ? Number(data.minBathrooms) : null,
       data.minAreaM2 ? Number(data.minAreaM2) : null,
       data.minCocheras ? Number(data.minCocheras) : null,
@@ -1210,17 +1218,16 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
 
 function propertyMatchesAlert(property, alert) {
   if (property.status !== 'publicada') return false;
-  // Tipo de operación
   if (alert.operation && property.operation !== alert.operation) return false;
-  // Partido
   if (alert.partido && property.partido !== alert.partido) return false;
-  // Moneda y rango de precio
+  if (alert.localidades && alert.localidades.length > 0) {
+    if (!alert.localidades.includes(property.localidad)) return false;
+  }
   if (alert.currency) {
     if (property.currency !== alert.currency) return false;
     if (alert.minPrice && Number(property.price) < Number(alert.minPrice)) return false;
     if (alert.maxPrice && Number(property.price) > Number(alert.maxPrice)) return false;
   }
-  // Cantidad de ambientes (dormitorios)
   if (alert.minBedrooms && Number(property.bedrooms) < Number(alert.minBedrooms)) return false;
   return true;
 }

@@ -484,7 +484,14 @@ export function registerApiRoutes(router) {
       if (!property) return null;
       const ownerAgency = await db.getAgency(s.ownerAgencyId);
       const cover = (await db.listPropertyMedia(s.propertyId)).find(m => m.type === 'image') || null;
-      return { property, ownerAgency, webPublishAuthorized: s.webPublishAuthorized, cover };
+      return {
+        property, ownerAgency, cover,
+        webPublishAuthorized: s.webPublishAuthorized,
+        percentage: s.percentage,
+        percentageVendedor: s.percentageVendedor,
+        percentageComprador: s.percentageComprador,
+        wholeBolsa: s.wholeBolsa,
+      };
     }))).filter(Boolean);
     json(res, { items });
   });

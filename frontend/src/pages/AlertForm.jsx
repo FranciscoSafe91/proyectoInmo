@@ -33,12 +33,32 @@ const PROVINCIAS_AR = [
 const EMPTY_ALERT = {
   title: '', operation: '', type: '', currency: '',
   minPrice: '', maxPrice: '', minBedrooms: '', minBathrooms: '', minAreaM2: '',
-  zonaGeografica: '', partido: '', localidad: '',
+  zonaGeografica: '', partido: '', localidades: [],
   minCocheras: '',
   mudanzaInmediata: false,
   serviciosRequeridos: [],
   instalacionesRequeridas: [],
 };
+
+function LocalidadPicker({ options, selected, onAdd }) {
+  const [value, setValue] = useState('');
+  const available = options.filter(o => !selected.includes(o));
+  function handleAdd() {
+    if (value) { onAdd(value); setValue(''); }
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <select value={value} onChange={e => setValue(e.target.value)} style={{ flex: 1 }}>
+        <option value="">Cualquier localidad</option>
+        {available.map(l => <option key={l} value={l}>{l}</option>)}
+      </select>
+      <button type="button" className="btn btn-secondary" onClick={handleAdd} disabled={!value}
+        style={{ whiteSpace: 'nowrap' }}>
+        + Agregar
+      </button>
+    </div>
+  );
+}
 
 function CheckboxSearchList({ sublabel, name, options, selected, onChange }) {
   const [search, setSearch] = useState('');
@@ -87,12 +107,21 @@ export default function AlertForm() {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
     if (name === 'zonaGeografica') {
-      setAlert(v => ({ ...v, zonaGeografica: val, partido: '', localidad: '' }));
+      setAlert(v => ({ ...v, zonaGeografica: val, partido: '', localidades: [] }));
     } else if (name === 'partido') {
-      setAlert(v => ({ ...v, partido: val, localidad: '' }));
+      setAlert(v => ({ ...v, partido: val, localidades: [] }));
     } else {
       setAlert(v => ({ ...v, [name]: val }));
     }
+  }
+
+  function addLocalidad(loc) {
+    if (!loc || alert.localidades.includes(loc)) return;
+    setAlert(v => ({ ...v, localidades: [...v.localidades, loc] }));
+  }
+
+  function removeLocalidad(loc) {
+    setAlert(v => ({ ...v, localidades: v.localidades.filter(l => l !== loc) }));
   }
 
   function handleArrayChange(name, val) {
@@ -182,16 +211,27 @@ export default function AlertForm() {
               )}
             </div>
             <div>
-              <label htmlFor="localidad">Localidad</label>
+              <label>Localidades</label>
               {alert.partido && GEO_DATA[alert.zonaGeografica]?.localidades[alert.partido] ? (
-                <select id="localidad" name="localidad" value={alert.localidad} onChange={handleChange}>
-                  <option value="">Cualquier localidad</option>
-                  {GEO_DATA[alert.zonaGeografica].localidades[alert.partido].map(l => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
+                <>
+                  <LocalidadPicker
+                    options={GEO_DATA[alert.zonaGeografica].localidades[alert.partido]}
+                    selected={alert.localidades}
+                    onAdd={addLocalidad}
+                  />
+                  {alert.localidades.length > 0 && (
+                    <div className="localidades-chips">
+                      {alert.localidades.map(loc => (
+                        <span key={loc} className="localidad-chip">
+                          {loc}
+                          <button type="button" onClick={() => removeLocalidad(loc)} aria-label={`Quitar ${loc}`}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
-                <select id="localidad" name="localidad" disabled>
+                <select disabled>
                   <option value="">— Elegí un partido primero —</option>
                 </select>
               )}

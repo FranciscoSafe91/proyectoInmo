@@ -258,6 +258,30 @@
   }
   .checkbox-search-grid .checkbox-row { margin: 3px 0; gap: 6px; }
   .checkbox-search-grid label { font-size: 0.82rem; }
+
+  /* ── Localidades multi-chip ── */
+  .localidades-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .localidad-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--app-primary, #2d7a4f); color: #fff;
+    border-radius: 20px; padding: 3px 10px; font-size: 0.82rem; font-weight: 500;
+  }
+  .localidad-chip button {
+    background: none; border: none; color: #fff; cursor: pointer;
+    font-size: 1rem; line-height: 1; padding: 0 0 0 2px; opacity: 0.8;
+  }
+  .localidad-chip button:hover { opacity: 1; }
+
+  /* ── Controles de lista (búsqueda + ordenamiento) ── */
+  .list-controls { display: flex; gap: 10px; align-items: stretch; margin-bottom: 16px; }
+  .list-controls .search-bar { margin-bottom: 0; }
+  .sort-select {
+    padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+    background: #fff; font-size: 0.88rem; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sort-select:focus { outline: 2px solid var(--app-primary); outline-offset: 1px; }
+  @media (max-width: 600px) { .list-controls { flex-direction: column; } }
   @media (max-width: 700px) {
     .checkbox-search-grid { grid-template-columns: repeat(2, 1fr); }
     .qty-picker-row { gap: 14px 20px; }

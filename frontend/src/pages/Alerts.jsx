@@ -9,7 +9,8 @@ function summarizeAlert(alert) {
   const parts = [];
   if (alert.operation) parts.push(operationLabel(alert.operation));
   if (alert.type) parts.push(typeLabel(alert.type));
-  if (alert.localidad) parts.push(`en ${alert.localidad}`);
+  if (alert.localidades && alert.localidades.length > 0) parts.push(`en ${alert.localidades.join(', ')}`);
+  else if (alert.localidad) parts.push(`en ${alert.localidad}`);
   else if (alert.partido) parts.push(`en ${alert.partido}`);
   else if (alert.zonaGeografica) parts.push(`en ${alert.zonaGeografica}`);
   else if (alert.city) parts.push(`en ${alert.city}`);

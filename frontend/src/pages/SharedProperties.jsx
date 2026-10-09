@@ -4,11 +4,29 @@ import { ArrowRight, BedDouble, Building2, MapPin, Ruler, Search, ShieldCheck } 
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
+const SORT_OPTIONS = [
+  { value: 'recientes', label: 'Más recientes' },
+  { value: 'precio_desc', label: 'Mayor precio' },
+  { value: 'precio_asc', label: 'Menor precio' },
+  { value: 'pct_desc', label: 'Mayor porcentaje' },
+  { value: 'pct_asc', label: 'Menor porcentaje' },
+];
+
+function sortItems(items, sortBy) {
+  const sorted = [...items];
+  if (sortBy === 'precio_desc') return sorted.sort((a, b) => (Number(b.property.price) || 0) - (Number(a.property.price) || 0));
+  if (sortBy === 'precio_asc') return sorted.sort((a, b) => (Number(a.property.price) || 0) - (Number(b.property.price) || 0));
+  if (sortBy === 'pct_desc') return sorted.sort((a, b) => (b.percentage ?? -1) - (a.percentage ?? -1));
+  if (sortBy === 'pct_asc') return sorted.sort((a, b) => (a.percentage ?? Infinity) - (b.percentage ?? Infinity));
+  return sorted;
+}
+
 export default function SharedProperties() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('recientes');
 
   useEffect(() => {
     api.get('/compartidas').then(setData).catch(e => setError(e.message));
@@ -36,6 +54,8 @@ export default function SharedProperties() {
       )
     : items;
 
+  const sortedItems = sortItems(filteredItems, sortBy);
+
   return (
     <>
       <section className="page-hero compact-hero">
@@ -60,19 +80,29 @@ export default function SharedProperties() {
         </div>
       ) : (
         <>
-          <form className="search-bar" onSubmit={handleSearch}>
-            <input
-              type="text"
-              placeholder="Buscar por título, ciudad, provincia, inmobiliaria..."
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-            />
-            <button type="submit" className="btn">
-              <Search size={16} aria-hidden="true" /> Buscar
-            </button>
-          </form>
+          <div className="list-controls">
+            <form className="search-bar" onSubmit={handleSearch} style={{ flex: 1 }}>
+              <input
+                type="text"
+                placeholder="Buscar por título, ciudad, provincia, inmobiliaria..."
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+              />
+              <button type="submit" className="btn">
+                <Search size={16} aria-hidden="true" /> Buscar
+              </button>
+            </form>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="sort-select"
+              aria-label="Ordenar por"
+            >
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
 
-          {filteredItems.length === 0 ? (
+          {sortedItems.length === 0 ? (
             <div className="empty-state empty-state-card">
               <Search size={38} aria-hidden="true" />
               <h2>Sin resultados</h2>
@@ -83,7 +113,7 @@ export default function SharedProperties() {
             </div>
           ) : (
           <div className="estate-grid">
-            {filteredItems.map(({ property, ownerAgency, webPublishAuthorized, cover }) => (
+            {sortedItems.map(({ property, ownerAgency, webPublishAuthorized, cover, percentage, percentageVendedor, percentageComprador, wholeBolsa }) => (
               <article key={property.id} className="estate-card">
                 <Link className="estate-card-media" to={`/propiedades/${property.id}`} aria-label={`Ver ${property.title}`}>
                   {cover?.url
@@ -120,6 +150,19 @@ export default function SharedProperties() {
                     <span><BedDouble size={15} aria-hidden="true" />{property.bedrooms || 0} dorm.</span>
                     <span><Ruler size={15} aria-hidden="true" />{property.areaM2 || 0} m²</span>
                   </div>
+
+                  {(percentage != null || percentageVendedor != null || percentageComprador != null || wholeBolsa) && (
+                    <div className="estate-meta" style={{ marginTop: 4 }}>
+                      {wholeBolsa
+                        ? <span style={{ fontWeight: 600, color: 'var(--app-primary)' }}>Toda la bolsa</span>
+                        : <>
+                            {percentage != null && <span style={{ fontWeight: 600, color: 'var(--app-primary)' }}>{percentage}%</span>}
+                            {percentageVendedor != null && <span className="muted small">Vend. {percentageVendedor}%</span>}
+                            {percentageComprador != null && <span className="muted small">Comp. {percentageComprador}%</span>}
+                          </>
+                      }
+                    </div>
+                  )}
 
                   <div className="estate-card-actions">
                     <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-small">

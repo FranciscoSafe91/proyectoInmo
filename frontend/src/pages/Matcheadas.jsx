@@ -27,10 +27,15 @@ function summarizeAlert(alert) {
 // ---------------------------------------------------------------------------
 // Matches recibidos: solicitudes de aceptar / rechazar
 // ---------------------------------------------------------------------------
+function sortByPrice(items, key = 'price') {
+  return [...items].sort((a, b) => (Number(b.property[key]) || 0) - (Number(a.property[key]) || 0));
+}
+
 function MatchRequestsReceived() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [responding, setResponding] = useState({});
+  const [sortBy, setSortBy] = useState('recientes');
 
   const load = () => {
     api.get('/match-requests').then(setData).catch(e => setError(e.message));
@@ -65,13 +70,21 @@ function MatchRequestsReceived() {
     );
   }
 
+  const displayItems = sortBy === 'precio_desc' ? sortByPrice(data.items) : data.items;
+
   return (
     <div className="card">
-      <p className="muted small" style={{ marginBottom: 16 }}>
-        Otra inmobiliaria encontró una de tus propiedades como posible coincidencia con su búsqueda. Aceptá para permitirles verla, o rechazá si no querés compartir esta información.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <p className="muted small" style={{ margin: 0 }}>
+          Aceptá para permitirles ver tu propiedad, o rechazá si no querés compartirla.
+        </p>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
+          <option value="recientes">Más recientes</option>
+          <option value="precio_desc">Mayor precio</option>
+        </select>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {data.items.map(({ matchRequest, property, alert, alertAgency }) => (
+        {displayItems.map(({ matchRequest, property, alert, alertAgency }) => (
           <div key={matchRequest.id} className="match-request-item">
             <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
               {property.coverUrl
@@ -143,6 +156,7 @@ function PropertyCard({ property, ownerAgency }) {
 function AlertDetail({ alertId }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState('recientes');
 
   useEffect(() => {
     setData(null);
@@ -153,6 +167,9 @@ function AlertDetail({ alertId }) {
   if (!data) return <p className="muted">Cargando...</p>;
 
   const { alert, properties } = data;
+  const displayProperties = sortBy === 'precio_desc'
+    ? [...properties].sort((a, b) => (Number(b.property.price) || 0) - (Number(a.property.price) || 0))
+    : properties;
 
   if (!alert) return (
     <div className="card">
@@ -183,13 +200,19 @@ function AlertDetail({ alertId }) {
           </div>
         ) : (
           <>
-            <p className="muted small" style={{ marginBottom: 16 }}>
-              {properties.length === 1
-                ? '1 propiedad aceptó mostrarse para esta alerta.'
-                : `${properties.length} propiedades aceptaron mostrarse para esta alerta.`}
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <p className="muted small" style={{ margin: 0 }}>
+                {properties.length === 1
+                  ? '1 propiedad aceptó mostrarse para esta alerta.'
+                  : `${properties.length} propiedades aceptaron mostrarse para esta alerta.`}
+              </p>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
+                <option value="recientes">Más recientes</option>
+                <option value="precio_desc">Mayor precio</option>
+              </select>
+            </div>
             <div className="matcheadas-property-list">
-              {properties.map(({ property, ownerAgency }) => (
+              {displayProperties.map(({ property, ownerAgency }) => (
                 <PropertyCard key={property.id} property={property} ownerAgency={ownerAgency} />
               ))}
             </div>
@@ -206,6 +229,7 @@ function AlertDetail({ alertId }) {
 function MatcheadasRecibidas() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState('recientes');
 
   useEffect(() => {
     api.get('/match-requests/accepted').then(setData).catch(e => setError(e.message));
@@ -216,20 +240,28 @@ function MatcheadasRecibidas() {
 
   if (data.items.length === 0) return null;
 
+  const displayItems = sortBy === 'precio_desc' ? sortByPrice(data.items) : data.items;
+
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <Sparkles size={16} />
-        <strong>Matcheadas</strong>
-        <span className="badge" style={{ background: '#059669', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 12 }}>
-          {data.items.length}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Sparkles size={16} />
+          <strong>Matcheadas</strong>
+          <span className="badge" style={{ background: '#059669', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 12 }}>
+            {data.items.length}
+          </span>
+        </div>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
+          <option value="recientes">Más recientes</option>
+          <option value="precio_desc">Mayor precio</option>
+        </select>
       </div>
       <p className="muted small" style={{ marginBottom: 14 }}>
         Propiedades tuyas que ya fueron aceptadas como coincidencia con una búsqueda de un socio.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {data.items.map(({ matchRequest, property, alert, alertAgency }) => (
+        {displayItems.map(({ matchRequest, property, alert, alertAgency }) => (
           <div key={matchRequest.id} className="match-request-item">
             <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
               {property.coverUrl

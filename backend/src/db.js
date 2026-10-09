@@ -68,6 +68,7 @@ export const findMatchingPropertiesForAlert = (...args) => impl.findMatchingProp
 export const syncMatchRequestsForAlert = (...args) => impl.syncMatchRequestsForAlert(...args);
 export const syncMatchRequestsForProperty = (...args) => impl.syncMatchRequestsForProperty(...args);
 export const listPendingMatchRequestsForOwner = (...args) => impl.listPendingMatchRequestsForOwner(...args);
+export const listAcceptedMatchRequestsForOwner = (...args) => impl.listAcceptedMatchRequestsForOwner(...args);
 export const getMatchRequest = (...args) => impl.getMatchRequest(...args);
 export const respondMatchRequest = (...args) => impl.respondMatchRequest(...args);
 export const listPendingAlerteeMatchRequests = (...args) => impl.listPendingAlerteeMatchRequests(...args);

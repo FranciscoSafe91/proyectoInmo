@@ -225,6 +225,12 @@ export default function PropertyDetail() {
   const [expandedPartners, setExpandedPartners] = useState(new Set());
   const [partnerSearch, setPartnerSearch] = useState('');
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
+  const [grupos, setGrupos] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState('');
+
+  useEffect(() => {
+    api.get('/grupos-socios').then(r => setGrupos(r.grupos || [])).catch(() => {});
+  }, []);
 
   function toggleExpand(id) {
     setExpandedPartners(prev => {
@@ -237,6 +243,20 @@ export default function PropertyDetail() {
   function handlePartnerSearch(e) {
     e.preventDefault();
     setPartnerSearchQuery(partnerSearch.trim());
+  }
+
+  function handleSelectGroup(grupoId) {
+    setSelectedGroup(grupoId);
+    if (!grupoId) return;
+    const grupo = grupos.find(g => g.id === grupoId);
+    if (!grupo) return;
+    const availableIds = new Set(availablePartners.map(a => a.id));
+    const toAdd = grupo.members.filter(memberId => availableIds.has(memberId));
+    setSelectedPartners(prev => {
+      const next = new Set(prev);
+      toAdd.forEach(id => next.add(id));
+      return Array.from(next);
+    });
   }
 
   async function handleDelete() {
@@ -446,7 +466,7 @@ export default function PropertyDetail() {
                                           min="0"
                                           max="100"
                                           step="0.01"
-                                          placeholder="del 1 al 4"
+                                          placeholder="1 al 4"
                                           className="share-pct-input"
                                           value={percentagesVendedor[a.id] ?? ''}
                                           onChange={e => setPercentagesVendedor(prev => ({ ...prev, [a.id]: e.target.value }))}
@@ -462,7 +482,7 @@ export default function PropertyDetail() {
                                           min="0"
                                           max="100"
                                           step="0.01"
-                                          placeholder="del 1 al 4"
+                                          placeholder="1 al 4"
                                           className="share-pct-input"
                                           value={percentagesComprador[a.id] ?? ''}
                                           onChange={e => setPercentagesComprador(prev => ({ ...prev, [a.id]: e.target.value }))}
@@ -495,6 +515,33 @@ export default function PropertyDetail() {
                           );
                         })}
                     </fieldset>
+                    {grupos.length > 0 && (
+                      <div className="share-group-selector">
+                        <span className="share-pct-label">Compartir con un grupo</span>
+                        <div className="share-group-row">
+                          <select
+                            value={selectedGroup}
+                            onChange={e => setSelectedGroup(e.target.value)}
+                            className="share-group-select"
+                          >
+                            <option value="">Seleccioná un grupo...</option>
+                            {grupos.map(g => (
+                              <option key={g.id} value={g.id}>
+                                {g.name} ({g.members.length} {g.members.length === 1 ? 'socio' : 'socios'})
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-small btn-secondary"
+                            disabled={!selectedGroup}
+                            onClick={() => handleSelectGroup(selectedGroup)}
+                          >
+                            Aplicar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <button type="submit" className="btn btn-small" disabled={selectedPartners.length === 0}>Enviar invitación</button>
                   </form>
                 )}

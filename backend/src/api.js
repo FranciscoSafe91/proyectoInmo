@@ -5,13 +5,16 @@ import * as db from './db.js';
 import * as auth from './auth.js';
 import * as mercadopago from './mercadopago.js';
 import pool from './pgPool.js';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
+import * as totp from './totp.js';
 import * as mail from './mail.js';
 import * as payments from './payments.js';
 import * as security from './security.js';
-import { uploadBuffer, deleteResource, signUpload, uploadStreamToCloudinary } from './cloudinary.js';
+import * as v from './validation.js';
+import { uploadBuffer, deleteResource } from './cloudinary.js';
 
-const LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+// Sin SVG: un SVG puede llevar scripts embebidos.
+const LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const PROPERTY_MEDIA_CONTENT_TYPES = new Set([
   'image/png', 'image/jpeg', 'image/webp', 'image/gif',
   'video/mp4', 'video/webm', 'video/quicktime',
@@ -47,7 +50,11 @@ async function rawBody(req) {
 
 async function parseJson(req) {
   const body = await rawBody(req);
-  try { return JSON.parse(body); } catch { return {}; }
+  let parsed;
+  try { parsed = JSON.parse(body); } catch { return {}; }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  v.assertSafeShape(parsed); // lanza ValidationError (400) si el body es abusivo
+  return parsed;
 }
 
 function toArray(value) {
@@ -74,6 +81,7 @@ async function parsePropertyRequest(req) {
 }
 
 function uploadError(res, e) {
+  if (e && e.expose) return err(res, e.message, e.statusCode);
   if (e && e.code === 'BUSY') {
     res.setHeader('Retry-After', '10');
     return err(res, 'Hay muchas subidas en curso. Probá de nuevo en unos segundos.', 503);
@@ -100,15 +108,27 @@ async function sendVerificationEmail(user) {
   return true;
 }
 
-async function savePropertyMedia(propertyId, files) {
+async function savePropertyMedia(propertyId, files, agencyId) {
+  // Se decide por el contenido real del archivo, no por el Content-Type del cliente.
   const accepted = files
-    .filter(file => file && PROPERTY_MEDIA_CONTENT_TYPES.has(file.contentType));
+    .map(file => file && { ...file, detectedType: v.detectMediaType(file.buffer) })
+    .filter(file => file && PROPERTY_MEDIA_CONTENT_TYPES.has(file.detectedType));
 
   const created = [];
   for (const [index, file] of accepted.entries()) {
-    const mediaType = file.contentType.startsWith('video/') ? 'video' : 'image';
+    // Cuota diaria por agencia: evita usar nuestra cuenta de Cloudinary como hosting gratuito.
+    if (security.consume(`media:agency:${agencyId}`, security.LIMITS.mediaPerAgency)) {
+      console.warn(`[media] Agencia ${agencyId} superó la cuota diaria de archivos.`);
+      break;
+    }
+    const mediaType = file.detectedType.startsWith('video/') ? 'video' : 'image';
     const publicId = `spyderconnect/properties/${propertyId}/${randomUUID()}`;
-    const result = await uploadBuffer(file.buffer, { public_id: publicId, resource_type: mediaType });
+    const result = await uploadBuffer(file.buffer, {
+      public_id: publicId,
+      resource_type: mediaType,
+      // Cloudinary vuelve a validar el formato de su lado.
+      allowed_formats: mediaType === 'video' ? ['mp4', 'webm', 'mov'] : ['jpg', 'png', 'webp', 'gif'],
+    });
     created.push(await db.createPropertyMedia({
       propertyId,
       url: result.secure_url,
@@ -124,8 +144,36 @@ async function savePropertyMedia(propertyId, files) {
 // entrar, ver el estado, pagar y pedir ayuda.
 const SUBSCRIPTION_EXEMPT_PREFIXES = [
   '/api/session', '/api/logout', '/api/dashboard', '/api/configuracion',
-  '/api/suscripcion', '/api/soporte', '/api/mi-cuenta', '/api/verificar-email',
+  '/api/suscripcion', '/api/soporte', '/api/mi-cuenta', '/api/verificar-email', '/api/seguridad',
 ];
+
+// ---------------------------------------------------------------------------
+// Verificación en dos pasos
+// ---------------------------------------------------------------------------
+// Tickets de login a medio completar (contraseña OK, falta el código). En
+// memoria: duran 5 minutos y admiten 5 intentos.
+const pendingTwoFactor = new Map(); // ticket -> { userId, expiresAt, attempts }
+setInterval(() => {
+  const nowMs = Date.now();
+  for (const [t, p] of pendingTwoFactor) if (p.expiresAt <= nowMs) pendingTwoFactor.delete(t);
+}, 60 * 1000).unref();
+
+/** Valida un código de la app autenticadora o un código de recuperación. */
+async function verifySecondFactor(userId, code) {
+  const state = await db.getUserTotp(userId);
+  if (!state || !state.enabled || !state.secret) return { ok: false };
+  const clean = String(code || '').trim();
+  if (/^\d{6}$/.test(clean.replace(/\s/g, ''))) {
+    const counter = totp.verifyCode(state.secret, clean, state.lastCounter);
+    if (counter !== null && await db.markTotpCounterUsed(userId, counter)) return { ok: true, method: 'app' };
+    return { ok: false };
+  }
+  if (/^[0-9A-Fa-f]{5}-?[0-9A-Fa-f]{5}$/.test(clean)) {
+    const ok = await db.consumeTotpRecoveryCode(userId, totp.hashRecoveryCode(clean));
+    return ok ? { ok: true, method: 'recuperacion', remaining: state.recoveryHashes.length - 1 } : { ok: false };
+  }
+  return { ok: false };
+}
 
 async function requireSession(req, res) {
   const session = await auth.getCurrentUser(req);
@@ -205,6 +253,8 @@ export function registerApiRoutes(router) {
 
   router.post('/api/login', async (req, res) => {
     const body = await parseJson(req);
+    v.maxLen(body.email, 254, 'Email');
+    v.maxLen(body.password, 200, 'Contraseña');
     const { email, password } = body;
     if (!email || !password) return err(res, 'Ingresá tu email y contraseña.', 400);
 
@@ -220,14 +270,140 @@ export function registerApiRoutes(router) {
       return err(res, 'Email o contraseña incorrectos.', 401);
     }
     security.reset(emailKey);
+
+    // Con 2FA activo, la contraseña sola no alcanza: se emite un ticket temporal
+    // y la sesión recién se crea en /api/login/2fa con el código de la app.
+    const twoFactor = await db.getUserTotp(credentials.id);
+    if (twoFactor && twoFactor.enabled) {
+      const ticket = randomBytes(24).toString('hex');
+      pendingTwoFactor.set(ticket, { userId: credentials.id, expiresAt: Date.now() + 5 * 60 * 1000, attempts: 0 });
+      return json(res, { requires2fa: true, ticket });
+    }
     const user = await db.getUser(credentials.id);
     await auth.login(req, res, user.id);
     const agency = await db.getAgency(user.agencyId);
     json(res, { user, agency });
   });
 
+  router.post('/api/login/2fa', async (req, res) => {
+    const ipWait = security.consume(`login:ip:${security.clientIp(req)}`, security.LIMITS.loginPerIp);
+    if (ipWait) return tooManyRequests(res, ipWait);
+    const body = await parseJson(req);
+    v.maxLen(body.ticket, 64, 'Ticket'); v.maxLen(body.code, 20, 'Código');
+    const pending = body.ticket && pendingTwoFactor.get(String(body.ticket));
+    if (!pending || pending.expiresAt <= Date.now()) {
+      if (pending) pendingTwoFactor.delete(String(body.ticket));
+      return err(res, 'La verificación expiró. Ingresá de nuevo con tu contraseña.', 401);
+    }
+    pending.attempts += 1;
+    if (pending.attempts > 5) {
+      pendingTwoFactor.delete(String(body.ticket));
+      return err(res, 'Demasiados códigos incorrectos. Ingresá de nuevo con tu contraseña.', 429);
+    }
+    const user = await db.getUser(pending.userId);
+    if (!user) return err(res, 'La verificación expiró. Ingresá de nuevo con tu contraseña.', 401);
+    const agency = await db.getAgency(user.agencyId);
+    const check = await verifySecondFactor(user.id, body.code);
+    if (!check.ok) {
+      audit(req, { user, agency }, '2fa.codigo_incorrecto', {});
+      return err(res, 'El código no es correcto.', 401);
+    }
+    pendingTwoFactor.delete(String(body.ticket));
+    await auth.login(req, res, user.id);
+    audit(req, { user, agency }, check.method === 'recuperacion' ? '2fa.login_con_codigo_recuperacion' : '2fa.login', {});
+    json(res, { user, agency, recoveryCodesRemaining: check.remaining });
+  });
+
+  // --- Configuración del 2FA (cualquier usuario puede activarlo para su cuenta) ---
+  router.get('/api/seguridad/2fa', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const state = await db.getUserTotp(session.user.id);
+    json(res, { enabled: Boolean(state && state.enabled), recoveryCodesRemaining: state && state.enabled ? state.recoveryHashes.length : 0 });
+  });
+
+  // Paso 1: con la contraseña, genera un secreto pendiente para cargar en la app.
+  router.post('/api/seguridad/2fa/iniciar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    v.maxLen(body.password, 200, 'Contraseña');
+    const failKey = `reauth:fail:${session.user.id}`;
+    const wait = security.isBlocked(failKey, security.LIMITS.reauthFailPerUser);
+    if (wait) return tooManyRequests(res, wait);
+    const credentials = await db.findUserCredentialsByEmail(session.user.email);
+    if (!credentials || !body.password || !auth.verifyPassword(String(body.password), credentials.passwordHash, credentials.passwordSalt)) {
+      security.consume(failKey, security.LIMITS.reauthFailPerUser);
+      return err(res, 'La contraseña no es correcta.', 401);
+    }
+    security.reset(failKey);
+    const state = await db.getUserTotp(session.user.id);
+    if (state && state.enabled) return err(res, 'La verificación en dos pasos ya está activa.');
+    const secret = totp.generateSecret();
+    await db.setTotpPendingSecret(session.user.id, secret);
+    json(res, { secret, otpauthUrl: totp.otpauthUrl(secret, session.user.email) });
+  });
+
+  // Paso 2: confirma con un código de la app; recién ahí queda activo.
+  router.post('/api/seguridad/2fa/activar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    v.maxLen(body.code, 20, 'Código');
+    const wait = security.consume(`2fa:setup:${session.user.id}`, security.LIMITS.reauthFailPerUser);
+    if (wait) return tooManyRequests(res, wait);
+    const state = await db.getUserTotp(session.user.id);
+    if (!state || !state.pendingSecret) return err(res, 'Primero iniciá la configuración.');
+    const counter = totp.verifyCode(state.pendingSecret, body.code);
+    if (counter === null) return err(res, 'El código no es correcto. Revisá que la hora del teléfono esté bien.', 400);
+    const recoveryCodes = totp.generateRecoveryCodes();
+    await db.enableTotp(session.user.id, recoveryCodes.map(totp.hashRecoveryCode), counter);
+    security.reset(`2fa:setup:${session.user.id}`);
+    audit(req, session, '2fa.activado', {});
+    if (mail.isConfigured()) {
+      mail.sendBillingNotice(session.user.email, {
+        title: 'Activaste la verificación en dos pasos',
+        lines: ['A partir de ahora, para ingresar vas a necesitar tu contraseña y un código de tu app autenticadora.'],
+      }).catch(() => {});
+    }
+    // Los códigos de recuperación se muestran UNA sola vez; en la DB quedan hasheados.
+    json(res, { ok: true, recoveryCodes });
+  });
+
+  router.post('/api/seguridad/2fa/desactivar', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    v.maxLen(body.password, 200, 'Contraseña'); v.maxLen(body.code, 20, 'Código');
+    const failKey = `reauth:fail:${session.user.id}`;
+    const wait = security.isBlocked(failKey, security.LIMITS.reauthFailPerUser);
+    if (wait) return tooManyRequests(res, wait);
+    const credentials = await db.findUserCredentialsByEmail(session.user.email);
+    const passwordOk = credentials && body.password
+      && auth.verifyPassword(String(body.password), credentials.passwordHash, credentials.passwordSalt);
+    const codeOk = passwordOk && (await verifySecondFactor(session.user.id, body.code)).ok;
+    if (!codeOk) {
+      security.consume(failKey, security.LIMITS.reauthFailPerUser);
+      return err(res, 'La contraseña o el código no son correctos.', 401);
+    }
+    security.reset(failKey);
+    await db.disableTotp(session.user.id);
+    audit(req, session, '2fa.desactivado', {});
+    if (mail.isConfigured()) {
+      mail.sendBillingNotice(session.user.email, {
+        title: 'Desactivaste la verificación en dos pasos',
+        lines: ['Tu cuenta vuelve a pedir solo la contraseña para ingresar.'],
+      }).catch(() => {});
+    }
+    json(res, { ok: true });
+  });
+
   router.post('/api/registro', async (req, res) => {
     const body = await parseJson(req);
+    if (body.email) v.email(body.email);
+    v.maxLen(body.nombre, 100, 'Nombre'); v.maxLen(body.apellido, 100, 'Apellido'); v.maxLen(body.documento, 20, 'Documento');
+    v.maxLen(body.agencyName, 150, 'Nombre de la inmobiliaria'); v.maxLen(body.direccion, 200, 'Dirección'); v.maxLen(body.username, 60, 'Usuario');
+    v.oneOf(body.accountType, v.ACCOUNT_TYPES, 'Tipo de cuenta', { allowEmpty: true });
     const { nombre, apellido, documento, email, accountType, agencyName, direccion, username, password } = body;
 
     const fullName = `${(nombre || '').trim()} ${(apellido || '').trim()}`.trim();
@@ -278,6 +454,7 @@ export function registerApiRoutes(router) {
 
   router.post('/api/forgot-password', async (req, res) => {
     const body = await parseJson(req);
+    v.maxLen(body.email, 254, 'Email');
     const { email } = body;
     if (!email) return err(res, 'Ingresá un email.', 400);
     const forgotWait = security.consume(`forgot:ip:${security.clientIp(req)}`, security.LIMITS.forgotPerIp);
@@ -299,6 +476,7 @@ export function registerApiRoutes(router) {
 
   router.post('/api/reset-password', async (req, res) => {
     const body = await parseJson(req);
+    v.maxLen(body.token, 128, 'Token');
     const { token, password } = body;
     if (!token || !password) return err(res, 'Completá la nueva contraseña.', 400);
     const resetWait = security.consume(`reset:ip:${security.clientIp(req)}`, security.LIMITS.resetPerIp);
@@ -325,6 +503,7 @@ export function registerApiRoutes(router) {
     const wait = security.consume(`verify:ip:${security.clientIp(req)}`, security.LIMITS.verifyPerIp);
     if (wait) return tooManyRequests(res, wait);
     const body = await parseJson(req);
+    v.maxLen(body.token, 128, 'Token');
     if (!body.token) return err(res, 'Falta el código de verificación.', 400);
     const userId = await db.consumeEmailVerificationToken(String(body.token));
     if (!userId) return err(res, 'El enlace expiró o ya fue usado.', 400);
@@ -393,18 +572,14 @@ export function registerApiRoutes(router) {
     } catch (e) {
       return uploadError(res, e);
     }
-    if (!body.title) return err(res, 'El título es obligatorio.');
+    v.validateProperty(body, { requireTitle: true });
     if ((body.status || 'publicada') === 'publicada' && !canDo(session, 'publicar_propiedades')) {
       return err(res, 'No tenés permiso para publicar propiedades. Guardala como borrador.', 403);
     }
-    let property;
-    try {
-      property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
-    } catch (e) {
-      console.error('Error al crear propiedad:', e);
-      return err(res, `Error al guardar la propiedad: ${e.message}`, 500);
-    }
-    const media = await savePropertyMedia(property.id, files);
+    // Si falla, el handler global loguea el detalle y devuelve un código de error
+    // genérico (antes se devolvía el mensaje de MySQL al cliente).
+    const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
+    const media = await savePropertyMedia(property.id, files, session.agency.id);
     notifyAlertMatches(property, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(property).catch(() => {});
     json(res, { property, media }, 201);
@@ -456,12 +631,13 @@ export function registerApiRoutes(router) {
     } catch (e) {
       return uploadError(res, e);
     }
+    v.validateProperty(body, { requireTitle: false });
     if (body.status !== undefined && body.status !== property.status && !canDo(session, 'publicar_propiedades')) {
       return err(res, 'No tenés permiso para publicar o despublicar propiedades.', 403);
     }
     const updated = await db.updateProperty(property.id, body);
     const media = files.length
-      ? await savePropertyMedia(property.id, files)
+      ? await savePropertyMedia(property.id, files, session.agency.id)
       : await db.listPropertyMedia(property.id);
     notifyAlertMatches(updated, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(updated).catch(() => {});
@@ -480,74 +656,6 @@ export function registerApiRoutes(router) {
     json(res, { ok: true });
   });
 
-  // Subida de video al backend → backend sube a Cloudinary (evita CORS y límite de tamaño del browser)
-  router.post('/api/upload/video', async (req, res) => {
-    const session = await requireSession(req, res);
-    if (!session) return;
-    if (!requireAction(res, session, 'crear_propiedades', 'editar_propiedades')) return;
-    const MAX_BYTES = 200 * 1024 * 1024; // 200 MB
-    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-    if (contentLength > MAX_BYTES) {
-      return err(res, 'El video no puede superar los 200 MB.');
-    }
-    const publicId = `spyderconnect/properties/${randomUUID()}`;
-    const { stream, promise } = uploadStreamToCloudinary({ resource_type: 'video', public_id: publicId });
-    let received = 0;
-    req.on('data', chunk => {
-      received += chunk.length;
-      if (received > MAX_BYTES) {
-        req.destroy();
-        return err(res, 'El video no puede superar los 200 MB.');
-      }
-    });
-    req.pipe(stream);
-    try {
-      const result = await promise;
-      json(res, { secure_url: result.secure_url, public_id: result.public_id });
-    } catch (e) {
-      console.error('Error subiendo video a Cloudinary:', e);
-      if (!res.headersSent) err(res, 'Error al subir el video. Intentá de nuevo.');
-    }
-  });
-
-  // Firma para subida directa de video desde el browser a Cloudinary (legacy, mantenido por compatibilidad)
-  router.get('/api/cloudinary/sign', async (req, res) => {
-    const session = await requireSession(req, res);
-    if (!session) return;
-    if (!requireAction(res, session, 'crear_propiedades', 'editar_propiedades')) return;
-    const timestamp = Math.round(Date.now() / 1000);
-    const publicId = `spyderconnect/properties/${randomUUID()}`;
-    const signature = signUpload({ timestamp, public_id: publicId });
-    json(res, {
-      signature,
-      timestamp,
-      publicId,
-      apiKey: process.env.CLOUDINARY_API_KEY,
-      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-    });
-  });
-
-  // Registra una URL de video ya subida directamente a Cloudinary
-  router.post('/api/propiedades/:id/media-url', async (req, res) => {
-    const session = await requireSession(req, res);
-    if (!session) return;
-    if (!requireAction(res, session, 'crear_propiedades', 'editar_propiedades')) return;
-    const property = await db.getProperty(req.params.id);
-    if (!property || property.agencyId !== session.agency.id || property.createdByUserId !== session.user.id) {
-      return err(res, 'No encontrada.', 404);
-    }
-    const body = await parseJson(req);
-    if (!body.url || !body.type) return err(res, 'url y type son requeridos.', 400);
-    const media = await db.createPropertyMedia({
-      propertyId: req.params.id,
-      url: body.url,
-      type: body.type,
-      filename: body.filename || '',
-      sortOrder: body.sortOrder ?? 0,
-    });
-    json(res, { media }, 201);
-  });
-
   router.post('/api/propiedades/:id/compartir', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
@@ -557,6 +665,9 @@ export function registerApiRoutes(router) {
       return err(res, 'Propiedad no encontrada.', 404);
     }
     const body = await parseJson(req);
+    v.arrayOfStrings(body.targetAgencyIds, { maxItems: 200 }, 'Inmobiliarias');
+    v.validatePercentMap(body.percentages, 'Porcentaje'); v.validatePercentMap(body.percentagesVendedor, 'Porcentaje vendedor'); v.validatePercentMap(body.percentagesComprador, 'Porcentaje comprador');
+    Object.values(body.comments || {}).forEach(c => v.maxLen(c, 1000, 'Comentario'));
     const targetIds = toArray(body.targetAgencyIds);
     const authorizeWeb = Boolean(body.allowWebPublish);
     const percentages = body.percentages || {};
@@ -731,6 +842,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAction(res, session, 'gestionar_socios')) return;
     const body = await parseJson(req);
+    v.maxLen(body.name, 100, 'Nombre del grupo');
     const name = (body.name || '').trim();
     if (!name) return err(res, 'El nombre del grupo es requerido.', 400);
     const grupo = await db.createGrupoSocios({ agencyId: session.agency.id, name });
@@ -744,6 +856,7 @@ export function registerApiRoutes(router) {
     const grupo = await db.getGrupoSocios(req.params.id);
     if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
     const body = await parseJson(req);
+    v.maxLen(body.name, 100, 'Nombre del grupo');
     const name = (body.name || '').trim();
     if (!name) return err(res, 'El nombre del grupo es requerido.', 400);
     const updated = await db.updateGrupoSocios(grupo.id, name);
@@ -767,6 +880,7 @@ export function registerApiRoutes(router) {
     const grupo = await db.getGrupoSocios(req.params.id);
     if (!grupo || grupo.agencyId !== session.agency.id) return err(res, 'Grupo no encontrado.', 404);
     const body = await parseJson(req);
+    v.maxLen(body.partnerId, 64, 'Socio');
     const partnerId = body.partnerId;
     if (!partnerId) return err(res, 'partnerId requerido.', 400);
     const partnerIds = await db.listPartnersOfAgency(session.agency.id);
@@ -813,6 +927,7 @@ export function registerApiRoutes(router) {
     const share = await db.getPropertyShare(req.params.shareId);
     if (share && share.targetAgencyId === session.agency.id && share.status === 'pendiente') {
       const body = await parseJson(req);
+      v.maxLen(body.comment, 1000, 'Comentario');
       await db.respondPropertyShare(share.id, 'aceptada', null, body.comment || '');
     }
     json(res, { ok: true });
@@ -825,6 +940,7 @@ export function registerApiRoutes(router) {
     const share = await db.getPropertyShare(req.params.shareId);
     if (share && share.targetAgencyId === session.agency.id && share.status === 'pendiente') {
       const body = await parseJson(req);
+      v.maxLen(body.reason, 1000, 'Motivo');
       await db.respondPropertyShare(share.id, 'rechazada', body.reason || '');
     }
     json(res, { ok: true });
@@ -870,6 +986,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAction(res, session, 'crear_alertas')) return;
     const body = await parseJson(req);
+    v.validateAlert(body);
     const alert = await db.createSearchAlert({ ...body, agencyId: session.agency.id });
     db.syncMatchRequestsForAlert(alert.id, session.agency.id).catch(() => {});
     json(res, { alert }, 201);
@@ -920,6 +1037,7 @@ export function registerApiRoutes(router) {
     const mr = await db.getMatchRequest(req.params.id);
     if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
     const body = await parseJson(req);
+    v.maxLen(body.comment, 1000, 'Comentario');
     await db.respondMatchRequest(mr.id, 'aceptado', body.comment || '');
     json(res, { ok: true });
   });
@@ -1057,6 +1175,7 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAccountAdmin(req, res, session)) return;
     const body = await parseJson(req);
+    v.maxLen(body.phone, 50, 'Teléfono'); v.maxLen(body.city, 100, 'Ciudad');
     const agency = await db.updateAgency(session.agency.id, {
       phone: body.phone || '',
       city: body.city || '',
@@ -1073,11 +1192,14 @@ export function registerApiRoutes(router) {
     let parsed;
     try { parsed = await parseMultipartFormData(req, { maxBytes: 8 * 1024 * 1024 }); } catch { return err(res, 'Error al procesar el archivo.'); }
     const file = parsed.files.logo;
-    if (!file || !LOGO_CONTENT_TYPES.has(file.contentType)) return err(res, 'Formato de imagen inválido.');
+    if (!file || !LOGO_CONTENT_TYPES.has(v.detectMediaType(file.buffer))) {
+      return err(res, 'Formato de imagen inválido. Usá PNG, JPG o WEBP.');
+    }
     const result = await uploadBuffer(file.buffer, {
       public_id: `spyderconnect/logos/${session.agency.id}`,
       overwrite: true,
       resource_type: 'image',
+      allowed_formats: ['jpg', 'png', 'webp'],
     });
     const agency = await db.updateAgency(session.agency.id, { logoPath: result.secure_url });
     json(res, { agency });
@@ -1112,6 +1234,8 @@ export function registerApiRoutes(router) {
     if (!session) return;
     if (!requireAccountAdmin(req, res, session)) return;
     const body = await parseJson(req);
+    v.oneOf(body.role, v.ROLES, 'Rol', { allowEmpty: true }); v.maxLen(body.note, 500, 'Nota');
+    v.validateMenuPermisos(body.menuPermisos);
     let menuPermisos = null;
     if (body.menuPermisos) {
       if (typeof body.menuPermisos === 'object' && !Array.isArray(body.menuPermisos)) {
@@ -1140,6 +1264,7 @@ export function registerApiRoutes(router) {
     if (!requireAccountAdmin(req, res, session)) return;
     const target = await db.getUser(req.params.id);
     const body = await parseJson(req);
+    if (!v.ROLES.includes(body.role)) return err(res, 'Rol inválido.');
     if (target && target.agencyId === session.agency.id && target.id !== session.user.id) {
       if (!(target.role === 'admin' && body.role !== 'admin' && await db.countAdminsInAgency(session.agency.id) <= 1)) {
         await db.updateUserRole(target.id, body.role);
@@ -1171,6 +1296,7 @@ export function registerApiRoutes(router) {
     if (!target || target.agencyId !== session.agency.id) return err(res, 'Usuario no encontrado.', 404);
     if (target.role === 'admin') return err(res, 'Los administradores siempre tienen acceso completo.', 400);
     const body = await parseJson(req);
+    v.validateMenuPermisos(body.permisos);
     const permisos = (body.permisos !== null && body.permisos !== undefined) ? body.permisos : null;
     const updated = await db.updateUserMenuPermisos(target.id, permisos);
     audit(req, session, 'equipo.permisos_cambiados', { targetUserId: target.id, permisos });
@@ -1217,6 +1343,7 @@ export function registerApiRoutes(router) {
     }
 
     const body = await parseJson(req);
+    v.maxLen(body.password, 200, 'Contraseña');
     const cardToken = typeof body.token === 'string' ? body.token.trim() : '';
     if (!/^[A-Za-z0-9]{16,64}$/.test(cardToken)) return err(res, 'No se recibió una tarjeta válida.', 400);
 
@@ -1230,6 +1357,14 @@ export function registerApiRoutes(router) {
       security.consume(failKey, security.LIMITS.reauthFailPerUser);
       audit(req, session, 'tarjeta.reautenticacion_fallida', {});
       return err(res, 'La contraseña no es correcta.', 401);
+    }
+    if (session.user.twoFactorEnabled) {
+      v.maxLen(body.code, 20, 'Código');
+      if (!(await verifySecondFactor(session.user.id, body.code)).ok) {
+        security.consume(failKey, security.LIMITS.reauthFailPerUser);
+        audit(req, session, 'tarjeta.reautenticacion_fallida', { motivo: '2fa' });
+        return err(res, 'El código de verificación no es correcto.', 401);
+      }
     }
     security.reset(failKey);
 
@@ -1323,6 +1458,7 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
+    v.maxLen(body.subject, 200, 'Asunto'); v.maxLen(body.message, 5000, 'Mensaje'); v.maxLen(body.email, 254, 'Email'); v.maxLen(body.phone, 50, 'Teléfono');
     if (!body.subject || !body.message) return err(res, 'Completá el asunto y el mensaje.');
     const ticket = await db.createSupportTicket({ agencyId: session.agency.id, userId: session.user.id, subject: body.subject, message: body.message });
     if (mail.isConfigured()) {
@@ -1367,6 +1503,7 @@ export function registerApiRoutes(router) {
     const session = await requirePlatformAdmin(req, res);
     if (!session) return;
     const body = await parseJson(req);
+    v.maxLen(body.adminNote, 2000, 'Nota');
     if (await db.getSupportTicket(req.params.id)) await db.resolveSupportTicket(req.params.id, body.adminNote || '');
     json(res, { ok: true });
   });
@@ -1413,6 +1550,7 @@ export function registerApiRoutes(router) {
     const session = await requirePlatformAdmin(req, res);
     if (!session) return;
     const body = await parseJson(req);
+    v.maxLen(body.name, 100, 'Nombre del plan'); v.numberIn(body.priceARS, { min: 1, max: 1e8 }, 'Precio');
     if (body.name && body.priceARS) await db.updatePlan({ name: body.name, priceARS: Number(body.priceARS) || 0 });
     if (body.name && body.priceARS) audit(req, null, 'plan.modificado', { adminUserId: session.user.id, name: body.name, priceARS: Number(body.priceARS) || 0 });
     json(res, { plan: await db.getPlan() });
@@ -1455,6 +1593,8 @@ export function registerApiRoutes(router) {
     if (!invitation || invitation.status !== 'pendiente') return err(res, 'Este link de invitación no es válido, ya fue usado o fue cancelado.', 410);
     const agency = await db.getAgency(invitation.agencyId);
     const body = await parseJson(req);
+    if (body.email) v.email(body.email);
+    v.maxLen(body.name, 100, 'Nombre');
     const { name, email, password } = body;
     if (!name || !email || !password) return err(res, 'Completá tu nombre, email y contraseña.');
     const passwordProblem = security.validateNewPassword(password, email);

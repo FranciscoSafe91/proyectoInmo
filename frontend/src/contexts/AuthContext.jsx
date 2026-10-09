@@ -10,8 +10,16 @@ export function AuthProvider({ children }) {
     api.get('/session').then(setSession).catch(() => setSession(null));
   }, []);
 
+  // Si la cuenta tiene verificación en dos pasos, el backend responde
+  // { requires2fa, ticket } y la sesión se completa con loginSecondFactor().
   const login = async (email, password) => {
     const data = await api.post('/login', { email, password });
+    if (!data.requires2fa) setSession(data);
+    return data;
+  };
+
+  const loginSecondFactor = async (ticket, code) => {
+    const data = await api.post('/login/2fa', { ticket, code });
     setSession(data);
     return data;
   };
@@ -34,7 +42,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, login, logout, refresh, canDo }}>
+    <AuthContext.Provider value={{ session, login, loginSecondFactor, logout, refresh, canDo }}>
       {children}
     </AuthContext.Provider>
   );

@@ -89,7 +89,8 @@ function request(method, path, body) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(parsed);
           } else {
-            reject(new Error(`Mercado Pago API ${method} ${path} → ${res.statusCode}: ${data}`));
+            // Solo el comienzo del cuerpo: las respuestas de MP pueden incluir datos del pagador.
+            reject(new Error(`Mercado Pago API ${method} ${path} → ${res.statusCode}: ${String(data).slice(0, 300)}`));
           }
         });
       }

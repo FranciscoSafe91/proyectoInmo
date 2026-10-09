@@ -213,7 +213,14 @@
 | 2.5 | Verificación de email en el registro; política de contraseñas | M5, M6 | M |
 | 2.6 | Límites de upload en streaming; timeouts del server | A7 | M |
 
-### Fase 3 — Endurecimiento continuo
+### Fase 3 — Endurecimiento continuo — ✅ código implementado 2026-10-09 (salvo 3.6)
+> **3.1 Validación:** `backend/src/validation.js`. Límites generales para cualquier body (textos de hasta 20.000 caracteres, listas de hasta 500 elementos, profundidad 6, sin `__proto__`) más reglas en 23 endpoints (listas de valores, rangos y formato de email). Los errores se devuelven como 400 con un mensaje claro.
+> **3.2 Cloudinary:** se eliminaron `/api/upload/video`, `/api/cloudinary/sign` y `/api/propiedades/:id/media-url`, que no tenían uso desde el commit 5e8035f. El tipo de archivo se valida por magic bytes, no por el Content-Type del cliente. Logos sin SVG. `allowed_formats` en Cloudinary. Cuota de 300 archivos por agencia por día (`MEDIA_DAILY_LIMIT`).
+> **3.3 Errores y logs:** los errores 500 devuelven un código corto y el detalle queda solo en el log. `backend/src/log.js` filtra todo lo que se escribe en consola (tarjetas validadas con Luhn, emails, tokens y claves).
+> **3.4 Dependencias:** `npm audit fix` en el frontend y `.github/dependabot.yml`. Pendiente manual: sacar los `node_modules` versionados (`git rm -r --cached landing/node_modules backend/node_modules node_modules/.package-lock.json`). Pendiente de migración: `tailwindcss` 3→4 (solo afecta el build) y `react-router-dom` 6→7 (advisory de open redirect; hoy no es explotable porque la app no navega a rutas controladas por el usuario).
+> **3.5 2FA:** TOTP (RFC 6238) con `backend/src/totp.js`, verificado contra los vectores de la RFC. Opcional por usuario, desde Configuración → Seguridad. Tiene protección contra reuso de códigos, 8 códigos de recuperación hasheados, login en dos pasos con ticket de 5 minutos y 5 intentos, y se pide también para cambiar la tarjeta. Mejoras posibles: mostrar un QR (hoy se ingresa la clave a mano o con el link otpauth) y hacerlo obligatorio para los admins de plataforma.
+> **3.6:** queda fuera del código (pentest externo y SAQ de PCI).
+
 | # | Tarea | Hallazgo | Esfuerzo |
 |---|---|---|---|
 | 3.1 | Validación de esquema en todos los endpoints | M7 | M |

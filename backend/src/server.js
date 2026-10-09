@@ -1,11 +1,14 @@
 // server.js — backend para el frontend React (API JSON pura)
 
 import 'dotenv/config';
+import { installLogRedaction } from './log.js';
+installLogRedaction();
 import http from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync, createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, sep } from 'node:path';
 import { URL } from 'node:url';
+import { randomUUID } from 'node:crypto';
 
 import { Router } from './router.js';
 import * as db from './db.js';
@@ -172,7 +175,7 @@ const CSP = [
   // *.mercadolivre.com: el SDK de MP carga desde ahí su huella antifraude del dispositivo.
   "img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://img.youtube.com https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://*.mlstatic.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com",
   "media-src 'self' blob: https://res.cloudinary.com",
-  "connect-src 'self' https://api.cloudinary.com https://nominatim.openstreetmap.org https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://*.mlstatic.com",
+  "connect-src 'self' https://nominatim.openstreetmap.org https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://*.mlstatic.com",
   "frame-src https://www.youtube.com https://*.mercadopago.com https://*.mercadolibre.com https://www.mercadolibre.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -266,11 +269,17 @@ const server = http.createServer(async (req, res) => {
     req.params = match.params;
     await match.handler(req, res);
   } catch (e) {
-    console.error('Error atendiendo la solicitud:', e);
-    if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+    const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': CORS_ORIGIN, 'Access-Control-Allow-Credentials': 'true' };
+    // Errores de validación: el mensaje está pensado para el usuario.
+    if (e && e.expose && e.statusCode) {
+      if (!res.headersSent) res.writeHead(e.statusCode, headers);
+      return res.end(JSON.stringify({ error: e.message }));
     }
-    res.end(JSON.stringify({ error: 'Error interno del servidor' }));
+    // Cualquier otro error: detalle solo en el log, al cliente un id para soporte.
+    const errorId = randomUUID().slice(0, 8);
+    console.error(`[error ${errorId}] ${req.method} ${(req.url || '').split('?')[0]}:`, e);
+    if (!res.headersSent) res.writeHead(500, headers);
+    res.end(JSON.stringify({ error: `Error interno del servidor (código ${errorId}).` }));
   }
 });
 

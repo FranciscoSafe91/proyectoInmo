@@ -83,6 +83,8 @@ export const LIMITS = {
   verifyResendPerUser: { max: 3, windowMs: 60 * 60 * 1000 },
   verifyPerIp:       { max: 20, windowMs: 15 * 60 * 1000 },
   cspReportPerIp:    { max: 60, windowMs: 60 * 1000 },
+  // Fotos/videos subidos a Cloudinary por agencia y por día.
+  mediaPerAgency:    { max: Number(process.env.MEDIA_DAILY_LIMIT) || 300, windowMs: 24 * 60 * 60 * 1000 },
 };
 
 // ---------------------------------------------------------------------------

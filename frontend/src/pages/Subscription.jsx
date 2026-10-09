@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatDate, formatDateTime, formatARS } from '../utils.js';
 
 const ACTIVITY_LABELS = {
@@ -19,6 +20,11 @@ const ACTIVITY_LABELS = {
   'equipo.usuario_eliminado': 'Usuario eliminado',
   'equipo.permisos_cambiados': 'Permisos de usuario cambiados',
   'cuenta.registrada': 'Cuenta creada',
+  '2fa.activado': 'Verificación en dos pasos activada',
+  '2fa.desactivado': 'Verificación en dos pasos desactivada',
+  '2fa.login': 'Ingreso con verificación en dos pasos',
+  '2fa.login_con_codigo_recuperacion': 'Ingreso con código de recuperación',
+  '2fa.codigo_incorrecto': 'Código de verificación incorrecto',
 };
 
 const MP_SDK_URL = 'https://sdk.mercadopago.com/js/v2';
@@ -37,12 +43,15 @@ function loadMercadoPagoSdk() {
 // Formulario de tarjeta de Mercado Pago (Card Payment Brick). Los campos de la
 // tarjeta son iframes de Mercado Pago: nuestro código nunca ve el número ni el
 // CVV, solo recibe un token de un solo uso que se manda al backend.
-function CardChange({ publicKey, amount, onDone, onCancel }) {
+function CardChange({ publicKey, amount, needsCode, onDone, onCancel }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const [code, setCode] = useState('');
   const passwordRef = useRef('');
   passwordRef.current = password;
+  const codeRef = useRef('');
+  codeRef.current = code;
 
   useEffect(() => {
     let controller = null;
@@ -70,6 +79,7 @@ function CardChange({ publicKey, amount, onDone, onCancel }) {
                 token: formData.token,
                 paymentMethodId: formData.payment_method_id,
                 password: passwordRef.current,
+                code: codeRef.current,
               })
                 .then(() => onDone())
                 .catch(e => { setError(e.message); throw e; });
@@ -90,6 +100,12 @@ function CardChange({ publicKey, amount, onDone, onCancel }) {
         placeholder="Para confirmar que sos vos"
         value={password} onChange={e => setPassword(e.target.value)}
       />
+      {needsCode && (
+        <>
+          <label htmlFor="reauth-code">Código de tu app autenticadora</label>
+          <input id="reauth-code" autoComplete="one-time-code" maxLength={11} value={code} onChange={e => setCode(e.target.value)} />
+        </>
+      )}
       {!ready && !error && <p className="muted small">Cargando formulario seguro de Mercado Pago...</p>}
       <div id="cardPaymentBrick_container" />
       {error && <div className="banner banner-error" style={{ marginTop: 10 }}>{error}</div>}
@@ -113,6 +129,7 @@ const STATUS_BADGE_CLASS = {
 };
 
 export default function Subscription() {
+  const { session } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [paying, setPaying] = useState(false);
@@ -233,6 +250,7 @@ export default function Subscription() {
             <CardChange
               publicKey={mpPublicKey}
               amount={plan.priceARS}
+              needsCode={Boolean(session?.user?.twoFactorEnabled)}
               onDone={handleCardChanged}
               onCancel={() => setChangingCard(false)}
             />

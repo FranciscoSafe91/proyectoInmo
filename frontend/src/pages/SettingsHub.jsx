@@ -47,6 +47,11 @@ export default function SettingsHub() {
           <p className="muted small">Estado del plan mensual y pagos de {agency.name}.</p>
         </Link>
 
+        <Link to="/seguridad" className="card" style={{ display: 'block', color: 'inherit' }}>
+          <h3>Seguridad</h3>
+          <p className="muted small">Verificación en dos pasos con una app autenticadora en tu teléfono.</p>
+        </Link>
+
         <Link to="/soporte" className="card" style={{ display: 'block', color: 'inherit' }}>
           <h3>Soporte</h3>
           <p className="muted small">Enviá una consulta a nuestro equipo de soporte.</p>

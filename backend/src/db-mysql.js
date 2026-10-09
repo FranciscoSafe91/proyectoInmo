@@ -44,6 +44,7 @@ function toUser(r) {
     // serializa en las respuestas de la API. Ver findUserCredentialsByEmail().
     role: r.role, isPlatformAdmin: Boolean(r.is_platform_admin), createdAt: r.created_at,
     emailVerified: Boolean(r.email_verified_at),
+    twoFactorEnabled: Boolean(r.totp_enabled), // el secreto TOTP nunca sale de la DB
     menuPermisos,
   };
 }
@@ -595,6 +596,12 @@ async function ensureUsuariosColumns() {
   if (_usuariosColumnsMigrated) return;
   await pool.query("ALTER TABLE usuarios ADD COLUMN menu_permisos TEXT DEFAULT NULL").catch(() => {});
   await pool.query("ALTER TABLE usuarios ADD COLUMN email_verified_at DATETIME DEFAULT NULL").catch(() => {});
+  // Verificación en dos pasos (TOTP)
+  await pool.query("ALTER TABLE usuarios ADD COLUMN totp_secret VARCHAR(64) DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE usuarios ADD COLUMN totp_pending_secret VARCHAR(64) DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE usuarios ADD COLUMN totp_enabled TINYINT(1) NOT NULL DEFAULT 0").catch(() => {});
+  await pool.query("ALTER TABLE usuarios ADD COLUMN totp_last_counter BIGINT DEFAULT NULL").catch(() => {});
+  await pool.query("ALTER TABLE usuarios ADD COLUMN totp_recovery TEXT DEFAULT NULL").catch(() => {});
   _usuariosColumnsMigrated = true;
 }
 
@@ -1630,6 +1637,66 @@ export async function consumeEmailVerificationToken(token) {
   await pool.query('UPDATE usuarios SET email_verified_at=NOW() WHERE id=? AND email_verified_at IS NULL', [userId]);
   await pool.query('DELETE FROM email_verification_tokens WHERE user_id=?', [userId]);
   return userId;
+}
+
+// ---------------------------------------------------------------------------
+// Verificación en dos pasos (TOTP). Uso interno: nada de esto va al cliente.
+// ---------------------------------------------------------------------------
+export async function getUserTotp(userId) {
+  await ensureUsuariosColumns();
+  const [rows] = await pool.query(
+    'SELECT totp_secret, totp_pending_secret, totp_enabled, totp_last_counter, totp_recovery FROM usuarios WHERE id=?', [userId]
+  );
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    enabled: Boolean(r.totp_enabled),
+    secret: r.totp_secret,
+    pendingSecret: r.totp_pending_secret,
+    lastCounter: r.totp_last_counter === null ? -1 : Number(r.totp_last_counter),
+    recoveryHashes: tryParseJson(r.totp_recovery) || [],
+  };
+}
+
+export async function setTotpPendingSecret(userId, secret) {
+  await ensureUsuariosColumns();
+  await pool.query('UPDATE usuarios SET totp_pending_secret=? WHERE id=?', [secret, userId]);
+}
+
+export async function enableTotp(userId, recoveryHashes, usedCounter) {
+  await pool.query(
+    `UPDATE usuarios SET totp_secret=totp_pending_secret, totp_pending_secret=NULL, totp_enabled=1,
+       totp_last_counter=?, totp_recovery=? WHERE id=? AND totp_pending_secret IS NOT NULL`,
+    [usedCounter, JSON.stringify(recoveryHashes), userId]
+  );
+}
+
+export async function disableTotp(userId) {
+  await pool.query(
+    `UPDATE usuarios SET totp_secret=NULL, totp_pending_secret=NULL, totp_enabled=0,
+       totp_last_counter=NULL, totp_recovery=NULL WHERE id=?`, [userId]
+  );
+}
+
+/** Marca un código como usado. Atómico: si dos requests usan el mismo código, solo una gana. */
+export async function markTotpCounterUsed(userId, counter) {
+  const [result] = await pool.query(
+    'UPDATE usuarios SET totp_last_counter=? WHERE id=? AND (totp_last_counter IS NULL OR totp_last_counter < ?)',
+    [counter, userId, counter]
+  );
+  return result.affectedRows === 1;
+}
+
+/** Consume un código de recuperación (de un solo uso). Devuelve true si era válido. */
+export async function consumeTotpRecoveryCode(userId, codeHash) {
+  const totp = await getUserTotp(userId);
+  if (!totp || !totp.recoveryHashes.includes(codeHash)) return false;
+  const remaining = totp.recoveryHashes.filter(h => h !== codeHash);
+  const [result] = await pool.query(
+    'UPDATE usuarios SET totp_recovery=? WHERE id=? AND totp_recovery=?',
+    [JSON.stringify(remaining), userId, JSON.stringify(totp.recoveryHashes)]
+  );
+  return result.affectedRows === 1;
 }
 
 export async function listSubscriptionsWithPreapproval() {

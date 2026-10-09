@@ -35,6 +35,7 @@ import PublicProperty from './pages/PublicProperty.jsx';
 import JoinInvite from './pages/JoinInvite.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import VerifyEmail from './pages/VerifyEmail.jsx';
+import Security from './pages/Security.jsx';
 
 function PrivateRoute({ children }) {
   const { session } = useAuth();
@@ -140,6 +141,7 @@ function AppRoutes() {
           <Route path="/equipo" element={<PrivateRoute><Team /></PrivateRoute>} />
           <Route path="/usuarios" element={<PrivateRoute><Usuarios /></PrivateRoute>} />
           <Route path="/suscripcion" element={<PrivateRoute><Subscription /></PrivateRoute>} />
+          <Route path="/seguridad" element={<PrivateRoute><Security /></PrivateRoute>} />
           <Route path="/soporte" element={<PrivateRoute><Support /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />
           <Route path="/admin/soporte" element={<PrivateRoute><AdminSupport /></PrivateRoute>} />

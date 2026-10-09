@@ -1,0 +1,25 @@
+# Dependabot: abre PRs automáticos cuando una dependencia tiene una
+# vulnerabilidad conocida o una versión nueva. Se revisan y mergean a mano.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"            # dependencias del backend (package.json raíz)
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # Saltos de versión mayor: requieren migración (ver PLAN-SEGURIDAD.md, fase 3).
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-router-dom"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directory: "/landing"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

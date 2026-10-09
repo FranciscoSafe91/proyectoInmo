@@ -4,13 +4,17 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { api } from '../api.js';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, loginSecondFactor } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const justRegistered = location.state?.registered === true;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  // Segundo paso (verificación en dos pasos)
+  const [ticket, setTicket] = useState(null);
+  const [code, setCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
   // Modal "Olvidé mi contraseña"
   const [showModal, setShowModal] = useState(false);
@@ -22,11 +26,52 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-      await login(email, password);
+      const data = await login(email, password);
+      if (data.requires2fa) { setTicket(data.ticket); setCode(''); return; }
       navigate('/dashboard');
     } catch (err) {
       setError(err.data?.error || 'Email o contraseña incorrectos.');
     }
+  }
+
+  async function handleSecondFactor(e) {
+    e.preventDefault();
+    setError('');
+    setVerifying(true);
+    try {
+      await loginSecondFactor(ticket, code);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.data?.error || 'El código no es correcto.');
+      // Ticket vencido o agotado: hay que volver a poner la contraseña.
+      if (err.status === 401 && /expir/i.test(err.data?.error || '') || err.status === 429) setTicket(null);
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  if (ticket) {
+    return (
+      <div className="auth-wrapper">
+        <h1>Verificación en dos pasos</h1>
+        <p className="muted" style={{ marginBottom: 16 }}>
+          Ingresá el código de 6 dígitos de tu app autenticadora. Si perdiste el teléfono, usá uno de tus códigos de recuperación.
+        </p>
+        {error && <div className="banner banner-error">{error}</div>}
+        <form onSubmit={handleSecondFactor}>
+          <label htmlFor="code">Código</label>
+          <input
+            id="code" name="code" required autoFocus autoComplete="one-time-code" inputMode="text"
+            maxLength={11} placeholder="123456"
+            value={code} onChange={e => setCode(e.target.value)}
+          />
+          <div className="btn-row">
+            <button type="submit" className="btn" disabled={verifying}>{verifying ? 'Verificando...' : 'Verificar'}</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setTicket(null); setError(''); }}>Volver</button>
+          </div>
+        </form>
+      </div>
+    );
   }
 
   function openModal() {

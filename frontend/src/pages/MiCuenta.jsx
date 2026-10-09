@@ -82,14 +82,14 @@ export default function MiCuenta() {
               : <span className="muted small">Sin logo</span>}
           </div>
           <form onSubmit={handleLogoUpload} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" required />
+            <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required />
             <button type="submit" className="btn btn-small">Subir logo</button>
           </form>
           {agency.logoPath && (
             <button className="btn btn-secondary btn-small" onClick={handleQuitarLogo}>Quitar logo</button>
           )}
         </div>
-        <p className="small muted" style={{ marginTop: 10 }}>Formatos aceptados: PNG, JPG, WEBP o SVG. Tamaño máximo 8 MB.</p>
+        <p className="small muted" style={{ marginTop: 10 }}>Formatos aceptados: PNG, JPG o WEBP. Tamaño máximo 8 MB.</p>
       </div>
 
       <div className="card">

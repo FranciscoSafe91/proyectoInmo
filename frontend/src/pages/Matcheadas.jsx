@@ -58,8 +58,8 @@ function MatchRequestsReceived() {
       <div className="card">
         <div className="empty-state" style={{ padding: '32px 0' }}>
           <Bell size={34} aria-hidden="true" />
-          <h2>Sin solicitudes pendientes</h2>
-          <p>Cuando un socio encuentre una de tus propiedades como coincidencia, aparecerá acá para que puedas aceptar o rechazar.</p>
+          <h2>Sin alertas recibidas pendientes</h2>
+          <p>Cuando un socio busque algo y una de tus propiedades coincida, aparecerá acá para que puedas aceptar o rechazar.</p>
         </div>
       </div>
     );
@@ -201,30 +201,15 @@ function AlertDetail({ alertId }) {
 }
 
 // ---------------------------------------------------------------------------
-// Matches pendientes de confirmar por el buscador
+// Matches aceptados por Agency B (sección "Matcheadas" del propietario)
 // ---------------------------------------------------------------------------
-function PendingMatchConfirmation() {
+function MatcheadasRecibidas() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [responding, setResponding] = useState({});
 
-  const load = () => {
-    api.get('/match-accepted/pending').then(setData).catch(e => setError(e.message));
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const respond = async (id, action) => {
-    setResponding(r => ({ ...r, [id]: true }));
-    try {
-      await api.post(`/match-accepted/${id}/${action}`);
-      load();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setResponding(r => ({ ...r, [id]: false }));
-    }
-  };
+  useEffect(() => {
+    api.get('/match-requests/accepted').then(setData).catch(e => setError(e.message));
+  }, []);
 
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
@@ -232,19 +217,19 @@ function PendingMatchConfirmation() {
   if (data.items.length === 0) return null;
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <Sparkles size={16} />
-        <strong>Nuevos matches disponibles</strong>
-        <span className="badge" style={{ background: '#6d28d9', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 12 }}>
+        <strong>Matcheadas</strong>
+        <span className="badge" style={{ background: '#059669', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 12 }}>
           {data.items.length}
         </span>
       </div>
       <p className="muted small" style={{ marginBottom: 14 }}>
-        El propietario aceptó mostrarle su propiedad. Confirmá si este match te resulta relevante.
+        Propiedades tuyas que ya fueron aceptadas como coincidencia con una búsqueda de un socio.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {data.items.map(({ matchRequest, property, ownerAgency, alert }) => (
+        {data.items.map(({ matchRequest, property, alert, alertAgency }) => (
           <div key={matchRequest.id} className="match-request-item">
             <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
               {property.coverUrl
@@ -255,25 +240,11 @@ function PendingMatchConfirmation() {
               <Link to={`/propiedades/${property.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}>{property.title}</Link>
               <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
               <span className="muted small" style={{ marginTop: 4 }}>
-                Publicada por <strong>{ownerAgency.name}</strong> · Alerta: {alert.title || summarizeAlert(alert)}
+                <strong>{alertAgency.name}</strong> busca: {alert.title || summarizeAlert(alert)}
               </span>
             </div>
             <div className="match-request-actions">
               <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-sm">Ver</Link>
-              <button
-                className="btn btn-success btn-sm"
-                disabled={responding[matchRequest.id]}
-                onClick={() => respond(matchRequest.id, 'aceptar')}
-              >
-                <Check size={14} /> Aceptar
-              </button>
-              <button
-                className="btn btn-danger btn-sm"
-                disabled={responding[matchRequest.id]}
-                onClick={() => respond(matchRequest.id, 'rechazar')}
-              >
-                <X size={14} /> Rechazar
-              </button>
             </div>
           </div>
         ))}
@@ -318,7 +289,6 @@ function MatcheadasList() {
           <h2 className="page-col-heading">
             <Send size={17} aria-hidden="true" /> Matches enviados
           </h2>
-          <PendingMatchConfirmation />
 
           {alerts.length === 0 ? (
             <div className="card">
@@ -366,12 +336,14 @@ function MatcheadasList() {
           )}
         </div>
 
-        {/* ── Columna derecha: Matches recibidos ── */}
+        {/* ── Columna derecha: Alertas que coinciden ── */}
         <div>
           <h2 className="page-col-heading">
-            <Bell size={17} aria-hidden="true" /> Matches recibidos
+            <Bell size={17} aria-hidden="true" /> Alertas que coinciden
           </h2>
+          <p className="muted small" style={{ marginBottom: 12 }}>Alertas recibidas</p>
           <MatchRequestsReceived />
+          <MatcheadasRecibidas />
         </div>
 
       </div>

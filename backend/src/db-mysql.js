@@ -1125,6 +1125,15 @@ export async function listPendingMatchRequestsForOwner(ownerAgencyId) {
   return rows.map(toMatchRequest);
 }
 
+export async function listAcceptedMatchRequestsForOwner(ownerAgencyId) {
+  await ensureMatchRequestsTable();
+  const [rows] = await pool.query(
+    `SELECT * FROM match_requests WHERE owner_agency_id=? AND status='aceptado' ORDER BY responded_at DESC`,
+    [ownerAgencyId]
+  );
+  return rows.map(toMatchRequest);
+}
+
 export async function getMatchRequest(matchRequestId) {
   await ensureMatchRequestsTable();
   const [rows] = await pool.query('SELECT * FROM match_requests WHERE id=?', [matchRequestId]);
@@ -1132,10 +1141,17 @@ export async function getMatchRequest(matchRequestId) {
 }
 
 export async function respondMatchRequest(matchRequestId, status) {
-  await pool.query(
-    'UPDATE match_requests SET status=?, responded_at=NOW() WHERE id=?',
-    [status, matchRequestId]
-  );
+  if (status === 'aceptado') {
+    await pool.query(
+      'UPDATE match_requests SET status=?, alertee_status=?, responded_at=NOW() WHERE id=?',
+      [status, 'aceptado', matchRequestId]
+    );
+  } else {
+    await pool.query(
+      'UPDATE match_requests SET status=?, responded_at=NOW() WHERE id=?',
+      [status, matchRequestId]
+    );
+  }
   return getMatchRequest(matchRequestId);
 }
 
@@ -1165,7 +1181,7 @@ export async function listAlertsWithMatchCounts(agencyId) {
   const placeholders = alertIds.map(() => '?').join(',');
   const [rows] = await pool.query(
     `SELECT alert_id, COUNT(*) as cnt FROM match_requests
-     WHERE alert_id IN (${placeholders}) AND status='aceptado' AND alertee_status='aceptado'
+     WHERE alert_id IN (${placeholders}) AND status='aceptado'
      GROUP BY alert_id`,
     alertIds
   );
@@ -1179,7 +1195,7 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
   const alert = await getSearchAlert(alertId);
   if (!alert || alert.agencyId !== requestingAgencyId) return [];
   const [rows] = await pool.query(
-    `SELECT property_id, owner_agency_id FROM match_requests WHERE alert_id=? AND status='aceptado' AND alertee_status='aceptado'`,
+    `SELECT property_id, owner_agency_id FROM match_requests WHERE alert_id=? AND status='aceptado'`,
     [alertId]
   );
   const results = [];

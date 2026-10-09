@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Plus, Send } from 'lucide-react';
+import { Bell, Check, Plus, Send, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -29,6 +29,7 @@ export default function Alerts() {
   const { canDo } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [responding, setResponding] = useState({});
 
   function load() {
     api.get('/alertas').then(setData).catch(e => setError(e.message));
@@ -48,9 +49,16 @@ export default function Alerts() {
     await api.delete(`/alertas/${id}`);
     load();
   }
-  async function handleCompartir(alertId, propertyId) {
-    await api.post(`/alertas/${alertId}/compartir/${propertyId}`);
-    load();
+  async function handleRespond(matchRequestId, action) {
+    setResponding(r => ({ ...r, [matchRequestId]: true }));
+    try {
+      await api.post(`/match-requests/${matchRequestId}/${action}`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setResponding(r => ({ ...r, [matchRequestId]: false }));
+    }
   }
 
   if (error) return <div className="banner banner-error">{error}</div>;
@@ -78,11 +86,11 @@ export default function Alerts() {
         {/* ── Columna izquierda: Alertas recibidas ── */}
         <div>
           <h2 className="page-col-heading">
-            <Bell size={17} aria-hidden="true" /> Alertas recibidas
+            <Bell size={17} aria-hidden="true" /> Alertas que coinciden
           </h2>
           <div className="card">
             <p className="muted small" style={{ marginBottom: 16 }}>
-              Alertas de tus socios que coinciden con propiedades tuyas — podés compartírselas con un clic.
+              Alertas de tus socios que coinciden con propiedades tuyas. Aceptá para que puedan verlas.
             </p>
             {matches.length === 0 ? (
               <p className="muted">Por ahora no hay ninguna coincidencia pendiente.</p>
@@ -91,21 +99,30 @@ export default function Alerts() {
                 <table>
                   <thead><tr><th>Tu propiedad</th><th>Socio que la busca</th><th></th></tr></thead>
                   <tbody>
-                    {matches.map(({ alert, property, requestingAgency }) => (
-                      <tr key={`${alert.id}-${property.id}`}>
+                    {matches.map(({ matchRequest, property, alert, alertAgency }) => (
+                      <tr key={matchRequest.id}>
                         <td>
                           <Link to={`/propiedades/${property.id}`}>{property.title}</Link><br />
                           <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
                         </td>
                         <td>
-                          {requestingAgency.name}<br />
+                          {alertAgency.name}<br />
                           <span className="muted small">busca: {summarizeAlert(alert)}</span>
                           {alert.mudanzaInmediata && (
                             <><br /><span style={{ display: 'inline-block', marginTop: 4, background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 4, padding: '2px 8px', fontSize: '0.8rem', fontWeight: 600, color: '#856404' }}>🚚 Mudanza inmediata</span></>
                           )}
                         </td>
-                        <td>
-                          <button className="btn btn-small" onClick={() => handleCompartir(alert.id, property.id)}>Compartir ahora</button>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <button
+                            className="btn btn-success btn-small"
+                            disabled={responding[matchRequest.id]}
+                            onClick={() => handleRespond(matchRequest.id, 'aceptar')}
+                          ><Check size={13} /> Aceptar</button>{' '}
+                          <button
+                            className="btn btn-danger btn-small"
+                            disabled={responding[matchRequest.id]}
+                            onClick={() => handleRespond(matchRequest.id, 'rechazar')}
+                          ><X size={13} /> Rechazar</button>
                         </td>
                       </tr>
                     ))}

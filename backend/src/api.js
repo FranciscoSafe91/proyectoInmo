@@ -675,12 +675,32 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const alerts = await db.listAlertsByAgency(session.agency.id);
-    const rawMatches = await db.listAlertMatchesForOwner(session.agency.id);
+    const pendingMrs = await db.listPendingMatchRequestsForOwner(session.agency.id);
     const matches = (await Promise.all(
-      rawMatches.map(async m => ({ ...m, requestingAgency: await db.getAgency(m.requestingAgencyId) }))
-    )).filter(m => m.requestingAgency);
+      pendingMrs.map(async mr => ({
+        matchRequest: mr,
+        property: await db.getProperty(mr.propertyId),
+        alert: await db.getSearchAlert(mr.alertId),
+        alertAgency: await db.getAgency(mr.alertAgencyId),
+      }))
+    )).filter(m => m.property && m.alert && m.alertAgency);
     const hasPartners = (await db.listPartnersOfAgency(session.agency.id)).length > 0;
     json(res, { alerts, matches, hasPartners });
+  });
+
+  router.get('/api/match-requests/accepted', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const acceptedMrs = await db.listAcceptedMatchRequestsForOwner(session.agency.id);
+    const items = (await Promise.all(
+      acceptedMrs.map(async mr => ({
+        matchRequest: mr,
+        property: await db.getProperty(mr.propertyId),
+        alert: await db.getSearchAlert(mr.alertId),
+        alertAgency: await db.getAgency(mr.alertAgencyId),
+      }))
+    )).filter(i => i.property && i.alert && i.alertAgency);
+    json(res, { items });
   });
 
   router.post('/api/alertas', async (req, res) => {

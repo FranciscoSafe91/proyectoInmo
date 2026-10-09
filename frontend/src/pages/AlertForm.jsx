@@ -109,7 +109,7 @@ export default function AlertForm() {
     if (name === 'zonaGeografica') {
       setAlert(v => ({ ...v, zonaGeografica: val, partido: '', localidades: [] }));
     } else if (name === 'partido') {
-      setAlert(v => ({ ...v, partido: val, localidades: [] }));
+      setAlert(v => ({ ...v, partido: val }));
     } else {
       setAlert(v => ({ ...v, [name]: val }));
     }

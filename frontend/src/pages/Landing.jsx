@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, BedDouble, Building2, Check, Handshake,
-  Mail, MapPin, Menu, Percent, Phone, Ruler, Search,
+  Home, Mail, MapPin, Menu, Percent, Phone, Ruler, Search,
   ShieldCheck, SlidersHorizontal, UserRound, X,
 } from 'lucide-react';
 import '../landing.css';
@@ -67,6 +67,24 @@ const plans = [
   },
 ];
 
+const networkLinks = Array.from({ length: 12 }, (_, i) => i + 1);
+const networkNodes = [13, 14, 12, 13, 12, 14, 12, 11, 12, 11, 13, 12, 11, 12];
+
+function NetworkBackdrop({ variant = 'dark' }) {
+  return (
+    <div className={`network-backdrop network-${variant}`} aria-hidden="true">
+      {networkLinks.map(number => (
+        <div key={`link-${number}`} className={`network-link link-${number}`}></div>
+      ))}
+      {networkNodes.map((size, index) => (
+        <div key={`node-${index + 1}`} className={`network-node node-${index + 1}`}>
+          <Home size={size} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [leadEmail, setLeadEmail] = useState('');
@@ -120,6 +138,7 @@ export default function Landing() {
       <main id="inicio">
         {/* ---- Hero ---- */}
         <section className="hero">
+          <NetworkBackdrop />
           <div className="hero-grid">
             <div className="hero-copy">
               <div className="eyebrow">
@@ -208,6 +227,7 @@ export default function Landing() {
 
         {/* ---- Propiedades ---- */}
         <section id="propiedades" className="section section-light">
+          <NetworkBackdrop variant="light" />
           <div className="section-container">
             <div className="section-header">
               <span className="section-tag">Propiedades compartidas</span>
@@ -231,6 +251,7 @@ export default function Landing() {
 
         {/* ---- Cómo funciona ---- */}
         <section id="funciona" className="section section-dark">
+          <NetworkBackdrop />
           <div className="section-container">
             <div className="section-header section-header-light">
               <span className="section-tag light">Cómo funciona</span>
@@ -255,6 +276,7 @@ export default function Landing() {
 
         {/* ---- Comisiones ---- */}
         <section id="comisiones" className="section section-paper">
+          <NetworkBackdrop variant="light" />
           <div className="section-container commission-layout">
             <div className="commission-copy">
               <span className="section-tag">Comisiones claras</span>
@@ -287,6 +309,7 @@ export default function Landing() {
 
         {/* ---- Casos de uso ---- */}
         <section id="casos" className="section section-light">
+          <NetworkBackdrop variant="light" />
           <div className="section-container">
             <div className="section-header">
               <span className="section-tag">Casos de uso</span>
@@ -322,6 +345,7 @@ export default function Landing() {
 
         {/* ---- Planes ---- */}
         <section id="planes" className="section section-paper">
+          <NetworkBackdrop variant="light" />
           <div className="section-container">
             <div className="section-header">
               <span className="section-tag">Planes</span>
@@ -357,6 +381,7 @@ export default function Landing() {
 
         {/* ---- Contacto ---- */}
         <section id="contacto" className="contact-section">
+          <NetworkBackdrop variant="light" />
           <div className="contact-box">
             <span className="section-tag light">Acceso anticipado</span>
             <h2>Sumá tu inmobiliaria a la red de SpyderConnect.</h2>
@@ -383,6 +408,7 @@ export default function Landing() {
       </main>
 
       <footer className="footer">
+        <NetworkBackdrop />
         <div className="footer-container">
           <div className="footer-grid">
             <div>

@@ -188,7 +188,7 @@ function toAlert(r) {
   return {
     id: r.id, agencyId: r.agency_id, title: r.title,
     operation: r.operation, type: r.type, city: r.city, currency: r.currency,
-    minPrice: r.min_price, maxPrice: r.max_price, minBedrooms: r.min_bedrooms,
+    minPrice: r.min_price, maxPrice: r.max_price, minBedrooms: r.min_bedrooms, maxBedrooms: r.max_bedrooms != null ? Number(r.max_bedrooms) : null,
     zonaGeografica: r.zona_geografica || '',
     partido: r.partido || '',
     localidad: r.localidad || '',
@@ -616,6 +616,7 @@ async function ensureAlertasColumns() {
     "ALTER TABLE alertas_busqueda ADD COLUMN servicios_requeridos TEXT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN instalaciones_requeridas TEXT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN mudanza_inmediata TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE alertas_busqueda ADD COLUMN max_bedrooms TINYINT DEFAULT NULL",
     "ALTER TABLE alertas_busqueda ADD COLUMN localidades TEXT DEFAULT NULL",
   ];
   for (const sql of cols) {
@@ -1068,16 +1069,17 @@ export async function createSearchAlert(data) {
   const localidad = localidades.length === 1 ? localidades[0] : (data.localidad || '');
   await pool.query(
     `INSERT INTO alertas_busqueda
-      (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,
+      (id,agency_id,title,operation,type,city,currency,min_price,max_price,min_bedrooms,max_bedrooms,
        zona_geografica,partido,localidad,localidades,min_bathrooms,min_area_m2,
        min_cocheras,servicios_requeridos,instalaciones_requeridas,mudanza_inmediata,active,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,NOW())`,
     [
       id, data.agencyId, data.title || '', data.operation || '', data.type || '',
       (data.city || '').trim(), data.currency || '',
       data.minPrice ? Number(data.minPrice) : null,
       data.maxPrice ? Number(data.maxPrice) : null,
       data.minBedrooms ? Number(data.minBedrooms) : null,
+      data.maxBedrooms ? Number(data.maxBedrooms) : null,
       data.zonaGeografica || '',
       data.partido || '',
       localidad,
@@ -1287,6 +1289,7 @@ function propertyMatchesAlert(property, alert) {
     if (alert.maxPrice && Number(property.price) > Number(alert.maxPrice)) return false;
   }
   if (alert.minBedrooms && Number(property.bedrooms) < Number(alert.minBedrooms)) return false;
+  if (alert.maxBedrooms && Number(property.bedrooms) > Number(alert.maxBedrooms)) return false;
   return true;
 }
 

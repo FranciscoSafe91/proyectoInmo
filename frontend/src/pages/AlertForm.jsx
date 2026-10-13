@@ -32,7 +32,7 @@ const PROVINCIAS_AR = [
 
 const EMPTY_ALERT = {
   title: '', operation: '', type: '', currency: '',
-  minPrice: '', maxPrice: '', minBedrooms: '', minBathrooms: '', minAreaM2: '',
+  minPrice: '', maxPrice: '', minBedrooms: '', maxBedrooms: '', minBathrooms: '', minAreaM2: '',
   zonaGeografica: '', partido: '', localidades: [],
   minCocheras: '',
   mudanzaInmediata: false,
@@ -290,6 +290,10 @@ export default function AlertForm() {
             <div>
               <label htmlFor="minBedrooms">Dormitorios mínimos</label>
               <input type="number" id="minBedrooms" name="minBedrooms" min="0" value={alert.minBedrooms} onChange={handleChange} />
+            </div>
+            <div>
+              <label htmlFor="maxBedrooms">Dormitorios máximos</label>
+              <input type="number" id="maxBedrooms" name="maxBedrooms" min="0" value={alert.maxBedrooms} onChange={handleChange} />
             </div>
             <div>
               <label htmlFor="minBathrooms">Baños mínimos</label>

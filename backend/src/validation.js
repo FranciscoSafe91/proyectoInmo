@@ -130,7 +130,7 @@ export function validateAlert(body) {
   oneOf(body.type, PROPERTY_TYPES, 'Tipo', { allowEmpty: true });
   oneOf(body.operation, OPERATIONS, 'Operación', { allowEmpty: true });
   oneOf(body.currency, CURRENCIES, 'Moneda', { allowEmpty: true });
-  for (const f of ['minPrice', 'maxPrice', 'minAreaM2', 'minBedrooms', 'minBathrooms', 'minCocheras']) {
+  for (const f of ['minPrice', 'maxPrice', 'minAreaM2', 'minBedrooms', 'maxBedrooms', 'minBathrooms', 'minCocheras']) {
     numberIn(body[f], { min: 0, max: 1e12 }, f);
   }
 }

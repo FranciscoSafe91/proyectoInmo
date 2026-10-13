@@ -354,7 +354,7 @@ export default function PropertyDetail() {
               <a
                 className="btn btn-small"
                 style={{ background: '#25D366', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${property.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`🕷️ *SpyderConnect* — Tu red inmobiliaria\n\nMirá esta propiedad: ${window.location.origin}/public/propiedades/${property.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

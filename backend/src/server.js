@@ -189,6 +189,20 @@ function setHtmlSecurityHeaders(res) {
   res.setHeader(header, CSP);
 }
 
+function escAttr(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function injectOgTags(htmlBuf, ogTags, twitterTags) {
+  const html = htmlBuf.toString('utf-8');
+  const headEnd = html.indexOf('</head>');
+  if (headEnd === -1) return html;
+  const lines = [];
+  for (const [k, v] of Object.entries(ogTags)) lines.push(`    <meta property="${escAttr(k)}" content="${escAttr(v)}" />`);
+  for (const [k, v] of Object.entries(twitterTags)) lines.push(`    <meta name="${escAttr(k)}" content="${escAttr(v)}" />`);
+  return html.slice(0, headEnd) + '\n' + lines.join('\n') + '\n  ' + html.slice(headEnd);
+}
+
 // Se sirve en streaming: antes se leía el archivo entero a memoria (un video de
 // cientos de MB por request podía tirar el proceso).
 function sendFile(res, filePath, size) {
@@ -258,10 +272,31 @@ const server = http.createServer(async (req, res) => {
     if (!match) {
       // En producción: cualquier ruta no encontrada devuelve el index.html del SPA
       if (req.method === 'GET' && existsSync(join(SPA_DIR, 'index.html'))) {
-        const html = readFileSync(join(SPA_DIR, 'index.html'));
+        let htmlSrc = readFileSync(join(SPA_DIR, 'index.html'));
+        // Inyectar Open Graph tags para páginas de propiedades públicas
+        // (WhatsApp, redes sociales leen estos tags para generar la preview del link)
+        const propMatch = pathname.match(/^\/public\/propiedades\/([^/?#]+)$/);
+        if (propMatch) {
+          try {
+            const property = await db.getProperty(propMatch[1]);
+            if (property && property.status === 'publicada') {
+              const media = await db.listPropertyMedia(property.id);
+              const proto = req.headers['x-forwarded-proto'] || (isSecureRequest(req) ? 'https' : 'http');
+              const baseUrl = `${proto}://${req.headers.host}`;
+              const firstImage = media.find(m => m.type === 'image');
+              const ogImage = firstImage?.url ?? `${baseUrl}/brand-icon.png`;
+              const title = `${property.title} | SpyderConnect`;
+              const desc = (property.description || 'Encontrá esta propiedad en SpyderConnect, tu red inmobiliaria de confianza.').slice(0, 160);
+              htmlSrc = injectOgTags(htmlSrc,
+                { 'og:type': 'website', 'og:url': `${baseUrl}${pathname}`, 'og:title': title, 'og:description': desc, 'og:image': ogImage, 'og:site_name': 'SpyderConnect' },
+                { 'twitter:card': 'summary_large_image', 'twitter:title': title, 'twitter:description': desc, 'twitter:image': ogImage }
+              );
+            }
+          } catch { /* si falla la DB, sirve el HTML sin OG tags */ }
+        }
         setHtmlSecurityHeaders(res);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        return res.end(html);
+        return res.end(htmlSrc);
       }
       res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': CORS_ORIGIN });
       return res.end(JSON.stringify({ error: 'Ruta no encontrada' }));

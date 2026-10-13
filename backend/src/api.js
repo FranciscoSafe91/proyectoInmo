@@ -1054,6 +1054,15 @@ export function registerApiRoutes(router) {
     json(res, { ok: true });
   });
 
+  router.delete('/api/match-requests/:id', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const mr = await db.getMatchRequest(req.params.id);
+    if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
+    await db.cancelAcceptedMatchRequest(mr.id, session.agency.id);
+    json(res, { ok: true });
+  });
+
   router.get('/api/match-accepted/pending', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;

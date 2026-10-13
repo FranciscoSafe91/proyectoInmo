@@ -282,20 +282,51 @@ function MatcheadasRecibidas() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('recientes');
+  const [canceling, setCanceling] = useState({});
+  const [confirmCancel, setConfirmCancel] = useState(null);
 
-  useEffect(() => {
+  function load() {
     api.get('/match-requests/accepted').then(setData).catch(e => setError(e.message));
-  }, []);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleCancel(matchRequestId) {
+    setCanceling(s => ({ ...s, [matchRequestId]: true }));
+    try {
+      await api.delete(`/match-requests/${matchRequestId}`);
+      setConfirmCancel(null);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCanceling(s => ({ ...s, [matchRequestId]: false }));
+    }
+  }
 
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
-
   if (data.items.length === 0) return null;
 
   const displayItems = sortBy === 'precio_desc' ? sortByPrice(data.items) : data.items;
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
+      {confirmCancel && (
+        <div className="modal-backdrop" onClick={() => setConfirmCancel(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h3>¿Dejar de compartir?</h3>
+            <p className="muted">Esto retirará el acceso de <strong>{confirmCancel.agencyName}</strong> a tu propiedad <strong>"{confirmCancel.propertyTitle}"</strong>. Esta acción no se puede deshacer.</p>
+            <div className="btn-row">
+              <button className="btn btn-danger" onClick={() => handleCancel(confirmCancel.id)} disabled={canceling[confirmCancel.id]}>
+                {canceling[confirmCancel.id] ? 'Cancelando...' : 'Sí, dejar de compartir'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setConfirmCancel(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Sparkles size={16} />
@@ -312,7 +343,7 @@ function MatcheadasRecibidas() {
       <p className="muted small" style={{ marginBottom: 14 }}>
         Propiedades tuyas que ya fueron aceptadas como coincidencia con una búsqueda de un socio.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {displayItems.map(({ matchRequest, property, alert, alertAgency }) => (
           <div key={matchRequest.id} className="match-request-item">
             <Link to={`/propiedades/${property.id}`} className="match-request-thumb" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
@@ -323,12 +354,19 @@ function MatcheadasRecibidas() {
             <div className="match-request-info">
               <Link to={`/propiedades/${property.id}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}>{property.title}</Link>
               <span className="muted small">{typeLabel(property.type)} · {operationLabel(property.operation)} · {money(property.price, property.currency)}</span>
-              <span className="muted small" style={{ marginTop: 4 }}>
+              <span className="muted small" style={{ marginTop: 2 }}>
                 <strong>{alertAgency.name}</strong> busca: {alert.title || summarizeAlert(alert)}
               </span>
             </div>
             <div className="match-request-actions">
               <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-sm">Ver</Link>
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={() => setConfirmCancel({ id: matchRequest.id, agencyName: alertAgency.name, propertyTitle: property.title })}
+                disabled={canceling[matchRequest.id]}
+              >
+                Dejar de compartir
+              </button>
             </div>
           </div>
         ))}

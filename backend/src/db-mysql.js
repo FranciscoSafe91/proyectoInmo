@@ -1208,6 +1208,13 @@ export async function getMatchRequest(matchRequestId) {
   return toMatchRequest(rows[0] || null);
 }
 
+export async function cancelAcceptedMatchRequest(matchRequestId, ownerAgencyId) {
+  await pool.query(
+    `DELETE FROM match_requests WHERE id=? AND owner_agency_id=? AND status='aceptado'`,
+    [matchRequestId, ownerAgencyId]
+  );
+}
+
 export async function respondMatchRequest(matchRequestId, status, ownerComment) {
   if (status === 'aceptado') {
     await pool.query(

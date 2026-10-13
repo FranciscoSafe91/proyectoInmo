@@ -2334,7 +2334,9 @@
   .match-request-actions {
     flex-shrink: 0;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    justify-content: flex-end;
   }
 
   .btn-success {

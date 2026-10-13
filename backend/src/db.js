@@ -76,6 +76,7 @@ export const listPendingMatchRequestsForOwner = (...args) => impl.listPendingMat
 export const listAcceptedMatchRequestsForOwner = (...args) => impl.listAcceptedMatchRequestsForOwner(...args);
 export const getMatchRequest = (...args) => impl.getMatchRequest(...args);
 export const respondMatchRequest = (...args) => impl.respondMatchRequest(...args);
+export const cancelAcceptedMatchRequest = (...args) => impl.cancelAcceptedMatchRequest(...args);
 export const listPendingAlerteeMatchRequests = (...args) => impl.listPendingAlerteeMatchRequests(...args);
 export const respondAlerteeMatchRequest = (...args) => impl.respondAlerteeMatchRequest(...args);
 export const listFeedPropertiesForAgency = (...args) => impl.listFeedPropertiesForAgency(...args);

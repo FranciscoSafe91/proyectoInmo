@@ -638,7 +638,7 @@ export default function PropertyForm() {
             <div className="grid grid-2">
               <div>
                 <label htmlFor="currency">Moneda</label>
-                <select id="currency" name="currency" value={property.currency} onChange={handleChange}>
+                <select id="currency" name="currency" required value={property.currency} onChange={handleChange}>
                   <option value="USD">USD</option>
                   <option value="ARS">ARS</option>
                 </select>
@@ -652,7 +652,7 @@ export default function PropertyForm() {
             <div className="grid grid-2">
               <div>
                 <label htmlFor="type">Tipo de propiedad</label>
-                <select id="type" name="type" value={property.type} onChange={handleChange}>
+                <select id="type" name="type" required value={property.type} onChange={handleChange}>
                   {Object.entries(TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
@@ -660,7 +660,7 @@ export default function PropertyForm() {
               </div>
               <div>
                 <label htmlFor="operation">Operación</label>
-                <select id="operation" name="operation" value={property.operation} onChange={handleChange}>
+                <select id="operation" name="operation" required value={property.operation} onChange={handleChange}>
                   <option value="venta">Venta</option>
                   <option value="alquiler">Alquiler</option>
                 </select>
@@ -668,7 +668,7 @@ export default function PropertyForm() {
             </div>
 
             <label htmlFor="description">Descripción</label>
-            <textarea id="description" name="description" required value={property.description} onChange={handleChange} placeholder="Detalles, comodidades, estado general, luminosidad..." />
+            <textarea id="description" name="description" value={property.description} onChange={handleChange} placeholder="Detalles, comodidades, estado general, luminosidad..." />
 
             <div className="checkbox-row">
               <input type="checkbox" id="necesitaReubicacion" name="necesitaReubicacion" checked={property.necesitaReubicacion} onChange={handleChange} />
@@ -738,7 +738,7 @@ export default function PropertyForm() {
             )}
 
             <label htmlFor="calle">Calle</label>
-            <input type="text" id="calle" name="calle" required value={property.calle} onChange={handleChange} placeholder="Nombre de la calle" />
+            <input type="text" id="calle" name="calle" value={property.calle} onChange={handleChange} placeholder="Nombre de la calle" />
 
             <div className="grid grid-4">
               <div>

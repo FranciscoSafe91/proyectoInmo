@@ -541,6 +541,7 @@ export function registerApiRoutes(router) {
       pendingPartnerships: (await db.listPendingPartnershipRequestsReceived(agency.id)).length,
       alertMatches:        (await db.listPendingMatchRequestsForOwner(agency.id)).length,
       myAlertMatchCount:   (await db.listAlertsWithMatchCounts(agency.id)).reduce((s, a) => s + a.matchCount, 0),
+      acceptedAsOwner:     (await db.listAcceptedMatchRequestsForOwner(agency.id)).length,
     };
     json(res, { agency, stats });
   });

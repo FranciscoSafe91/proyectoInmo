@@ -53,12 +53,12 @@ export default function Dashboard() {
     },
     {
       label: 'Matcheadas',
-      value: stats.myAlertMatchCount ?? 0,
-      hint: 'Propiedades de socios que coinciden con tus alertas',
+      value: (stats.myAlertMatchCount ?? 0) + (stats.acceptedAsOwner ?? 0),
+      hint: 'Propiedades de socios que coinciden con tus alertas y matches que aceptaste',
       to: '/matcheadas',
       icon: Sparkles,
       tone: 'violet',
-      notificationCount: stats.myAlertMatchCount ?? 0,
+      notificationCount: (stats.myAlertMatchCount ?? 0) + (stats.acceptedAsOwner ?? 0),
     },
   ];
   const nextActions = [
@@ -152,6 +152,14 @@ export default function Dashboard() {
               <div>
                 <strong>Alertas pendientes</strong>
                 <p>Coincidencias de alertas de socios pendientes de aprobar o rechazar.</p>
+              </div>
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+            <Link to="/matcheadas" className="task-row task-success">
+              <span>{(stats.myAlertMatchCount ?? 0) + (stats.acceptedAsOwner ?? 0)}</span>
+              <div>
+                <strong>Matcheadas</strong>
+                <p>Propiedades de socios que coinciden con tus alertas y matches que aceptaste.</p>
               </div>
               <ArrowRight size={18} aria-hidden="true" />
             </Link>

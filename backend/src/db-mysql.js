@@ -1281,7 +1281,9 @@ function propertyMatchesAlert(property, alert) {
   if (alert.operation && property.operation !== alert.operation) return false;
   if (alert.partido && property.partido !== alert.partido) return false;
   if (alert.localidades && alert.localidades.length > 0) {
-    if (!alert.localidades.includes(property.localidad)) return false;
+    const propLoc = (property.localidad || '').trim().toLowerCase();
+    const matchesAny = alert.localidades.some(loc => loc.trim().toLowerCase() === propLoc);
+    if (!matchesAny) return false;
   }
   if (alert.currency) {
     if (property.currency !== alert.currency) return false;

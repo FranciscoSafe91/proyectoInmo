@@ -36,6 +36,7 @@ export const createPropertyMedia = (...args) => impl.createPropertyMedia(...args
 export const listPropertyMedia = (...args) => impl.listPropertyMedia(...args);
 export const getProperty = (...args) => impl.getProperty(...args);
 export const listPropertiesByAgency = (...args) => impl.listPropertiesByAgency(...args);
+export const listPublicProperties = (...args) => impl.listPublicProperties(...args);
 export const listPropertiesByUser = (...args) => impl.listPropertiesByUser(...args);
 export const deleteProperty = (...args) => impl.deleteProperty(...args);
 export const updateProperty = (...args) => impl.updateProperty(...args);

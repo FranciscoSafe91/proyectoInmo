@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /public/
+Disallow: /api/
+Disallow: /webhooks/
+
+Sitemap: https://spyderconnect.com/sitemap.xml

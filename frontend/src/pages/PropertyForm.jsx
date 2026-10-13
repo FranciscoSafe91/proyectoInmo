@@ -1096,6 +1096,12 @@ export default function PropertyForm() {
             )}
 
           </div>
+
+          <div className="btn-row form-actions">
+            <button type="submit" className="btn" disabled={submitting}>
+              {submitting ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Publicar propiedad'}
+            </button>
+          </div>
         </section>
 
         <aside className="property-media-panel">
@@ -1204,11 +1210,6 @@ export default function PropertyForm() {
             <option value="pausada">Pausada</option>
           </select>
 
-          <div className="btn-row form-actions">
-            <button type="submit" className="btn" disabled={submitting}>
-              {submitting ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Publicar propiedad'}
-            </button>
-          </div>
         </aside>
       </form>
     </>

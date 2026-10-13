@@ -757,6 +757,13 @@ export async function listPropertiesByAgency(agencyId) {
   return rows.map(toProperty);
 }
 
+export async function listPublicProperties() {
+  const [rows] = await pool.query(
+    "SELECT id, title, city, province, updated_at FROM propiedades WHERE status='publicada' ORDER BY updated_at DESC"
+  );
+  return rows;
+}
+
 export async function listPropertiesByUser(agencyId, userId) {
   const [rows] = await pool.query(
     'SELECT * FROM propiedades WHERE agency_id=? AND created_by_user_id=? ORDER BY created_at DESC',

@@ -257,6 +257,20 @@ const server = http.createServer(async (req, res) => {
       return res.end();
     }
 
+    // Sitemap XML para buscadores
+    if (req.method === 'GET' && pathname === '/sitemap.xml') {
+      const proto = req.headers['x-forwarded-proto'] || (isSecureRequest(req) ? 'https' : 'http');
+      const baseUrl = `${proto}://${req.headers.host}`;
+      const props = await db.listPublicProperties();
+      const urls = props.map(p => {
+        const lastmod = p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : '';
+        return `  <url>\n    <loc>${baseUrl}/public/propiedades/${p.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`;
+      }).join('\n');
+      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url>\n    <loc>${baseUrl}/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n${urls}\n</urlset>`;
+      res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+      return res.end(sitemap);
+    }
+
     // Archivos estáticos (logos subidos, widget.js)
     if (req.method === 'GET' && serveStatic(req, res, pathname)) return;
 

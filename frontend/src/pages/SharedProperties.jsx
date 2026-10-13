@@ -28,7 +28,7 @@ const CARACTERISTICAS = [
   { key: 'aptoCredito', label: 'Apto Crédito', special: true },
 ];
 
-const BEDROOMS_OPTIONS = ['1', '2', '3', '4', '5'];
+const BEDROOMS_OPTIONS = ['0', '1', '2', '3', '4', '5'];
 const BATHROOMS_OPTIONS = ['1', '2', '3', '4', '5'];
 const COCHERAS_OPTIONS = ['0', '1', '2', '3', '4'];
 
@@ -199,7 +199,11 @@ export default function SharedProperties() {
     if (filters.currency && property.currency !== filters.currency) return false;
     if (filters.minPrice && Number(property.price) < Number(filters.minPrice)) return false;
     if (filters.maxPrice && Number(property.price) > Number(filters.maxPrice)) return false;
-    if (filters.minBedrooms && Number(property.bedrooms || 0) < Number(filters.minBedrooms)) return false;
+    if (filters.minBedrooms !== '') {
+      const min = Number(filters.minBedrooms);
+      if (min === 0) { if (Number(property.bedrooms || 0) !== 0) return false; }
+      else if (Number(property.bedrooms || 0) < min) return false;
+    }
     if (filters.minBathrooms && Number(property.bathrooms || 0) < Number(filters.minBathrooms)) return false;
 
     if (filters.minCocheras !== '') {
@@ -291,6 +295,7 @@ export default function SharedProperties() {
                 options={BEDROOMS_OPTIONS}
                 value={filters.minBedrooms}
                 onChange={v => setFilter('minBedrooms', v)}
+                zeroLabel="Mono"
               />
             </div>
 

@@ -632,26 +632,26 @@ export default function PropertyForm() {
               <h2>Datos principales</h2>
             </div>
 
-            <label htmlFor="title">Título</label>
+            <label htmlFor="title">Título <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
             <input type="text" id="title" name="title" required value={property.title} onChange={handleChange} placeholder="Ej: Casa 3 ambientes con jardín" />
 
             <div className="grid grid-2">
               <div>
-                <label htmlFor="currency">Moneda</label>
+                <label htmlFor="currency">Moneda <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 <select id="currency" name="currency" required value={property.currency} onChange={handleChange}>
                   <option value="USD">USD</option>
                   <option value="ARS">ARS</option>
                 </select>
               </div>
               <div>
-                <label htmlFor="price">Precio</label>
+                <label htmlFor="price">Precio <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 <input type="number" id="price" name="price" min="0" step="1" required value={property.price} onChange={handleChange} />
               </div>
             </div>
 
             <div className="grid grid-2">
               <div>
-                <label htmlFor="type">Tipo de propiedad</label>
+                <label htmlFor="type">Tipo de propiedad <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 <select id="type" name="type" required value={property.type} onChange={handleChange}>
                   {Object.entries(TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
@@ -659,7 +659,7 @@ export default function PropertyForm() {
                 </select>
               </div>
               <div>
-                <label htmlFor="operation">Operación</label>
+                <label htmlFor="operation">Operación <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 <select id="operation" name="operation" required value={property.operation} onChange={handleChange}>
                   <option value="venta">Venta</option>
                   <option value="alquiler">Alquiler</option>
@@ -689,14 +689,14 @@ export default function PropertyForm() {
 
             <div className="grid grid-3">
               <div>
-                <label htmlFor="zonaGeografica">Zona Geográfica</label>
+                <label htmlFor="zonaGeografica">Zona Geográfica <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 <select id="zonaGeografica" name="zonaGeografica" required value={property.zonaGeografica} onChange={handleChange}>
                   <option value="">Seleccioná una zona</option>
                   {PROVINCIAS_AR.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="partido">Partido</label>
+                <label htmlFor="partido">Partido <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 {GEO_DATA[property.zonaGeografica] ? (
                   <select id="partido" name="partido" required value={property.partido} onChange={handleChange}>
                     <option value="">Seleccioná un partido</option>
@@ -711,7 +711,7 @@ export default function PropertyForm() {
                 )}
               </div>
               <div>
-                <label htmlFor="localidad">Localidad</label>
+                <label htmlFor="localidad">Localidad <span style={{ color: 'var(--app-error, #c0392b)' }}>*</span></label>
                 {property.partido && GEO_DATA[property.zonaGeografica]?.localidades[property.partido] ? (
                   <select id="localidad" name="localidad" required value={property.localidad} onChange={handleChange}>
                     <option value="">Seleccioná una localidad</option>

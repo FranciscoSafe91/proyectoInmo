@@ -403,11 +403,12 @@ export function registerApiRoutes(router) {
     if (body.email) v.email(body.email);
     v.maxLen(body.nombre, 100, 'Nombre'); v.maxLen(body.apellido, 100, 'Apellido'); v.maxLen(body.documento, 20, 'Documento');
     v.maxLen(body.agencyName, 150, 'Nombre de la inmobiliaria'); v.maxLen(body.direccion, 200, 'Dirección'); v.maxLen(body.username, 60, 'Usuario');
+    v.maxLen(body.phone, 30, 'Teléfono');
     v.oneOf(body.accountType, v.ACCOUNT_TYPES, 'Tipo de cuenta', { allowEmpty: true });
-    const { nombre, apellido, documento, email, accountType, agencyName, direccion, username, password } = body;
+    const { nombre, apellido, documento, email, phone, accountType, agencyName, direccion, username, password } = body;
 
     const fullName = `${(nombre || '').trim()} ${(apellido || '').trim()}`.trim();
-    if (!fullName || !email || !agencyName || !username || !password) {
+    if (!fullName || !email || !phone || !documento || !agencyName || !direccion || !username || !password) {
       return err(res, 'Completá todos los campos obligatorios.');
     }
     const passwordProblem = security.validateNewPassword(password, email);
@@ -423,6 +424,7 @@ export function registerApiRoutes(router) {
 
     const agency = await db.createAgency({
       name: agencyName, slug, email,
+      phone: phone || '',
       city: direccion || '',
       accountType: accountType || 'inmobiliaria',
     });

@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { PASSWORD_MIN_LENGTH } from '../utils.js';
 
 const INITIAL = {
-  nombre: '', apellido: '', documento: '', email: '',
+  nombre: '', apellido: '', documento: '', email: '', phone: '',
   accountType: 'inmobiliaria', agencyName: '', direccion: '',
   username: '', password: '', confirmPassword: '', terms: false,
 };
@@ -80,9 +80,9 @@ export default function Register() {
           </div>
         </div>
 
-        <label htmlFor="documento">Documento (DNI / CUIT)</label>
+        <label htmlFor="documento">Documento (DNI / CUIT) *</label>
         <input
-          type="text" id="documento" name="documento"
+          type="text" id="documento" name="documento" required
           placeholder="Ej: 28.000.000"
           value={values.documento} onChange={handleChange}
         />
@@ -92,6 +92,13 @@ export default function Register() {
           type="email" id="email" name="email" required
           placeholder="tu@email.com"
           value={values.email} onChange={handleChange}
+        />
+
+        <label htmlFor="phone">Teléfono / Celular *</label>
+        <input
+          type="tel" id="phone" name="phone" required
+          placeholder="Ej: +54 9 351 000-0000"
+          value={values.phone} onChange={handleChange}
         />
 
         <hr style={{ margin: '18px 0', border: 'none', borderTop: '1px solid #e1e4e0' }} />
@@ -116,9 +123,9 @@ export default function Register() {
           value={values.agencyName} onChange={handleChange}
         />
 
-        <label htmlFor="direccion">Dirección</label>
+        <label htmlFor="direccion">Dirección *</label>
         <input
-          type="text" id="direccion" name="direccion"
+          type="text" id="direccion" name="direccion" required
           placeholder="Ej: Av. Colón 1234, Córdoba"
           value={values.direccion} onChange={handleChange}
         />

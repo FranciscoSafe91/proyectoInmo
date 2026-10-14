@@ -263,6 +263,9 @@ function toMatchRequest(r) {
     status: r.status,
     alerteeStatus: r.alertee_status || null,
     ownerComment: r.owner_comment || null,
+    percentageVendedor: r.percentage_vendedor != null ? Number(r.percentage_vendedor) : null,
+    percentageComprador: r.percentage_comprador != null ? Number(r.percentage_comprador) : null,
+    todaBolsa: Boolean(r.toda_bolsa),
     createdAt: r.created_at,
     respondedAt: r.responded_at,
   };
@@ -1139,6 +1142,9 @@ async function ensureMatchRequestsTable() {
   `);
   try { await pool.query(`ALTER TABLE match_requests ADD COLUMN alertee_status VARCHAR(20) NULL`); } catch (_) {}
   try { await pool.query(`ALTER TABLE match_requests ADD COLUMN owner_comment TEXT NULL`); } catch (_) {}
+  try { await pool.query(`ALTER TABLE match_requests ADD COLUMN percentage_vendedor DECIMAL(5,2) DEFAULT NULL`); } catch (_) {}
+  try { await pool.query(`ALTER TABLE match_requests ADD COLUMN percentage_comprador DECIMAL(5,2) DEFAULT NULL`); } catch (_) {}
+  try { await pool.query(`ALTER TABLE match_requests ADD COLUMN toda_bolsa TINYINT(1) NOT NULL DEFAULT 0`); } catch (_) {}
   matchRequestsTableEnsured = true;
 }
 
@@ -1215,11 +1221,11 @@ export async function cancelAcceptedMatchRequest(matchRequestId, ownerAgencyId) 
   );
 }
 
-export async function respondMatchRequest(matchRequestId, status, ownerComment) {
+export async function respondMatchRequest(matchRequestId, status, ownerComment, opts = {}) {
   if (status === 'aceptado') {
     await pool.query(
-      'UPDATE match_requests SET status=?, alertee_status=?, owner_comment=?, responded_at=NOW() WHERE id=?',
-      [status, 'aceptado', ownerComment || null, matchRequestId]
+      'UPDATE match_requests SET status=?, alertee_status=?, owner_comment=?, percentage_vendedor=?, percentage_comprador=?, toda_bolsa=?, responded_at=NOW() WHERE id=?',
+      [status, 'aceptado', ownerComment || null, opts.percentageVendedor ?? null, opts.percentageComprador ?? null, opts.todaBolsa ? 1 : 0, matchRequestId]
     );
   } else {
     await pool.query(
@@ -1270,14 +1276,21 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
   const alert = await getSearchAlert(alertId);
   if (!alert || alert.agencyId !== requestingAgencyId) return [];
   const [rows] = await pool.query(
-    `SELECT id, property_id, owner_agency_id, owner_comment FROM match_requests WHERE alert_id=? AND status='aceptado'`,
+    `SELECT id, property_id, owner_agency_id, owner_comment, percentage_vendedor, percentage_comprador, toda_bolsa FROM match_requests WHERE alert_id=? AND status='aceptado'`,
     [alertId]
   );
   const results = [];
   for (const row of rows) {
     const property = await getProperty(row.property_id);
     if (property && property.status === 'publicada') {
-      results.push({ property, ownerAgencyId: row.owner_agency_id, ownerComment: row.owner_comment || null });
+      results.push({
+        property,
+        ownerAgencyId: row.owner_agency_id,
+        ownerComment: row.owner_comment || null,
+        percentageVendedor: row.percentage_vendedor != null ? Number(row.percentage_vendedor) : null,
+        percentageComprador: row.percentage_comprador != null ? Number(row.percentage_comprador) : null,
+        todaBolsa: Boolean(row.toda_bolsa),
+      });
     }
   }
   return results;

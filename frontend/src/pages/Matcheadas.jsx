@@ -38,6 +38,9 @@ function MatchRequestsReceived() {
   const [sortBy, setSortBy] = useState('recientes');
   const [acceptModal, setAcceptModal] = useState(null);
   const [acceptComment, setAcceptComment] = useState('');
+  const [acceptPctVendedor, setAcceptPctVendedor] = useState('');
+  const [acceptPctComprador, setAcceptPctComprador] = useState('');
+  const [acceptTodaBolsa, setAcceptTodaBolsa] = useState(false);
   const [accepting, setAccepting] = useState(false);
 
   const load = () => {
@@ -50,6 +53,9 @@ function MatchRequestsReceived() {
     if (action === 'aceptar') {
       setAcceptModal({ id });
       setAcceptComment('');
+      setAcceptPctVendedor('');
+      setAcceptPctComprador('');
+      setAcceptTodaBolsa(false);
       return;
     }
     setResponding(r => ({ ...r, [id]: true }));
@@ -67,7 +73,12 @@ function MatchRequestsReceived() {
     if (!acceptModal) return;
     setAccepting(true);
     try {
-      await api.post(`/match-requests/${acceptModal.id}/aceptar`, { comment: acceptComment });
+      await api.post(`/match-requests/${acceptModal.id}/aceptar`, {
+        comment: acceptComment,
+        percentageVendedor: acceptTodaBolsa ? null : (acceptPctVendedor !== '' ? Number(acceptPctVendedor) : null),
+        percentageComprador: acceptTodaBolsa ? null : (acceptPctComprador !== '' ? Number(acceptPctComprador) : null),
+        todaBolsa: acceptTodaBolsa,
+      });
       load();
     } catch (e) {
       setError(e.message);
@@ -75,6 +86,9 @@ function MatchRequestsReceived() {
       setAccepting(false);
       setAcceptModal(null);
       setAcceptComment('');
+      setAcceptPctVendedor('');
+      setAcceptPctComprador('');
+      setAcceptTodaBolsa(false);
     }
   };
 
@@ -101,10 +115,40 @@ function MatchRequestsReceived() {
         <div className="modal-backdrop" onClick={() => setAcceptModal(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <h3>Aceptar solicitud de match</h3>
-            <p className="muted">Opcional — podés dejarle un comentario al socio que busca esta propiedad.</p>
+            <p className="muted small" style={{ marginBottom: 14 }}>Establecé los porcentajes de la operación y dejá un comentario opcional.</p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label className="sf-label" style={{ display: 'block', marginBottom: 4 }}>Del vendedor (%)</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  placeholder="Ej: 3"
+                  value={acceptPctVendedor}
+                  onChange={e => setAcceptPctVendedor(e.target.value)}
+                  disabled={acceptTodaBolsa}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="sf-label" style={{ display: 'block', marginBottom: 4 }}>Del comprador (%)</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  placeholder="Ej: 3"
+                  value={acceptPctComprador}
+                  onChange={e => setAcceptPctComprador(e.target.value)}
+                  disabled={acceptTodaBolsa}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 4, gap: 4 }}>
+                <label className="sf-check" style={{ whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" checked={acceptTodaBolsa} onChange={e => setAcceptTodaBolsa(e.target.checked)} />
+                  Toda la bolsa
+                </label>
+              </div>
+            </div>
             <textarea
-              rows={4}
-              placeholder="Ej: Perfecto, pueden contactar al propietario esta semana."
+              rows={3}
+              placeholder="Comentarios (opcional)"
               value={acceptComment}
               onChange={e => setAcceptComment(e.target.value)}
             />
@@ -173,7 +217,7 @@ function MatchRequestsReceived() {
 // ---------------------------------------------------------------------------
 // Tarjeta de propiedad aceptada (detalle de alerta)
 // ---------------------------------------------------------------------------
-function PropertyCard({ property, ownerAgency, ownerComment }) {
+function PropertyCard({ property, ownerAgency, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) {
   const thumb = property.coverUrl || null;
   return (
     <Link to={`/propiedades/${property.id}`} className="matcheadas-property-card">
@@ -192,6 +236,17 @@ function PropertyCard({ property, ownerAgency, ownerComment }) {
           </span>
         )}
         <span className="muted small">Publicada por: {ownerAgency.name}</span>
+        {(todaBolsa || percentageVendedor != null || percentageComprador != null) && (
+          <div style={{ marginTop: 5, display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: '0.84rem' }}>
+            {todaBolsa
+              ? <span style={{ fontWeight: 600, color: 'var(--app-primary)' }}>Toda la bolsa</span>
+              : <>
+                  {percentageVendedor != null && <span style={{ background: 'var(--app-green-soft, #e6f7f0)', borderRadius: 4, padding: '2px 8px' }}>Vend. <strong>{percentageVendedor}%</strong></span>}
+                  {percentageComprador != null && <span style={{ background: 'var(--app-green-soft, #e6f7f0)', borderRadius: 4, padding: '2px 8px' }}>Comp. <strong>{percentageComprador}%</strong></span>}
+                </>
+            }
+          </div>
+        )}
         {ownerComment && (
           <div style={{ marginTop: 6, background: 'var(--app-surface, #f5f5f5)', borderRadius: 6, padding: '6px 10px', fontSize: '0.85rem' }}>
             <span style={{ fontWeight: 600 }}>Comentario del socio:</span> {ownerComment}
@@ -209,6 +264,7 @@ function AlertDetail({ alertId }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('recientes');
+  const [filterBolsa, setFilterBolsa] = useState('');
 
   useEffect(() => {
     setData(null);
@@ -219,9 +275,16 @@ function AlertDetail({ alertId }) {
   if (!data) return <p className="muted">Cargando...</p>;
 
   const { alert, properties } = data;
-  const displayProperties = sortBy === 'precio_desc'
-    ? [...properties].sort((a, b) => (Number(b.property.price) || 0) - (Number(a.property.price) || 0))
+
+  const filteredProperties = filterBolsa === 'toda_bolsa'
+    ? properties.filter(p => p.todaBolsa)
+    : filterBolsa === 'con_pct'
+    ? properties.filter(p => !p.todaBolsa && (p.percentageVendedor != null || p.percentageComprador != null))
     : properties;
+
+  const displayProperties = sortBy === 'precio_desc'
+    ? [...filteredProperties].sort((a, b) => (Number(b.property.price) || 0) - (Number(a.property.price) || 0))
+    : filteredProperties;
 
   if (!alert) return (
     <div className="card">
@@ -252,20 +315,28 @@ function AlertDetail({ alertId }) {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
               <p className="muted small" style={{ margin: 0 }}>
-                {properties.length === 1
+                {filteredProperties.length === 1
                   ? '1 propiedad aceptó mostrarse para esta alerta.'
-                  : `${properties.length} propiedades aceptaron mostrarse para esta alerta.`}
+                  : `${filteredProperties.length} propiedades aceptaron mostrarse para esta alerta.`}
               </p>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
-                <option value="recientes">Más recientes</option>
-                <option value="precio_desc">Mayor precio</option>
-              </select>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select value={filterBolsa} onChange={e => setFilterBolsa(e.target.value)} className="sort-select">
+                  <option value="">Todos los acuerdos</option>
+                  <option value="toda_bolsa">Toda la bolsa</option>
+                  <option value="con_pct">Con porcentaje</option>
+                </select>
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
+                  <option value="recientes">Más recientes</option>
+                  <option value="precio_desc">Mayor precio</option>
+                </select>
+              </div>
             </div>
             <div className="matcheadas-property-list">
-              {displayProperties.map(({ property, ownerAgency, ownerComment }) => (
-                <PropertyCard key={property.id} property={property} ownerAgency={ownerAgency} ownerComment={ownerComment} />
+              {displayProperties.map(({ property, ownerAgency, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) => (
+                <PropertyCard key={property.id} property={property} ownerAgency={ownerAgency} ownerComment={ownerComment}
+                  percentageVendedor={percentageVendedor} percentageComprador={percentageComprador} todaBolsa={todaBolsa} />
               ))}
             </div>
           </>

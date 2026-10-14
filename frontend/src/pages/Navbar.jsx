@@ -58,7 +58,8 @@ export default function Navbar() {
     canSee('matcheadas')   && { to: '/matcheadas',   label: 'Matcheadas',      icon: Sparkles, className: active('/matcheadas') },
     canSee('propiedades')  && { to: '/propiedades',  label: 'Publicadas',      icon: Building2, className: active('/propiedades') },
     canSee('compartidas')  && { to: '/compartidas',  label: 'Carpeta compartida', icon: Handshake, className: activeExact('/compartidas') },
-    canSee('buscar_match') && { to: '/alertas/nueva', label: 'Alertas', icon: Bell, className: active('/alertas/nueva') },
+    canSee('buscar_match') && { to: '/alertas/nueva', label: 'Crear alerta', icon: Bell, className: activeExact('/alertas/nueva') },
+    canSee('buscar_match') && { to: '/alertas', label: 'Ver mis alertas', icon: Search, className: activeExact('/alertas') },
   ].filter(Boolean);
 
   const networkLinks = [

@@ -33,6 +33,9 @@ export default function Alerts() {
   const [responding, setResponding] = useState({});
   const [acceptModal, setAcceptModal] = useState(null);
   const [acceptComment, setAcceptComment] = useState('');
+  const [acceptPctVendedor, setAcceptPctVendedor] = useState('');
+  const [acceptPctComprador, setAcceptPctComprador] = useState('');
+  const [acceptTodaBolsa, setAcceptTodaBolsa] = useState(false);
   const [accepting, setAccepting] = useState(false);
 
   function load() {
@@ -57,6 +60,9 @@ export default function Alerts() {
     if (action === 'aceptar') {
       setAcceptModal({ id: matchRequestId });
       setAcceptComment('');
+      setAcceptPctVendedor('');
+      setAcceptPctComprador('');
+      setAcceptTodaBolsa(false);
       return;
     }
     setResponding(r => ({ ...r, [matchRequestId]: true }));
@@ -74,7 +80,12 @@ export default function Alerts() {
     if (!acceptModal) return;
     setAccepting(true);
     try {
-      await api.post(`/match-requests/${acceptModal.id}/aceptar`, { comment: acceptComment });
+      await api.post(`/match-requests/${acceptModal.id}/aceptar`, {
+        comment: acceptComment,
+        percentageVendedor: acceptTodaBolsa ? null : (acceptPctVendedor !== '' ? Number(acceptPctVendedor) : null),
+        percentageComprador: acceptTodaBolsa ? null : (acceptPctComprador !== '' ? Number(acceptPctComprador) : null),
+        todaBolsa: acceptTodaBolsa,
+      });
       load();
     } catch (e) {
       setError(e.message);
@@ -82,6 +93,9 @@ export default function Alerts() {
       setAccepting(false);
       setAcceptModal(null);
       setAcceptComment('');
+      setAcceptPctVendedor('');
+      setAcceptPctComprador('');
+      setAcceptTodaBolsa(false);
     }
   }
 
@@ -96,10 +110,40 @@ export default function Alerts() {
         <div className="modal-backdrop" onClick={() => setAcceptModal(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <h3>Aceptar solicitud de match</h3>
-            <p className="muted">Opcional — podés dejarle un comentario al socio que busca esta propiedad.</p>
+            <p className="muted small" style={{ marginBottom: 14 }}>Establecé los porcentajes de la operación y dejá un comentario opcional.</p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label className="sf-label" style={{ display: 'block', marginBottom: 4 }}>Del vendedor (%)</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  placeholder="Ej: 3"
+                  value={acceptPctVendedor}
+                  onChange={e => setAcceptPctVendedor(e.target.value)}
+                  disabled={acceptTodaBolsa}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="sf-label" style={{ display: 'block', marginBottom: 4 }}>Del comprador (%)</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  placeholder="Ej: 3"
+                  value={acceptPctComprador}
+                  onChange={e => setAcceptPctComprador(e.target.value)}
+                  disabled={acceptTodaBolsa}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 4, gap: 4 }}>
+                <label className="sf-check" style={{ whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" checked={acceptTodaBolsa} onChange={e => setAcceptTodaBolsa(e.target.checked)} />
+                  Toda la bolsa
+                </label>
+              </div>
+            </div>
             <textarea
-              rows={4}
-              placeholder="Ej: Perfecto, pueden contactar al propietario esta semana."
+              rows={3}
+              placeholder="Comentarios (opcional)"
               value={acceptComment}
               onChange={e => setAcceptComment(e.target.value)}
             />

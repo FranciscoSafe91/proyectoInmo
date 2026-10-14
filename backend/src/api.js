@@ -1012,10 +1012,13 @@ export function registerApiRoutes(router) {
     if (!alert || alert.agencyId !== session.agency.id) return json(res, { alert: null, properties: [] });
     const raw = await db.findMatchingPropertiesForAlert(req.params.alertId, session.agency.id);
     const properties = (await Promise.all(
-      raw.map(async ({ property, ownerAgencyId, ownerComment }) => ({
+      raw.map(async ({ property, ownerAgencyId, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) => ({
         property,
         ownerAgency: await db.getAgency(ownerAgencyId),
         ownerComment: ownerComment || null,
+        percentageVendedor: percentageVendedor ?? null,
+        percentageComprador: percentageComprador ?? null,
+        todaBolsa: todaBolsa ?? false,
       }))
     )).filter(e => e.ownerAgency);
     json(res, { alert, properties });
@@ -1041,7 +1044,10 @@ export function registerApiRoutes(router) {
     if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
     const body = await parseJson(req);
     v.maxLen(body.comment, 1000, 'Comentario');
-    await db.respondMatchRequest(mr.id, 'aceptado', body.comment || '');
+    const percentageVendedor = body.percentageVendedor != null ? Number(body.percentageVendedor) : null;
+    const percentageComprador = body.percentageComprador != null ? Number(body.percentageComprador) : null;
+    const todaBolsa = Boolean(body.todaBolsa);
+    await db.respondMatchRequest(mr.id, 'aceptado', body.comment || '', { percentageVendedor, percentageComprador, todaBolsa });
     json(res, { ok: true });
   });
 

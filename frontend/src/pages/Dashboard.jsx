@@ -18,7 +18,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api.get('/dashboard').then(setData).catch(e => setError(e.message));
-  }, []);
+  }, [location.key]);
 
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;

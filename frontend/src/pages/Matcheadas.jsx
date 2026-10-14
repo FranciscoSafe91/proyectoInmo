@@ -260,11 +260,16 @@ function PropertyCard({ property, ownerAgency, ownerComment, percentageVendedor,
 // ---------------------------------------------------------------------------
 // Detalle de alerta (propiedades aceptadas)
 // ---------------------------------------------------------------------------
+function getPctTotal(item) {
+  if (item.todaBolsa) return 100;
+  return (item.percentageVendedor || 0) + (item.percentageComprador || 0);
+}
+
 function AlertDetail({ alertId }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [sortBy, setSortBy] = useState('recientes');
-  const [filterBolsa, setFilterBolsa] = useState('');
+  const [sortByPct, setSortByPct] = useState('desc');
+  const [sortByPrice, setSortByPrice] = useState('desc');
 
   useEffect(() => {
     setData(null);
@@ -276,15 +281,15 @@ function AlertDetail({ alertId }) {
 
   const { alert, properties } = data;
 
-  const filteredProperties = filterBolsa === 'toda_bolsa'
-    ? properties.filter(p => p.todaBolsa)
-    : filterBolsa === 'con_pct'
-    ? properties.filter(p => !p.todaBolsa && (p.percentageVendedor != null || p.percentageComprador != null))
-    : properties;
-
-  const displayProperties = sortBy === 'precio_desc'
-    ? [...filteredProperties].sort((a, b) => (Number(b.property.price) || 0) - (Number(a.property.price) || 0))
-    : filteredProperties;
+  const displayProperties = [...properties].sort((a, b) => {
+    const pctCmp = sortByPct === 'asc'
+      ? getPctTotal(a) - getPctTotal(b)
+      : getPctTotal(b) - getPctTotal(a);
+    if (pctCmp !== 0) return pctCmp;
+    const priceA = Number(a.property.price) || 0;
+    const priceB = Number(b.property.price) || 0;
+    return sortByPrice === 'asc' ? priceA - priceB : priceB - priceA;
+  });
 
   if (!alert) return (
     <div className="card">
@@ -315,21 +320,20 @@ function AlertDetail({ alertId }) {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-              <p className="muted small" style={{ margin: 0 }}>
-                {filteredProperties.length === 1
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <p className="muted small" style={{ margin: 0, flex: '1 1 auto' }}>
+                {displayProperties.length === 1
                   ? '1 propiedad aceptó mostrarse para esta alerta.'
-                  : `${filteredProperties.length} propiedades aceptaron mostrarse para esta alerta.`}
+                  : `${displayProperties.length} propiedades aceptaron mostrarse para esta alerta.`}
               </p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <select value={filterBolsa} onChange={e => setFilterBolsa(e.target.value)} className="sort-select">
-                  <option value="">Todos los acuerdos</option>
-                  <option value="toda_bolsa">Toda la bolsa</option>
-                  <option value="con_pct">Con porcentaje</option>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <select value={sortByPct} onChange={e => setSortByPct(e.target.value)} className="sort-select">
+                  <option value="desc">Porcentaje compartido: mayor a menor</option>
+                  <option value="asc">Porcentaje compartido: menor a mayor</option>
                 </select>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="sort-select">
-                  <option value="recientes">Más recientes</option>
-                  <option value="precio_desc">Mayor precio</option>
+                <select value={sortByPrice} onChange={e => setSortByPrice(e.target.value)} className="sort-select">
+                  <option value="desc">Valor de la propiedad: mayor a menor</option>
+                  <option value="asc">Valor de la propiedad: menor a mayor</option>
                 </select>
               </div>
             </div>

@@ -254,7 +254,7 @@ export default function Properties() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <WhatsAppIcon size={14} /> Compartir
+                      <WhatsAppIcon size={14} /> Enviar por WhatsApp
                     </a>
                   </div>
                 </div>

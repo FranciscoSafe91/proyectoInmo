@@ -1286,6 +1286,7 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
 function propertyMatchesAlert(property, alert) {
   if (property.status !== 'publicada') return false;
   if (alert.operation && property.operation !== alert.operation) return false;
+  if (alert.type && property.type !== alert.type) return false;
   if (alert.partido && property.partido !== alert.partido) return false;
   if (alert.localidades && alert.localidades.length > 0) {
     const propLoc = (property.localidad || '').trim().toLowerCase();

@@ -309,10 +309,6 @@ export default function SharedProperties() {
               {extraCount > 0 && <span className="sf-more-count">{extraCount}</span>}
               <ChevronDown size={13} style={{ transform: showMore ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
             </button>
-
-            <select className="sf-select sf-sort" value={sortBy} onChange={e => setSortBy(e.target.value)}>
-              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
           </div>
 
           {/* ── Panel "Más filtros" ── */}
@@ -382,11 +378,16 @@ export default function SharedProperties() {
           {/* ── Resumen activo ── */}
           <div className="sf-summary">
             <span className="muted small">{filteredItems.length} propiedad{filteredItems.length !== 1 ? 'es' : ''}</span>
-            {anyFilter && (
-              <button type="button" className="btn-link" onClick={clearAll}>
-                <X size={13} /> Limpiar todos los filtros
-              </button>
-            )}
+            <div className="sf-summary-right">
+              <select className="sf-select sf-sort" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {anyFilter && (
+                <button type="button" className="btn-link" onClick={clearAll}>
+                  <X size={13} /> Limpiar filtros
+                </button>
+              )}
+            </div>
           </div>
 
           {sortedItems.length === 0 ? (

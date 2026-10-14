@@ -1755,6 +1755,16 @@
     width: 100%;
   }
 
+  .sidebar-sublabel {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+    padding: 6px 10px 2px;
+  }
+
   .navbar-links .sidebar-link,
   .sidebar-link {
     width: 100%;

@@ -58,6 +58,7 @@ export default function Navbar() {
     canSee('matcheadas')   && { to: '/matcheadas',   label: 'Matcheadas',      icon: Sparkles, className: active('/matcheadas') },
     canSee('propiedades')  && { to: '/propiedades',  label: 'Publicadas',      icon: Building2, className: active('/propiedades') },
     canSee('compartidas')  && { to: '/compartidas',  label: 'Carpeta compartida', icon: Handshake, className: activeExact('/compartidas') },
+    canSee('buscar_match') && { type: 'subtitle', label: 'Alertas' },
     canSee('buscar_match') && { to: '/alertas/nueva', label: 'Crear alerta', icon: Bell, className: activeExact('/alertas/nueva') },
     canSee('buscar_match') && { to: '/alertas', label: 'Ver mis alertas', icon: Search, className: activeExact('/alertas') },
   ].filter(Boolean);
@@ -76,7 +77,13 @@ export default function Navbar() {
     accountLinks.push({ to: '/admin', label: 'Admin', icon: ShieldCheck, className: active('/admin') });
   }
 
-  const renderLink = ({ to, label, icon: Icon, className = '', onClick }) => {
+  const renderLink = ({ type, to, label, icon: Icon, className = '', onClick }) => {
+    if (type === 'subtitle') {
+      return (
+        <span key={`subtitle-${label}`} className="sidebar-sublabel">{label}</span>
+      );
+    }
+
     if (onClick) {
       return (
         <button

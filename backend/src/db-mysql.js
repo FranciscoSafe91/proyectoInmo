@@ -1117,6 +1117,8 @@ export async function setSearchAlertActive(alertId, active) {
 }
 
 export async function deleteSearchAlert(alertId) {
+  await ensureMatchRequestsTable();
+  await pool.query('DELETE FROM match_requests WHERE alert_id=?', [alertId]);
   await pool.query('DELETE FROM alertas_busqueda WHERE id=?', [alertId]);
 }
 

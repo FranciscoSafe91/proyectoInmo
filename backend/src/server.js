@@ -259,8 +259,7 @@ const server = http.createServer(async (req, res) => {
 
     // Sitemap XML para buscadores
     if (req.method === 'GET' && pathname === '/sitemap.xml') {
-      const proto = req.headers['x-forwarded-proto'] || (isSecureRequest(req) ? 'https' : 'http');
-      const baseUrl = `${proto}://${req.headers.host}`;
+      const baseUrl = process.env.APP_URL || 'https://spyderconnect.com';
       const props = await db.listPublicProperties();
       const urls = props.map(p => {
         const lastmod = p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : '';

@@ -282,7 +282,7 @@ export async function resetDatabase() {
     await pool.query(`TRUNCATE TABLE ${t}`);
   }
   await pool.query('SET FOREIGN_KEY_CHECKS=1');
-  await pool.query("INSERT IGNORE INTO plan_suscripcion (id,name,price_ars) VALUES (1,'Plan Mensual',15000)");
+  await pool.query("INSERT IGNORE INTO plan_suscripcion (id,name,price_ars) VALUES (1,'Plan Mensual',1000)");
 }
 
 // ---------------------------------------------------------------------------
@@ -1434,7 +1434,7 @@ export async function listFeedPropertiesForAgency(agencyId) {
 // ---------------------------------------------------------------------------
 export async function getPlan() {
   const [rows] = await pool.query('SELECT * FROM plan_suscripcion WHERE id=1');
-  return toPlan(rows[0] || { name: 'Plan Mensual', price_ars: 15000 });
+  return toPlan(rows[0] || { name: 'Plan Mensual', price_ars: 1000 });
 }
 
 export async function updatePlan(patch) {

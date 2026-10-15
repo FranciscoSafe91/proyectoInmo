@@ -1650,9 +1650,14 @@ export function registerApiRoutes(router) {
         console.error('[MP] Plan inválido al intentar pagar:', plan);
         return err(res, 'Error de configuración del plan. Contactá a soporte.', 500);
       }
+      const body = await parseJson(req);
+      const payerEmail = (body.mpEmail || session.user.email).trim().toLowerCase();
+      if (!payerEmail || !payerEmail.includes('@')) {
+        return err(res, 'Ingresá un email válido de Mercado Pago.', 400);
+      }
       try {
         const preapproval = await mercadopago.createPreapproval({
-          reason: plan.name, amount: plan.priceARS,
+          reason: plan.name, payerEmail, amount: plan.priceARS,
           externalReference: session.agency.id,
           backUrl: `${mail.APP_URL}/suscripcion`,
         });

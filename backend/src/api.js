@@ -72,6 +72,12 @@ function slugify(text) {
     .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 }
 
+function safeParseJson(val) {
+  if (Array.isArray(val)) return val;
+  if (!val) return [];
+  try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
+}
+
 async function parsePropertyRequest(req) {
   if (!isMultipart(req)) return { fields: await parseJson(req), files: [] };
   const slot = await security.withUploadSlot(() => parseMultipartFormData(req, { maxBytes: 80 * 1024 * 1024 }));
@@ -726,6 +732,194 @@ export function registerApiRoutes(router) {
     if (property && share && property.agencyId === session.agency.id && share.propertyId === property.id) {
       await db.setSharePublishAuthorization(share.id, false);
     }
+    json(res, { ok: true });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Emprendimientos
+  // ---------------------------------------------------------------------------
+  router.get('/api/emprendimientos', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const emprendimientos = await db.listEmprendimientosByAgency(session.agency.id);
+    const coverMediaByEmprendimiento = {};
+    await Promise.all(emprendimientos.map(async e => {
+      coverMediaByEmprendimiento[e.id] = (await db.listEmprendimientoMedia(e.id))[0] || null;
+    }));
+    json(res, { emprendimientos, coverMediaByEmprendimiento });
+  });
+
+  router.post('/api/emprendimientos', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    if (!requireAction(res, session, 'crear_propiedades')) return;
+    let fields, files;
+    try {
+      const parsed = await parsePropertyRequest(req);
+      fields = parsed.fields;
+      files = parsed.files || [];
+    } catch (e) {
+      return err(res, e.message || 'Error al procesar la solicitud.');
+    }
+    const id = randomUUID();
+    const mediaFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('foto'));
+    const logoFile = files.find(f => f.fieldname === 'logo');
+    const planoFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('plano'));
+
+    let logoUrl = null;
+    if (logoFile) {
+      try {
+        const up = await uploadBuffer(logoFile.buffer, logoFile.mimetype, `emprendimientos/${id}/logo`, { resource_type: 'image' });
+        logoUrl = up.secure_url;
+      } catch {}
+    }
+
+    const emprendimiento = await db.createEmprendimiento({
+      id,
+      agencyId: session.agency.id,
+      nombre: String(fields.nombre || '').trim(),
+      paginaWeb: fields.paginaWeb || '',
+      leyendaComercial: fields.leyendaComercial || '',
+      estado: fields.estado || 'vigente',
+      etapaObra: fields.etapaObra || 'en_pozo',
+      fechaEntrega: fields.fechaEntrega || null,
+      zonaGeografica: fields.zonaGeografica || '',
+      partido: fields.partido || '',
+      localidad: fields.localidad || '',
+      calle: fields.calle || '',
+      nroCalle: fields.nroCalle || '',
+      mostrarPortales: fields.mostrarPortales || 'direccion_real',
+      entreCalles: fields.entreCalles || '',
+      yCalles: fields.yCalles || '',
+      cercaDe: fields.cercaDe || '',
+      latitud: fields.latitud ? Number(fields.latitud) : null,
+      longitud: fields.longitud ? Number(fields.longitud) : null,
+      conFinanciacion: fields.conFinanciacion === 'true' || fields.conFinanciacion === true,
+      anticipo: fields.anticipo ? Number(fields.anticipo) : null,
+      cuotas: fields.cuotas ? Number(fields.cuotas) : null,
+      financia: fields.financia || '',
+      descripcionFinanciacion: fields.descripcionFinanciacion || '',
+      dptosPorPiso: fields.dptosPorPiso ? Number(fields.dptosPorPiso) : null,
+      cantidadPisos: fields.cantidadPisos ? Number(fields.cantidadPisos) : null,
+      cantidadDptos: fields.cantidadDptos ? Number(fields.cantidadDptos) : null,
+      cantidadAscensores: fields.cantidadAscensores ? Number(fields.cantidadAscensores) : null,
+      servicios: safeParseJson(fields.servicios),
+      instalaciones: safeParseJson(fields.instalaciones),
+      construye: fields.construye || '',
+      comercializa: fields.comercializa || '',
+      dirige: fields.dirige || '',
+      administra: fields.administra || '',
+      descripcion: fields.descripcion || '',
+      youtubeUrl: fields.youtubeUrl || '',
+      logoUrl,
+    });
+
+    // Subir fotos
+    await Promise.all(mediaFiles.map(async (f) => {
+      try {
+        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/fotos/${randomUUID()}`, { resource_type: 'image' });
+        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'image', url: up.secure_url, publicId: up.public_id });
+      } catch {}
+    }));
+
+    // Subir planos
+    await Promise.all(planoFiles.map(async (f) => {
+      try {
+        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/planos/${randomUUID()}`, { resource_type: 'image' });
+        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'plano', url: up.secure_url, publicId: up.public_id });
+      } catch {}
+    }));
+
+    json(res, { emprendimiento }, 201);
+  });
+
+  router.get('/api/emprendimientos/:id', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const emprendimiento = await db.getEmprendimiento(req.params.id);
+    if (!emprendimiento || emprendimiento.agencyId !== session.agency.id) return err(res, 'No encontrado.', 404);
+    const media = await db.listEmprendimientoMedia(emprendimiento.id);
+    json(res, { emprendimiento, media });
+  });
+
+  router.put('/api/emprendimientos/:id', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const existing = await db.getEmprendimiento(req.params.id);
+    if (!existing || existing.agencyId !== session.agency.id) return err(res, 'No encontrado.', 404);
+    let fields, files;
+    try {
+      const parsed = await parsePropertyRequest(req);
+      fields = parsed.fields;
+      files = parsed.files || [];
+    } catch (e) {
+      return err(res, e.message || 'Error al procesar la solicitud.');
+    }
+    const id = req.params.id;
+    const mediaFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('foto'));
+    const logoFile = files.find(f => f.fieldname === 'logo');
+    const planoFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('plano'));
+
+    let logoUrl = existing.logoUrl;
+    if (logoFile) {
+      try {
+        const up = await uploadBuffer(logoFile.buffer, logoFile.mimetype, `emprendimientos/${id}/logo`, { resource_type: 'image' });
+        logoUrl = up.secure_url;
+      } catch {}
+    }
+
+    await db.updateEmprendimiento(id, {
+      nombre: String(fields.nombre || '').trim(),
+      paginaWeb: fields.paginaWeb || '',
+      leyendaComercial: fields.leyendaComercial || '',
+      estado: fields.estado || 'vigente',
+      etapaObra: fields.etapaObra || 'en_pozo',
+      fechaEntrega: fields.fechaEntrega || null,
+      zonaGeografica: fields.zonaGeografica || '',
+      partido: fields.partido || '',
+      localidad: fields.localidad || '',
+      calle: fields.calle || '',
+      nroCalle: fields.nroCalle || '',
+      mostrarPortales: fields.mostrarPortales || 'direccion_real',
+      entreCalles: fields.entreCalles || '',
+      yCalles: fields.yCalles || '',
+      cercaDe: fields.cercaDe || '',
+      latitud: fields.latitud ? Number(fields.latitud) : null,
+      longitud: fields.longitud ? Number(fields.longitud) : null,
+      conFinanciacion: fields.conFinanciacion === 'true' || fields.conFinanciacion === true,
+      anticipo: fields.anticipo ? Number(fields.anticipo) : null,
+      cuotas: fields.cuotas ? Number(fields.cuotas) : null,
+      financia: fields.financia || '',
+      descripcionFinanciacion: fields.descripcionFinanciacion || '',
+      dptosPorPiso: fields.dptosPorPiso ? Number(fields.dptosPorPiso) : null,
+      cantidadPisos: fields.cantidadPisos ? Number(fields.cantidadPisos) : null,
+      cantidadDptos: fields.cantidadDptos ? Number(fields.cantidadDptos) : null,
+      cantidadAscensores: fields.cantidadAscensores ? Number(fields.cantidadAscensores) : null,
+      servicios: safeParseJson(fields.servicios),
+      instalaciones: safeParseJson(fields.instalaciones),
+      construye: fields.construye || '',
+      comercializa: fields.comercializa || '',
+      dirige: fields.dirige || '',
+      administra: fields.administra || '',
+      descripcion: fields.descripcion || '',
+      youtubeUrl: fields.youtubeUrl || '',
+      logoUrl,
+    });
+
+    await Promise.all(mediaFiles.map(async (f) => {
+      try {
+        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/fotos/${randomUUID()}`, { resource_type: 'image' });
+        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'image', url: up.secure_url, publicId: up.public_id });
+      } catch {}
+    }));
+
+    await Promise.all(planoFiles.map(async (f) => {
+      try {
+        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/planos/${randomUUID()}`, { resource_type: 'image' });
+        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'plano', url: up.secure_url, publicId: up.public_id });
+      } catch {}
+    }));
+
     json(res, { ok: true });
   });
 

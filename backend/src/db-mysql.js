@@ -1951,3 +1951,240 @@ export async function removeMemberFromGrupo(grupoId, partnerId) {
   await ensureGruposSociosTable();
   await pool.query('DELETE FROM grupos_socios_members WHERE grupo_id=? AND partner_id=?', [grupoId, partnerId]);
 }
+
+// ---------------------------------------------------------------------------
+// Emprendimientos
+// ---------------------------------------------------------------------------
+async function ensureEmprendimientosTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS emprendimientos (
+      id VARCHAR(36) PRIMARY KEY,
+      agency_id VARCHAR(36) NOT NULL,
+      nombre VARCHAR(255) NOT NULL,
+      pagina_web VARCHAR(500),
+      leyenda_comercial VARCHAR(255),
+      estado VARCHAR(50) DEFAULT 'vigente',
+      etapa_obra VARCHAR(50) DEFAULT 'en_pozo',
+      fecha_entrega VARCHAR(20),
+      zona_geografica VARCHAR(100),
+      partido VARCHAR(100),
+      localidad VARCHAR(100),
+      calle VARCHAR(255),
+      nro_calle VARCHAR(50),
+      mostrar_portales VARCHAR(50) DEFAULT 'direccion_real',
+      entre_calles VARCHAR(255),
+      y_calles VARCHAR(255),
+      cerca_de VARCHAR(255),
+      latitud DECIMAL(10,7),
+      longitud DECIMAL(10,7),
+      con_financiacion TINYINT(1) DEFAULT 0,
+      anticipo DECIMAL(5,2),
+      cuotas INT,
+      financia VARCHAR(255),
+      descripcion_financiacion TEXT,
+      dptos_por_piso INT,
+      cantidad_pisos INT,
+      cantidad_dptos INT,
+      cantidad_ascensores INT,
+      servicios JSON,
+      instalaciones JSON,
+      construye VARCHAR(255),
+      comercializa VARCHAR(255),
+      dirige VARCHAR(255),
+      administra VARCHAR(255),
+      descripcion TEXT,
+      youtube_url VARCHAR(500),
+      logo_url TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_agency (agency_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  // Migrate old table schema if it exists with the minimal columns
+  const alterColumns = [
+    ['pagina_web', 'VARCHAR(500)'],
+    ['leyenda_comercial', 'VARCHAR(255)'],
+    ['estado', "VARCHAR(50) DEFAULT 'vigente'"],
+    ['etapa_obra', "VARCHAR(50) DEFAULT 'en_pozo'"],
+    ['fecha_entrega', 'VARCHAR(20)'],
+    ['zona_geografica', 'VARCHAR(100)'],
+    ['partido', 'VARCHAR(100)'],
+    ['localidad', 'VARCHAR(100)'],
+    ['calle', 'VARCHAR(255)'],
+    ['nro_calle', 'VARCHAR(50)'],
+    ['mostrar_portales', "VARCHAR(50) DEFAULT 'direccion_real'"],
+    ['entre_calles', 'VARCHAR(255)'],
+    ['y_calles', 'VARCHAR(255)'],
+    ['cerca_de', 'VARCHAR(255)'],
+    ['latitud', 'DECIMAL(10,7)'],
+    ['longitud', 'DECIMAL(10,7)'],
+    ['con_financiacion', 'TINYINT(1) DEFAULT 0'],
+    ['anticipo', 'DECIMAL(5,2)'],
+    ['cuotas', 'INT'],
+    ['financia', 'VARCHAR(255)'],
+    ['descripcion_financiacion', 'TEXT'],
+    ['dptos_por_piso', 'INT'],
+    ['cantidad_pisos', 'INT'],
+    ['cantidad_dptos', 'INT'],
+    ['cantidad_ascensores', 'INT'],
+    ['servicios', 'JSON'],
+    ['instalaciones', 'JSON'],
+    ['construye', 'VARCHAR(255)'],
+    ['comercializa', 'VARCHAR(255)'],
+    ['dirige', 'VARCHAR(255)'],
+    ['administra', 'VARCHAR(255)'],
+    ['youtube_url', 'VARCHAR(500)'],
+    ['logo_url', 'TEXT'],
+  ];
+  for (const [col, type] of alterColumns) {
+    await pool.query(`ALTER TABLE emprendimientos ADD COLUMN IF NOT EXISTS ${col} ${type}`).catch(() => {});
+  }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS emprendimientos_media (
+      id VARCHAR(36) PRIMARY KEY,
+      emprendimiento_id VARCHAR(36) NOT NULL,
+      type VARCHAR(20) NOT NULL,
+      url TEXT NOT NULL,
+      public_id VARCHAR(255),
+      sort_order INT DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_emp (emprendimiento_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+}
+
+function toEmprendimiento(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    agencyId: row.agency_id,
+    nombre: row.nombre,
+    paginaWeb: row.pagina_web,
+    leyendaComercial: row.leyenda_comercial,
+    estado: row.estado,
+    etapaObra: row.etapa_obra,
+    fechaEntrega: row.fecha_entrega,
+    zonaGeografica: row.zona_geografica,
+    partido: row.partido,
+    localidad: row.localidad,
+    calle: row.calle,
+    nroCalle: row.nro_calle,
+    mostrarPortales: row.mostrar_portales,
+    entreCalles: row.entre_calles,
+    yCalles: row.y_calles,
+    cercaDe: row.cerca_de,
+    latitud: row.latitud,
+    longitud: row.longitud,
+    conFinanciacion: Boolean(row.con_financiacion),
+    anticipo: row.anticipo,
+    cuotas: row.cuotas,
+    financia: row.financia,
+    descripcionFinanciacion: row.descripcion_financiacion,
+    dptosPorPiso: row.dptos_por_piso,
+    cantidadPisos: row.cantidad_pisos,
+    cantidadDptos: row.cantidad_dptos,
+    cantidadAscensores: row.cantidad_ascensores,
+    servicios: safeJsonParse(row.servicios),
+    instalaciones: safeJsonParse(row.instalaciones),
+    construye: row.construye,
+    comercializa: row.comercializa,
+    dirige: row.dirige,
+    administra: row.administra,
+    descripcion: row.descripcion,
+    youtubeUrl: row.youtube_url,
+    logoUrl: row.logo_url,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function safeJsonParse(val) {
+  if (!val) return [];
+  try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
+}
+
+export async function listEmprendimientosByAgency(agencyId) {
+  await ensureEmprendimientosTable();
+  const [rows] = await pool.query(
+    'SELECT * FROM emprendimientos WHERE agency_id=? ORDER BY created_at DESC',
+    [agencyId]
+  );
+  return rows.map(toEmprendimiento);
+}
+
+export async function getEmprendimiento(id) {
+  await ensureEmprendimientosTable();
+  const [rows] = await pool.query('SELECT * FROM emprendimientos WHERE id=? LIMIT 1', [id]);
+  return toEmprendimiento(rows[0] || null);
+}
+
+export async function createEmprendimiento(data) {
+  await ensureEmprendimientosTable();
+  await pool.query(
+    `INSERT INTO emprendimientos (
+      id, agency_id, nombre, pagina_web, leyenda_comercial, estado, etapa_obra, fecha_entrega,
+      zona_geografica, partido, localidad, calle, nro_calle, mostrar_portales,
+      entre_calles, y_calles, cerca_de, latitud, longitud,
+      con_financiacion, anticipo, cuotas, financia, descripcion_financiacion,
+      dptos_por_piso, cantidad_pisos, cantidad_dptos, cantidad_ascensores,
+      servicios, instalaciones, construye, comercializa, dirige, administra,
+      descripcion, youtube_url, logo_url
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      data.id, data.agencyId, data.nombre, data.paginaWeb, data.leyendaComercial,
+      data.estado, data.etapaObra, data.fechaEntrega || null,
+      data.zonaGeografica, data.partido, data.localidad, data.calle, data.nroCalle, data.mostrarPortales,
+      data.entreCalles, data.yCalles, data.cercaDe, data.latitud, data.longitud,
+      data.conFinanciacion ? 1 : 0, data.anticipo, data.cuotas, data.financia, data.descripcionFinanciacion,
+      data.dptosPorPiso, data.cantidadPisos, data.cantidadDptos, data.cantidadAscensores,
+      JSON.stringify(data.servicios || []), JSON.stringify(data.instalaciones || []),
+      data.construye, data.comercializa, data.dirige, data.administra,
+      data.descripcion, data.youtubeUrl, data.logoUrl,
+    ]
+  );
+  return getEmprendimiento(data.id);
+}
+
+export async function updateEmprendimiento(id, data) {
+  await ensureEmprendimientosTable();
+  await pool.query(
+    `UPDATE emprendimientos SET
+      nombre=?, pagina_web=?, leyenda_comercial=?, estado=?, etapa_obra=?, fecha_entrega=?,
+      zona_geografica=?, partido=?, localidad=?, calle=?, nro_calle=?, mostrar_portales=?,
+      entre_calles=?, y_calles=?, cerca_de=?, latitud=?, longitud=?,
+      con_financiacion=?, anticipo=?, cuotas=?, financia=?, descripcion_financiacion=?,
+      dptos_por_piso=?, cantidad_pisos=?, cantidad_dptos=?, cantidad_ascensores=?,
+      servicios=?, instalaciones=?, construye=?, comercializa=?, dirige=?, administra=?,
+      descripcion=?, youtube_url=?, logo_url=?
+    WHERE id=?`,
+    [
+      data.nombre, data.paginaWeb, data.leyendaComercial,
+      data.estado, data.etapaObra, data.fechaEntrega || null,
+      data.zonaGeografica, data.partido, data.localidad, data.calle, data.nroCalle, data.mostrarPortales,
+      data.entreCalles, data.yCalles, data.cercaDe, data.latitud, data.longitud,
+      data.conFinanciacion ? 1 : 0, data.anticipo, data.cuotas, data.financia, data.descripcionFinanciacion,
+      data.dptosPorPiso, data.cantidadPisos, data.cantidadDptos, data.cantidadAscensores,
+      JSON.stringify(data.servicios || []), JSON.stringify(data.instalaciones || []),
+      data.construye, data.comercializa, data.dirige, data.administra,
+      data.descripcion, data.youtubeUrl, data.logoUrl,
+      id,
+    ]
+  );
+}
+
+export async function createEmprendimientoMedia({ id, emprendimientoId, type, url, publicId }) {
+  await ensureEmprendimientosTable();
+  await pool.query(
+    'INSERT INTO emprendimientos_media (id, emprendimiento_id, type, url, public_id) VALUES (?,?,?,?,?)',
+    [id, emprendimientoId, type, url, publicId || null]
+  );
+}
+
+export async function listEmprendimientoMedia(emprendimientoId) {
+  await ensureEmprendimientosTable();
+  const [rows] = await pool.query(
+    'SELECT * FROM emprendimientos_media WHERE emprendimiento_id=? ORDER BY sort_order ASC, created_at ASC',
+    [emprendimientoId]
+  );
+  return rows.map(r => ({ id: r.id, emprendimientoId: r.emprendimiento_id, type: r.type, url: r.url, publicId: r.public_id }));
+}

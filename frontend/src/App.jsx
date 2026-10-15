@@ -20,6 +20,8 @@ import Invitations from './pages/Invitations.jsx';
 import Alerts from './pages/Alerts.jsx';
 import AlertForm from './pages/AlertForm.jsx';
 import Matcheadas from './pages/Matcheadas.jsx';
+import Emprendimientos from './pages/Emprendimientos.jsx';
+import EmprendimientoForm from './pages/EmprendimientoForm.jsx';
 import MiWeb from './pages/MiWeb.jsx';
 import SettingsHub from './pages/SettingsHub.jsx';
 import MiCuenta from './pages/MiCuenta.jsx';
@@ -135,6 +137,9 @@ function AppRoutes() {
           <Route path="/alertas/nueva" element={<PrivateRoute><AlertForm /></PrivateRoute>} />
           <Route path="/matcheadas" element={<PrivateRoute><Matcheadas /></PrivateRoute>} />
           <Route path="/matcheadas/:alertId" element={<PrivateRoute><Matcheadas /></PrivateRoute>} />
+          <Route path="/emprendimientos" element={<PrivateRoute><Emprendimientos /></PrivateRoute>} />
+          <Route path="/emprendimientos/nueva" element={<PrivateRoute><EmprendimientoForm /></PrivateRoute>} />
+          <Route path="/emprendimientos/:id/editar" element={<PrivateRoute><EmprendimientoForm /></PrivateRoute>} />
           <Route path="/mi-web" element={<PrivateRoute><MiWeb /></PrivateRoute>} />
           <Route path="/configuracion" element={<PrivateRoute><SettingsHub /></PrivateRoute>} />
           <Route path="/mi-cuenta" element={<PrivateRoute><MiCuenta /></PrivateRoute>} />

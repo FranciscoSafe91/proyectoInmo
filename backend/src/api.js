@@ -1646,6 +1646,10 @@ export function registerApiRoutes(router) {
       if (!session.user.emailVerified) {
         return err(res, 'Confirmá tu email antes de pagar. Te podemos reenviar el link desde esta pantalla.', 403);
       }
+      if (!plan || !(plan.priceARS > 0)) {
+        console.error('[MP] Plan inválido al intentar pagar:', plan);
+        return err(res, 'Error de configuración del plan. Contactá a soporte.', 500);
+      }
       try {
         const preapproval = await mercadopago.createPreapproval({
           reason: plan.name, amount: plan.priceARS,
@@ -1660,7 +1664,8 @@ export function registerApiRoutes(router) {
         }
         audit(req, session, 'suscripcion.checkout_iniciado', { preapprovalId: preapproval.id, amount: plan.priceARS });
         return json(res, { ok: true, redirectUrl: preapproval.init_point });
-      } catch {
+      } catch (e) {
+        console.error('[MP] createPreapproval falló:', e.message);
         return err(res, 'Error al crear la suscripción en Mercado Pago.');
       }
     }

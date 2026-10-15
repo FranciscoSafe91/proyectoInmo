@@ -606,6 +606,11 @@ async function ensureUsuariosColumns() {
   await pool.query("ALTER TABLE usuarios ADD COLUMN totp_last_counter BIGINT DEFAULT NULL").catch(() => {});
   await pool.query("ALTER TABLE usuarios ADD COLUMN totp_recovery TEXT DEFAULT NULL").catch(() => {});
   _usuariosColumnsMigrated = true;
+  // Cuentas creadas antes de que existiera la verificación de email: se marcan
+  // como verificadas si ya tienen contraseña seteada (son cuentas activas).
+  await pool.query(
+    "UPDATE usuarios SET email_verified_at=created_at WHERE email_verified_at IS NULL AND password_hash IS NOT NULL AND password_hash != ''"
+  ).catch(e => console.warn('[migración] No se pudo auto-verificar cuentas existentes:', e.message));
 }
 
 async function ensureAlertasColumns() {

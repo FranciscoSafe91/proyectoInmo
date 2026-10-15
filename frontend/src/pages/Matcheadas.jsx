@@ -116,7 +116,7 @@ function MatchRequestsReceived() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <h3>Aceptar solicitud de match</h3>
             <p className="muted small" style={{ marginBottom: 14 }}>Establecé los porcentajes de la operación y dejá un comentario opcional.</p>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+            <div className="pct-fields-row" style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
                 <label className="sf-label" style={{ display: 'block', marginBottom: 4 }}>Del vendedor (%)</label>
                 <input
@@ -164,7 +164,7 @@ function MatchRequestsReceived() {
         </div>
       )}
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div className="list-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <p className="muted small" style={{ margin: 0 }}>
           Aceptá para permitirles ver tu propiedad, o rechazá si no querés compartirla.
         </p>
@@ -427,7 +427,7 @@ function MatcheadasRecibidas() {
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div className="list-header-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Sparkles size={16} />
           <strong>Matcheadas</strong>

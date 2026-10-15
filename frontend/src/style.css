@@ -3682,3 +3682,197 @@
   .sf-summary-right { width: 100%; }
   .sf-summary-right .sf-sort { flex: 1; min-width: 0; }
 }
+
+/* =====================================================================
+   RESPONSIVE — capa aditiva para tablets y celulares
+   Todo vive dentro de media queries (max-width), así que el escritorio
+   (>1024px) no cambia. Breakpoints: 1024 (tablet horizontal),
+   768 (tablet vertical) y 480 (celular).
+   ===================================================================== */
+
+/* ── Tablet horizontal (≤1024px) ── */
+@media (max-width: 1024px) {
+  /* Los ítems de grid no deben estirarse por contenido ancho (tablas, nowrap):
+     el contenido scrollea dentro de su propio contenedor (.table-wrap). */
+  .page-two-col > *,
+  .property-detail-grid > *,
+  .property-form-shell > *,
+  .operations-grid > *,
+  .grid > * {
+    min-width: 0;
+  }
+
+  /* Alertas / Matcheadas: una sola columna, el sidebar ya ocupa 280px */
+  .page-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  /* Medios embebidos y campos de archivo nunca más anchos que su contenedor */
+  iframe,
+  embed,
+  object,
+  input[type=file] {
+    max-width: 100%;
+  }
+
+  /* Encabezados de listas (texto + selector de orden): el select hereda
+     width:100% global, acá toma su ancho natural y la fila puede envolver */
+  .list-header-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .list-header-row > p {
+    flex: 1 1 220px;
+  }
+
+  .list-header-row .sort-select {
+    width: auto;
+    max-width: 100%;
+  }
+}
+
+/* ── Tablet vertical / menú móvil (≤900px, mismo corte que el sidebar) ── */
+@media (max-width: 900px) {
+  /* El sidebar abierto (z 90) y su fondo deben quedar por encima de la barra de alertas */
+  .match-bar {
+    z-index: 70;
+  }
+
+  /* El botón hamburguesa (fijo arriba a la izquierda) no tapa el logo del sidebar */
+  .sidebar {
+    padding-top: 70px;
+  }
+}
+
+/* ── Tablet vertical (≤768px) ── */
+@media (max-width: 768px) {
+  /* Palabras largas (emails, URLs) cortan en vez de desbordar */
+  .app-main,
+  .container,
+  .card,
+  .modal-box {
+    overflow-wrap: break-word;
+  }
+
+  /* El input de archivo visible (hijo directo de un form) tiene ancho intrínseco
+     fijo: que se adapte al contenedor. No afecta inputs ocultos como .media-uploader */
+  form > input[type=file] {
+    width: 100%;
+    min-width: 0;
+  }
+
+  form:has(> input[type=file]) {
+    max-width: 100%;
+  }
+
+  /* Nombre de la inmobiliaria dentro del texto: que pueda partir línea */
+  .match-request-info span strong {
+    white-space: normal;
+  }
+
+  /* iOS hace zoom al enfocar campos con fuente < 16px */
+  input[type=text], input[type=email], input[type=password], input[type=number],
+  input[type=tel], input[type=search], input[type=date], select, textarea,
+  .sf-select, .sort-select {
+    font-size: 16px;
+  }
+
+  /* Barra de alerta fija: compacta, solo título + botón */
+  .match-bar {
+    gap: 10px;
+    padding: 8px 14px;
+  }
+
+  .match-bar-cell:not(.match-bar-title) {
+    display: none;
+  }
+
+  .match-bar-btn {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+  }
+
+  /* Con barra de alerta visible, el contenido arranca debajo de ella */
+  .match-bar ~ .app-main {
+    padding-top: 128px;
+  }
+
+  /* Solicitudes de match: info arriba, acciones abajo a lo ancho */
+  .match-request-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .match-request-info {
+    flex: 1 1 calc(100% - 70px);
+  }
+
+  .match-request-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .match-request-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Filtros de carpeta compartida: el panel de precio se ancla a la barra */
+  .sf-bar {
+    position: relative;
+  }
+
+  .sf-dropdown-wrap {
+    position: static;
+  }
+
+  .sf-dropdown-panel {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+
+  /* Tablas: indicar que se pueden deslizar horizontalmente */
+  .table-wrap {
+    overscroll-behavior-x: contain;
+  }
+}
+
+/* ── Celular (≤480px) ── */
+@media (max-width: 480px) {
+  /* Modales de % (vendedor / comprador / toda la bolsa): se apilan */
+  .pct-fields-row {
+    flex-wrap: wrap;
+  }
+
+  .pct-fields-row > div {
+    flex: 1 1 120px;
+  }
+
+  .pct-fields-row > div:last-child {
+    flex-basis: 100%;
+    padding-bottom: 0;
+  }
+
+  .list-header-row .sort-select {
+    width: 100%;
+  }
+
+  .match-bar-btn {
+    padding: 0 10px;
+    font-size: 0.82rem;
+  }
+
+  .match-bar-counter {
+    display: none;
+  }
+
+  .table-wrap table {
+    min-width: 520px;
+  }
+
+  .modal-box {
+    padding: 16px;
+  }
+}

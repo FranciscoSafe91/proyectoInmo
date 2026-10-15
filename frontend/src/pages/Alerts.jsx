@@ -111,7 +111,7 @@ export default function Alerts() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <h3>Aceptar solicitud de match</h3>
             <p className="muted small" style={{ marginBottom: 14 }}>Establecé los porcentajes de la operación y dejá un comentario opcional.</p>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+            <div className="pct-fields-row" style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
                 <label className="sf-label" style={{ display: 'block', marginBottom: 4 }}>Del vendedor (%)</label>
                 <input

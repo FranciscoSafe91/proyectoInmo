@@ -136,6 +136,17 @@ export default function Navbar() {
 
   return (
     <>
+      {/* Botón hamburguesa: solo visible ≤900px (oculto en escritorio por CSS) */}
+      <button
+        className="navbar-toggle"
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
+        aria-expanded={open}
+      >
+        {open ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+      </button>
+
       {open && (
         <button
           className="sidebar-backdrop"

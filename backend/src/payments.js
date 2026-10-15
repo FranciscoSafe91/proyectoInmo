@@ -111,10 +111,45 @@ async function handlePaymentState(payment, preapprovalId) {
   return `sin acción (estado ${payment.status})`;
 }
 
+// Checkout Pro: acredita un pago usando external_reference como agencyId.
+async function creditApprovedPaymentDirect(payment, agency) {
+  const plan = await db.getPlan();
+  const expected = Number(plan && plan.priceARS);
+  const paid = Number(payment.transaction_amount);
+  if (payment.currency_id !== 'ARS') return `rechazado: moneda ${payment.currency_id}`;
+  if (!(expected > 0) || !(paid + AMOUNT_TOLERANCE >= expected)) {
+    console.error(`[pagos] Monto inválido en pago ${payment.id}: pagado ${paid}, esperado ${expected}`);
+    return 'rechazado: monto menor al del plan';
+  }
+  const result = await db.applySuccessfulPayment(agency.id, {
+    amount: paid, currency: 'ARS', method: 'mercadopago', mpPaymentId: String(payment.id),
+  });
+  if (result && result.duplicate) return 'ya procesado';
+  const card = payment.card || {};
+  await db.updateSubscription(agency.id, {
+    ...(card.last_four_digits ? { cardLastFour: String(card.last_four_digits).slice(-4) } : {}),
+    ...(payment.payment_method_id ? { cardBrand: String(payment.payment_method_id).slice(0, 40) } : {}),
+  });
+  await audit(agency.id, 'pago.acreditado', { mpPaymentId: String(payment.id), amount: paid });
+  notifyBilling(agency, 'Recibimos tu pago', [
+    `Se acreditó un pago de $${paid.toLocaleString('es-AR')} a tu suscripción.`,
+    card.last_four_digits ? `Tarjeta terminada en ${String(card.last_four_digits).slice(-4)}.` : '',
+  ]);
+  return `acreditado a ${agency.id}`;
+}
+
 // Tópico "payment": el id es de /v1/payments.
 export async function processPayment(paymentId) {
   const payment = await mercadopago.getPayment(paymentId);
   if (!payment) return 'ignorado: pago inexistente';
+
+  // Checkout Pro: external_reference es directamente el agencyId.
+  if (payment.external_reference && payment.status === 'approved') {
+    const agency = await db.getAgency(payment.external_reference);
+    if (agency) return creditApprovedPaymentDirect(payment, agency);
+  }
+
+  // Flujo legacy (preapproval).
   const preapprovalId =
     (payment.metadata && (payment.metadata.preapproval_id || payment.metadata.preapprovalId)) ||
     (payment.point_of_interaction && payment.point_of_interaction.transaction_data &&

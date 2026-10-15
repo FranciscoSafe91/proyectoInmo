@@ -113,12 +113,18 @@ export default function Subscription() {
   const [changingCard, setChangingCard] = useState(false);
   const [notice, setNotice] = useState('');
   const [resending, setResending] = useState(false);
-  const [mpEmail, setMpEmail] = useState('');
-  const [showMpEmailForm, setShowMpEmailForm] = useState(false);
 
   const reload = () => api.get('/suscripcion').then(setData).catch(e => setError(e.message));
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+    const params = new URLSearchParams(window.location.search);
+    const pago = params.get('pago');
+    if (pago === 'ok') setNotice('Pago recibido. Tu suscripción se activará en unos momentos.');
+    else if (pago === 'pendiente') setNotice('Tu pago está siendo procesado por Mercado Pago. Te avisamos cuando se acredite.');
+    else if (pago === 'error') setError('El pago no se completó. Podés intentarlo nuevamente.');
+    if (pago) window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   const handleResend = async () => {
     setResending(true);
@@ -138,18 +144,10 @@ export default function Subscription() {
     await reload();
   };
 
-  const handlePayClick = () => {
-    setError('');
-    setMpEmail(session?.user?.email || '');
-    setShowMpEmailForm(true);
-  };
-
   const handlePay = async () => {
-    if (!mpEmail.trim()) { setError('Ingresá tu email de Mercado Pago.'); return; }
     setPaying(true);
-    setShowMpEmailForm(false);
     try {
-      const res = await api.post('/suscripcion/pagar', { mpEmail: mpEmail.trim() });
+      const res = await api.post('/suscripcion/pagar');
       if (res.redirectUrl) {
         window.location.href = res.redirectUrl;
       } else {
@@ -202,44 +200,18 @@ export default function Subscription() {
         </div>
         {status !== 'activa' && (
           <>
-            {showMpEmailForm && mpConfigured ? (
-              <div style={{ marginTop: 16 }}>
-                <label htmlFor="mp-email"><strong>¿Con qué email iniciás sesión en Mercado Pago?</strong></label>
-                <p className="small muted" style={{ marginBottom: 8 }}>
-                  Mercado Pago requiere que uses el mismo email con el que estás registrado allí.
-                </p>
-                <input
-                  id="mp-email"
-                  type="email"
-                  placeholder="tumail@ejemplo.com"
-                  value={mpEmail}
-                  onChange={e => setMpEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handlePay()}
-                  style={{ marginBottom: 10 }}
-                />
-                <div className="btn-row">
-                  <button className="btn" onClick={handlePay} disabled={paying}>
-                    {paying ? 'Procesando...' : 'Continuar a Mercado Pago'}
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => setShowMpEmailForm(false)}>Cancelar</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="btn-row">
-                  <button className="btn" onClick={mpConfigured ? handlePayClick : handlePay} disabled={paying || !paymentsAvailable}>
-                    {paying ? 'Procesando...' : status === 'trial' ? 'Activar suscripción ahora' : 'Pagar y renovar'}
-                  </button>
-                </div>
-                <p className="small muted" style={{ marginTop: 8 }}>
-                  {mpConfigured
-                    ? 'Vas a ser redirigido a Mercado Pago para completar el pago.'
-                    : paymentsSimulated
-                      ? '⚠️ Modo de pago simulado (solo desarrollo): este botón registra un pago aprobado sin cobrar.'
-                      : 'Los pagos online todavía no están disponibles. Contactá a soporte para activar tu suscripción.'}
-                </p>
-              </>
-            )}
+            <div className="btn-row">
+              <button className="btn" onClick={handlePay} disabled={paying || !paymentsAvailable}>
+                {paying ? 'Procesando...' : status === 'trial' ? 'Activar suscripción ahora' : 'Pagar y renovar'}
+              </button>
+            </div>
+            <p className="small muted" style={{ marginTop: 8 }}>
+              {mpConfigured
+                ? 'Vas a ser redirigido a Mercado Pago para completar el pago.'
+                : paymentsSimulated
+                  ? '⚠️ Modo de pago simulado (solo desarrollo): este botón registra un pago aprobado sin cobrar.'
+                  : 'Los pagos online todavía no están disponibles. Contactá a soporte para activar tu suscripción.'}
+            </p>
           </>
         )}
       </div>

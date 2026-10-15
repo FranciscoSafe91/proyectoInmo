@@ -102,6 +102,20 @@ function request(method, path, body) {
   });
 }
 
+// Crea una preferencia de Checkout Pro (pago único) sin dinero en cuenta.
+export async function createPreference({ reason, amount, externalReference, backUrls }) {
+  const body = {
+    items: [{ title: reason, quantity: 1, unit_price: Number(amount), currency_id: 'ARS' }],
+    external_reference: String(externalReference),
+    back_urls: backUrls,
+    auto_return: 'approved',
+    payment_methods: {
+      excluded_payment_types: [{ id: 'account_money' }],
+    },
+  };
+  return request('POST', '/checkout/preferences', body);
+}
+
 // Crea una suscripción (preapproval) y devuelve el link de pago (init_point)
 // al que hay que redirigir al usuario para que complete el primer pago.
 export async function createPreapproval({ reason, payerEmail, amount, externalReference, backUrl }) {

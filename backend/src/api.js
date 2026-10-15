@@ -1650,28 +1650,21 @@ export function registerApiRoutes(router) {
         console.error('[MP] Plan inválido al intentar pagar:', plan);
         return err(res, 'Error de configuración del plan. Contactá a soporte.', 500);
       }
-      const body = await parseJson(req);
-      const payerEmail = (body.mpEmail || session.user.email).trim().toLowerCase();
-      if (!payerEmail || !payerEmail.includes('@')) {
-        return err(res, 'Ingresá un email válido de Mercado Pago.', 400);
-      }
       try {
-        const preapproval = await mercadopago.createPreapproval({
-          reason: plan.name, payerEmail, amount: plan.priceARS,
+        const preference = await mercadopago.createPreference({
+          reason: plan.name, amount: plan.priceARS,
           externalReference: session.agency.id,
-          backUrl: `${mail.APP_URL}/suscripcion`,
+          backUrls: {
+            success: `${mail.APP_URL}/suscripcion?pago=ok`,
+            failure: `${mail.APP_URL}/suscripcion?pago=error`,
+            pending: `${mail.APP_URL}/suscripcion?pago=pendiente`,
+          },
         });
-        // No pisar una suscripción que ya está cobrando: el webhook actualiza el id
-        // cuando la nueva efectivamente se paga.
-        const current = await db.getSubscriptionByAgency(session.agency.id);
-        if (db.effectiveSubscriptionStatus(current) !== 'activa' || !current.mpPreapprovalId) {
-          await db.updateSubscription(session.agency.id, { mpPreapprovalId: preapproval.id });
-        }
-        audit(req, session, 'suscripcion.checkout_iniciado', { preapprovalId: preapproval.id, amount: plan.priceARS });
-        return json(res, { ok: true, redirectUrl: preapproval.init_point });
+        audit(req, session, 'suscripcion.checkout_iniciado', { preferenceId: preference.id, amount: plan.priceARS });
+        return json(res, { ok: true, redirectUrl: preference.init_point });
       } catch (e) {
-        console.error('[MP] createPreapproval falló:', e.message);
-        return err(res, 'Error al crear la suscripción en Mercado Pago.');
+        console.error('[MP] createPreference falló:', e.message);
+        return err(res, 'Error al iniciar el pago en Mercado Pago.');
       }
     }
     if (!mercadopago.simulatedPaymentsAllowed()) {

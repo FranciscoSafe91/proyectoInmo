@@ -104,10 +104,11 @@ function request(method, path, body) {
 
 // Crea una suscripción (preapproval) y devuelve el link de pago (init_point)
 // al que hay que redirigir al usuario para que complete el primer pago.
-export async function createPreapproval({ reason, amount, externalReference, backUrl }) {
+export async function createPreapproval({ reason, payerEmail, amount, externalReference, backUrl }) {
   const body = {
     reason,
     external_reference: externalReference,
+    payer_email: payerEmail,
     back_url: backUrl,
     auto_recurring: {
       frequency: 1,

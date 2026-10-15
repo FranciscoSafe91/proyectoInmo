@@ -1648,7 +1648,7 @@ export function registerApiRoutes(router) {
       }
       try {
         const preapproval = await mercadopago.createPreapproval({
-          reason: plan.name, payerEmail: session.agency.email, amount: plan.priceARS,
+          reason: plan.name, amount: plan.priceARS,
           externalReference: session.agency.id,
           backUrl: `${mail.APP_URL}/suscripcion`,
         });

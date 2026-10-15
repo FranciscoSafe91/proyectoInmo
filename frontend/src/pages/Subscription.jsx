@@ -1,31 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { formatDate, formatDateTime, formatARS } from '../utils.js';
+import { formatDate, formatARS } from '../utils.js';
 
-const ACTIVITY_LABELS = {
-  'pago.acreditado': 'Pago acreditado',
-  'pago.revertido': 'Pago revertido',
-  'pago.manual_admin': 'Pago registrado por administración',
-  'suscripcion.checkout_iniciado': 'Inicio de pago en Mercado Pago',
-  'tarjeta.cambiada': 'Tarjeta cambiada',
-  'tarjeta.cambio_rechazado': 'Cambio de tarjeta rechazado',
-  'tarjeta.reautenticacion_fallida': 'Contraseña incorrecta al cambiar tarjeta',
-  'contraseña.reseteada': 'Contraseña restablecida',
-  'email.verificado': 'Email verificado',
-  'mi_web.api_key_regenerada': 'Clave del widget regenerada',
-  'equipo.invitacion_creada': 'Invitación al equipo creada',
-  'equipo.invitacion_aceptada': 'Invitación al equipo aceptada',
-  'equipo.rol_cambiado': 'Rol de usuario cambiado',
-  'equipo.usuario_eliminado': 'Usuario eliminado',
-  'equipo.permisos_cambiados': 'Permisos de usuario cambiados',
-  'cuenta.registrada': 'Cuenta creada',
-  '2fa.activado': 'Verificación en dos pasos activada',
-  '2fa.desactivado': 'Verificación en dos pasos desactivada',
-  '2fa.login': 'Ingreso con verificación en dos pasos',
-  '2fa.login_con_codigo_recuperacion': 'Ingreso con código de recuperación',
-  '2fa.codigo_incorrecto': 'Código de verificación incorrecto',
-};
 
 const MP_SDK_URL = 'https://sdk.mercadopago.com/js/v2';
 
@@ -180,7 +157,7 @@ export default function Subscription() {
   if (!data) return <p className="muted">Cargando...</p>;
 
   const { plan, subscription, status, payments, mpConfigured, paymentsSimulated,
-    mpPublicKey, emailVerified, canChangeCard, activity = [] } = data;
+    mpPublicKey, emailVerified, canChangeCard } = data;
   const needsVerification = mpConfigured && !emailVerified;
   const paymentsAvailable = (mpConfigured && emailVerified) || paymentsSimulated;
 
@@ -277,29 +254,6 @@ export default function Subscription() {
                         {p.status}
                       </span>
                     </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <h3>Actividad de seguridad</h3>
-        <p className="small muted">Últimos movimientos sensibles de tu cuenta. Si ves algo que no reconocés, cambiá tu contraseña y escribinos a soporte.</p>
-        {activity.length === 0 ? (
-          <p className="muted">Sin actividad registrada.</p>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Fecha</th><th>Evento</th><th>Origen</th></tr></thead>
-              <tbody>
-                {activity.map((a, i) => (
-                  <tr key={i}>
-                    <td>{formatDateTime(a.createdAt)}</td>
-                    <td>{ACTIVITY_LABELS[a.action] || a.action}</td>
-                    <td className="muted small">{a.ip === 'mercadopago' ? 'Mercado Pago' : a.ip || '-'}</td>
                   </tr>
                 ))}
               </tbody>

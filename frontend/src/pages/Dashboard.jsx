@@ -45,7 +45,7 @@ export default function Dashboard() {
     {
       label: 'Alertas pendientes',
       value: stats.alertMatches,
-      hint: 'Coincidencias de alertas de socios pendientes de aprobar o rechazar',
+      hint: 'Coincidencias de alertas de colegas pendientes de aprobar o rechazar',
       to: '/alertas',
       icon: Bell,
       tone: 'ink',
@@ -54,7 +54,7 @@ export default function Dashboard() {
     {
       label: 'Matcheadas',
       value: (stats.myAlertMatchCount ?? 0) + (stats.acceptedAsOwner ?? 0),
-      hint: 'Propiedades de socios que coinciden con tus alertas y matches que aceptaste',
+      hint: 'Propiedades de colegas que coinciden con tus alertas y matches que aceptaste',
       to: '/matcheadas',
       icon: Sparkles,
       tone: 'violet',
@@ -151,7 +151,7 @@ export default function Dashboard() {
               <span>{stats.alertMatches}</span>
               <div>
                 <strong>Alertas pendientes</strong>
-                <p>Coincidencias de alertas de socios pendientes de aprobar o rechazar.</p>
+                <p>Coincidencias de alertas de colegas pendientes de aprobar o rechazar.</p>
               </div>
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
@@ -159,7 +159,7 @@ export default function Dashboard() {
               <span>{(stats.myAlertMatchCount ?? 0) + (stats.acceptedAsOwner ?? 0)}</span>
               <div>
                 <strong>Matcheadas</strong>
-                <p>Propiedades de socios que coinciden con tus alertas y matches que aceptaste.</p>
+                <p>Propiedades de colegas que coinciden con tus alertas y matches que aceptaste.</p>
               </div>
               <ArrowRight size={18} aria-hidden="true" />
             </Link>

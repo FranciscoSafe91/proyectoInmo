@@ -294,13 +294,29 @@ export default function PropertyDetail() {
   const byId = partnerAgencies?.byId || {};
 
   function togglePartner(id) {
-    setSelectedPartners(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setSelectedPartners(prev => {
+      const isAdding = !prev.includes(id);
+      if (isAdding) {
+        setExpandedPartners(e => { const s = new Set(e); s.add(id); return s; });
+      }
+      return isAdding ? [...prev, id] : prev.filter(x => x !== id);
+    });
   }
 
   async function handleCompartir(e) {
     e.preventDefault();
+    for (const id of selectedPartners) {
+      const hasBolsa = Boolean(wholeBolsa[id]);
+      const hasPct = property.operation === 'alquiler'
+        ? (percentages[id] != null && percentages[id] !== '')
+        : (percentagesVendedor[id] != null && percentagesVendedor[id] !== '') ||
+          (percentagesComprador[id] != null && percentagesComprador[id] !== '');
+      if (!hasBolsa && !hasPct) {
+        setExpandedPartners(prev => { const s = new Set(prev); s.add(id); return s; });
+        alert('Completá los honorarios para cada socio seleccionado, o marcá "Toda la bolsa".');
+        return;
+      }
+    }
     await api.post(`/propiedades/${property.id}/compartir`, {
       targetAgencyIds: selectedPartners,
       allowWebPublish,
@@ -474,8 +490,8 @@ export default function PropertyDetail() {
                                   className={`share-expand-btn${isOpen ? ' open' : ''}`}
                                   onClick={() => toggleExpand(a.id)}
                                   aria-expanded={isOpen}
-                                  aria-label={isOpen ? 'Colapsar' : 'Expandir'}
                                 >
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Honorarios</span>
                                   <ChevronDown size={16} aria-hidden="true" />
                                 </button>
                               </div>

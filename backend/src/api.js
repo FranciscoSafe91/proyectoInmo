@@ -732,6 +732,16 @@ export function registerApiRoutes(router) {
   // ---------------------------------------------------------------------------
   // Compartidas conmigo
   // ---------------------------------------------------------------------------
+  router.delete('/api/compartidas/:shareId', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const share = await db.getPropertyShare(req.params.shareId);
+    if (share && share.targetAgencyId === session.agency.id) {
+      await db.cancelShare(share.id);
+    }
+    json(res, { ok: true });
+  });
+
   router.get('/api/compartidas', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
@@ -742,6 +752,7 @@ export function registerApiRoutes(router) {
       const ownerAgency = await db.getAgency(s.ownerAgencyId);
       const cover = (await db.listPropertyMedia(s.propertyId)).find(m => m.type === 'image') || null;
       return {
+        shareId: s.id,
         property, ownerAgency, cover,
         webPublishAuthorized: s.webPublishAuthorized,
         percentage: s.percentage,
@@ -1012,7 +1023,8 @@ export function registerApiRoutes(router) {
     if (!alert || alert.agencyId !== session.agency.id) return json(res, { alert: null, properties: [] });
     const raw = await db.findMatchingPropertiesForAlert(req.params.alertId, session.agency.id);
     const properties = (await Promise.all(
-      raw.map(async ({ property, ownerAgencyId, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) => ({
+      raw.map(async ({ matchRequestId, property, ownerAgencyId, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) => ({
+        matchRequestId,
         property,
         ownerAgency: await db.getAgency(ownerAgencyId),
         ownerComment: ownerComment || null,
@@ -1064,8 +1076,11 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const mr = await db.getMatchRequest(req.params.id);
-    if (!mr || mr.ownerAgencyId !== session.agency.id) return err(res, 'No autorizado', 403);
-    await db.cancelAcceptedMatchRequest(mr.id, session.agency.id);
+    if (!mr) return json(res, { ok: true });
+    const isOwner = mr.ownerAgencyId === session.agency.id;
+    const isAlertAgency = mr.alertAgencyId === session.agency.id;
+    if (!isOwner && !isAlertAgency) return err(res, 'No autorizado', 403);
+    await db.cancelAcceptedMatchRequest(mr.id);
     json(res, { ok: true });
   });
 

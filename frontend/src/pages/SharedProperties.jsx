@@ -146,10 +146,24 @@ export default function SharedProperties() {
   const [sortBy, setSortBy] = useState('recientes');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [showMore, setShowMore] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     api.get('/compartidas').then(setData).catch(e => setError(e.message));
   }, []);
+
+  async function handleEliminar(shareId) {
+    if (!confirm('¿Eliminar esta propiedad compartida de tu carpeta?')) return;
+    setDeletingId(shareId);
+    try {
+      await api.delete(`/compartidas/${shareId}`);
+      setData(prev => ({ ...prev, items: prev.items.filter(i => i.shareId !== shareId) }));
+    } catch (e) {
+      alert('Error al eliminar: ' + e.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
@@ -399,7 +413,7 @@ export default function SharedProperties() {
             </div>
           ) : (
             <div className="estate-grid">
-              {sortedItems.map(({ property, ownerAgency, webPublishAuthorized, cover, percentage, percentageVendedor, percentageComprador, wholeBolsa }) => (
+              {sortedItems.map(({ shareId, property, ownerAgency, webPublishAuthorized, cover, percentage, percentageVendedor, percentageComprador, wholeBolsa }) => (
                 <article key={property.id} className="estate-card">
                   <Link className="estate-card-media" to={`/propiedades/${property.id}`} aria-label={`Ver ${property.title}`}>
                     {cover?.url
@@ -463,6 +477,15 @@ export default function SharedProperties() {
                       >
                         <WhatsAppIcon size={14} /> Compartir
                       </a>
+                      <button
+                        type="button"
+                        className="btn btn-small"
+                        style={{ background: '#ef4444', color: '#fff', border: 'none' }}
+                        disabled={deletingId === shareId}
+                        onClick={() => handleEliminar(shareId)}
+                      >
+                        {deletingId === shareId ? 'Eliminando…' : 'Eliminar'}
+                      </button>
                     </div>
                   </div>
                 </article>

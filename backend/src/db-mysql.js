@@ -1216,10 +1216,10 @@ export async function getMatchRequest(matchRequestId) {
   return toMatchRequest(rows[0] || null);
 }
 
-export async function cancelAcceptedMatchRequest(matchRequestId, ownerAgencyId) {
+export async function cancelAcceptedMatchRequest(matchRequestId) {
   await pool.query(
-    `DELETE FROM match_requests WHERE id=? AND owner_agency_id=? AND status='aceptado'`,
-    [matchRequestId, ownerAgencyId]
+    `DELETE FROM match_requests WHERE id=? AND status='aceptado'`,
+    [matchRequestId]
   );
 }
 
@@ -1286,6 +1286,7 @@ export async function findMatchingPropertiesForAlert(alertId, requestingAgencyId
     const property = await getProperty(row.property_id);
     if (property && property.status === 'publicada') {
       results.push({
+        matchRequestId: row.id,
         property,
         ownerAgencyId: row.owner_agency_id,
         ownerComment: row.owner_comment || null,

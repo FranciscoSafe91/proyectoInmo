@@ -270,11 +270,25 @@ function AlertDetail({ alertId }) {
   const [error, setError] = useState('');
   const [sortByPct, setSortByPct] = useState('desc');
   const [sortByPrice, setSortByPrice] = useState('desc');
+  const [removing, setRemoving] = useState({});
 
   useEffect(() => {
     setData(null);
     api.get(`/matcheadas/${alertId}`).then(setData).catch(e => setError(e.message));
   }, [alertId]);
+
+  async function handleRemove(matchRequestId) {
+    if (!confirm('¿Eliminar esta propiedad de tus matcheadas?')) return;
+    setRemoving(s => ({ ...s, [matchRequestId]: true }));
+    try {
+      await api.delete(`/match-requests/${matchRequestId}`);
+      setData(prev => ({ ...prev, properties: prev.properties.filter(p => p.matchRequestId !== matchRequestId) }));
+    } catch (e) {
+      alert('Error al eliminar: ' + e.message);
+    } finally {
+      setRemoving(s => ({ ...s, [matchRequestId]: false }));
+    }
+  }
 
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
@@ -338,9 +352,20 @@ function AlertDetail({ alertId }) {
               </div>
             </div>
             <div className="matcheadas-property-list">
-              {displayProperties.map(({ property, ownerAgency, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) => (
-                <PropertyCard key={property.id} property={property} ownerAgency={ownerAgency} ownerComment={ownerComment}
-                  percentageVendedor={percentageVendedor} percentageComprador={percentageComprador} todaBolsa={todaBolsa} />
+              {displayProperties.map(({ matchRequestId, property, ownerAgency, ownerComment, percentageVendedor, percentageComprador, todaBolsa }) => (
+                <div key={property.id} style={{ position: 'relative' }}>
+                  <PropertyCard property={property} ownerAgency={ownerAgency} ownerComment={ownerComment}
+                    percentageVendedor={percentageVendedor} percentageComprador={percentageComprador} todaBolsa={todaBolsa} />
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    style={{ position: 'absolute', top: 8, right: 8 }}
+                    disabled={removing[matchRequestId]}
+                    onClick={() => handleRemove(matchRequestId)}
+                  >
+                    {removing[matchRequestId] ? '…' : <X size={14} />}
+                  </button>
+                </div>
               ))}
             </div>
           </>

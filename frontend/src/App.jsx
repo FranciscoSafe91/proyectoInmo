@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logoUrl from './assets/logo.webp';
 import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Home, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
@@ -47,7 +48,7 @@ function LoadingScreen() {
       minHeight: '60vh',
     }}>
       <img
-        src="/logo.webp"
+        src={logoUrl}
         alt="SpiderConect"
         style={{
           width: 220,

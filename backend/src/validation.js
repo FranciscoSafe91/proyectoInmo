@@ -88,7 +88,7 @@ export const PROPERTY_TYPES = ['casa', 'departamento', 'ph', 'terreno', 'local',
 export const OPERATIONS = ['venta', 'alquiler'];
 export const CURRENCIES = ['ARS', 'USD'];
 export const PROPERTY_STATUSES = ['publicada', 'borrador', 'pausada'];
-export const ACCOUNT_TYPES = ['inmobiliaria', 'agente_independiente'];
+export const ACCOUNT_TYPES = ['inmobiliaria', 'agente_independiente', 'constructora'];
 export const ROLES = ['admin', 'agente'];
 // pages/Team.jsx y pages/Usuarios.jsx
 export const MENU_SECTIONS = ['propiedades', 'compartidas', 'buscar_match', 'matcheadas', 'socios', 'alertas', 'invitaciones'];

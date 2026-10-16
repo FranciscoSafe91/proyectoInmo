@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
+import { accountTypeLabel } from '../utils.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 function WhatsAppIcon({ size = 14 }) {
@@ -17,6 +18,7 @@ export default function Partners() {
   const [q, setQ] = useState(searchParams.get('q') || '');
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [tipoFiltro, setTipoFiltro] = useState('todos');
 
   // Grupos
   const [grupos, setGrupos] = useState([]);
@@ -119,6 +121,7 @@ export default function Partners() {
   if (error) return <div className="banner banner-error">{error}</div>;
 
   const results = data?.results || [];
+  const filteredResults = tipoFiltro === 'todos' ? results : results.filter(a => a.accountType === tipoFiltro);
   const partnerIds = new Set(data?.partnerIds || []);
   const sentPendingIds = new Set(data?.sentPendingIds || []);
   const receivedPendingIds = new Set(data?.receivedPendingIds || []);
@@ -328,28 +331,36 @@ export default function Partners() {
       </div>
 
       <div className="card">
-        <h3>Buscar inmobiliarias</h3>
-        <form onSubmit={handleSearch}>
+        <h3>Buscar Socios</h3>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8 }}>
           <input
             type="text"
             name="q"
             placeholder="Buscar por nombre o ciudad..."
             value={q}
             onChange={e => setQ(e.target.value)}
+            style={{ flex: 1 }}
           />
+          <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)} aria-label="Filtrar por tipo de socio">
+            <option value="todos">Todos los tipos</option>
+            <option value="inmobiliaria">Inmobiliaria</option>
+            <option value="agente_independiente">Agente independiente</option>
+            <option value="constructora">Constructora</option>
+          </select>
         </form>
         {!data ? (
           <p className="muted">Cargando...</p>
-        ) : results.length === 0 ? (
-          <div className="empty-state">No se encontraron inmobiliarias.</div>
+        ) : filteredResults.length === 0 ? (
+          <div className="empty-state">No se encontraron socios.</div>
         ) : (
           <div className="table-wrap" style={{ marginTop: 14 }}>
             <table>
-              <thead><tr><th>Inmobiliaria</th><th>Ciudad</th><th></th></tr></thead>
+              <thead><tr><th>Nombre de Socio</th><th>Tipo de socio</th><th>Ciudad</th><th></th></tr></thead>
               <tbody>
-                {results.map(a => (
+                {filteredResults.map(a => (
                   <tr key={a.id}>
-                    <td>{a.name} {accountTypeBadge(a)}</td>
+                    <td>{a.name}</td>
+                    <td>{accountTypeLabel(a.accountType)}</td>
                     <td>{a.city || '-'}</td>
                     <td>{actionCell(a)}</td>
                   </tr>

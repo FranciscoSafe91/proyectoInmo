@@ -112,14 +112,19 @@ export default function Register() {
         <select id="accountType" name="accountType" value={values.accountType} onChange={handleChange}>
           <option value="inmobiliaria">Inmobiliaria</option>
           <option value="agente_independiente">Agente independiente</option>
+          <option value="constructora">Constructora</option>
         </select>
 
         <label htmlFor="agencyName">
-          {values.accountType === 'agente_independiente' ? 'Nombre / marca personal *' : 'Nombre de la inmobiliaria *'}
+          {values.accountType === 'agente_independiente' ? 'Nombre / marca personal *'
+            : values.accountType === 'constructora' ? 'Nombre de la constructora *'
+            : 'Nombre de la inmobiliaria *'}
         </label>
         <input
           type="text" id="agencyName" name="agencyName" required
-          placeholder={values.accountType === 'agente_independiente' ? 'Ej: María López Propiedades' : 'Ej: Del Centro Inmobiliaria'}
+          placeholder={values.accountType === 'agente_independiente' ? 'Ej: María López Propiedades'
+            : values.accountType === 'constructora' ? 'Ej: Del Valle Construcciones'
+            : 'Ej: Del Centro Inmobiliaria'}
           value={values.agencyName} onChange={handleChange}
         />
 

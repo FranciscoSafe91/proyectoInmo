@@ -4,6 +4,7 @@ import { api } from '../api.js';
 const ACCOUNT_TYPE_LABELS = {
   inmobiliaria: 'Inmobiliaria',
   agente_independiente: 'Agente independiente',
+  constructora: 'Constructora',
 };
 
 export default function MiCuenta() {
@@ -113,7 +114,7 @@ export default function MiCuenta() {
       <div className="card">
         <h3>Tipo de cuenta</h3>
         <p><span className="badge badge-aceptada">{ACCOUNT_TYPE_LABELS[agency.accountType] || agency.accountType}</span></p>
-        <p className="muted small">Definido al registrarte. Tanto una inmobiliaria como un agente independiente pueden formar sociedades entre sí sin restricciones.</p>
+        <p className="muted small">Definido al registrarte. Inmobiliarias, constructoras y agentes independientes pueden formar sociedades entre sí sin restricciones.</p>
       </div>
     </>
   );

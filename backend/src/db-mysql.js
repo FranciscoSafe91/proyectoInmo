@@ -300,7 +300,7 @@ export async function resetDatabase() {
 export async function createAgency({ name, slug, email, phone, city, accountType }) {
   const agencyId = uuid();
   const apiKey = generateApiKey();
-  const type = accountType === 'agente_independiente' ? 'agente_independiente' : 'inmobiliaria';
+  const type = ['agente_independiente', 'constructora'].includes(accountType) ? accountType : 'inmobiliaria';
   await pool.query(
     `INSERT INTO inmobiliarias (id,name,slug,email,phone,city,account_type,logo_path,brand_color,api_key,created_at)
      VALUES (?,?,?,?,?,?,?,NULL,'#1f6f54',?,NOW())`,

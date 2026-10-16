@@ -41,5 +41,5 @@ export const COSTA_LABELS = { sin_costa: 'Sin costa', laguna: 'Laguna', rio: 'R�
 export const VISTA_LABELS = { sin_vista: 'Sin vista especial', al_rio: 'Al río', al_lago: 'Al lago', al_mar: 'Al mar', a_la_montana: 'A la montaña', al_parque: 'Al parque' };
 export const ORIENTACION_LABELS = { norte: 'Norte', sur: 'Sur', este: 'Este', oeste: 'Oeste', noreste: 'Noreste', noroeste: 'Noroeste', sureste: 'Sureste', suroeste: 'Suroeste' };
 
-const ACCOUNT_TYPE_LABELS = { inmobiliaria: 'Inmobiliaria', agente_independiente: 'Agente independiente' };
+const ACCOUNT_TYPE_LABELS = { inmobiliaria: 'Inmobiliaria', agente_independiente: 'Agente independiente', constructora: 'Constructora' };
 export function accountTypeLabel(type) { return ACCOUNT_TYPE_LABELS[type] || type; }

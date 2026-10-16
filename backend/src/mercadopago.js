@@ -109,9 +109,6 @@ export async function createPreference({ reason, amount, externalReference, back
     external_reference: String(externalReference),
     back_urls: backUrls,
     auto_return: 'approved',
-    payment_methods: {
-      excluded_payment_types: [{ id: 'account_money' }],
-    },
   };
   return request('POST', '/checkout/preferences', body);
 }

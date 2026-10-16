@@ -1664,7 +1664,7 @@ export function registerApiRoutes(router) {
         return json(res, { ok: true, redirectUrl: preference.init_point });
       } catch (e) {
         console.error('[MP] createPreference falló — plan:', JSON.stringify(plan), '— error:', e.message);
-        return err(res, `[DEBUG] ${e.message}`);
+        return err(res, 'Error al iniciar el pago en Mercado Pago.');
       }
     }
     if (!mercadopago.simulatedPaymentsAllowed()) {

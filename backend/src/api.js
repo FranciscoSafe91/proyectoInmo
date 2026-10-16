@@ -1663,7 +1663,7 @@ export function registerApiRoutes(router) {
         audit(req, session, 'suscripcion.checkout_iniciado', { preferenceId: preference.id, amount: plan.priceARS });
         return json(res, { ok: true, redirectUrl: preference.init_point });
       } catch (e) {
-        console.error('[MP] createPreference falló:', e.message);
+        console.error('[MP] createPreference falló — plan:', JSON.stringify(plan), '— error:', e.message);
         return err(res, 'Error al iniciar el pago en Mercado Pago.');
       }
     }

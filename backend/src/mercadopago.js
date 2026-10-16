@@ -105,7 +105,7 @@ function request(method, path, body) {
 // Crea una preferencia de Checkout Pro (pago único) sin dinero en cuenta.
 export async function createPreference({ reason, amount, externalReference, backUrls }) {
   const body = {
-    items: [{ title: reason, quantity: 1, unit_price: Number(amount), currency_id: 'ARS' }],
+    items: [{ title: reason, quantity: 1, unit_price: Math.round(Number(amount)) }],
     external_reference: String(externalReference),
     back_urls: backUrls,
     auto_return: 'approved',

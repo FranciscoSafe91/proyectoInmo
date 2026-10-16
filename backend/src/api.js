@@ -581,6 +581,7 @@ export function registerApiRoutes(router) {
     } catch (e) {
       return uploadError(res, e);
     }
+    v.validateMediaSizes(files);
     v.validateProperty(body, { requireTitle: true });
     if ((body.status || 'publicada') === 'publicada' && !canDo(session, 'publicar_propiedades')) {
       return err(res, 'No tenés permiso para publicar propiedades. Guardala como borrador.', 403);
@@ -640,6 +641,7 @@ export function registerApiRoutes(router) {
     } catch (e) {
       return uploadError(res, e);
     }
+    v.validateMediaSizes(files);
     v.validateProperty(body, { requireTitle: false });
     if (body.status !== undefined && body.status !== property.status && !canDo(session, 'publicar_propiedades')) {
       return err(res, 'No tenés permiso para publicar o despublicar propiedades.', 403);

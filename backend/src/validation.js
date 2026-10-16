@@ -149,6 +149,27 @@ export function validateMenuPermisos(value) {
   (value.acciones || []).forEach(v => oneOf(v, MENU_ACTIONS, 'Acción'));
 }
 
+// Tamaño máximo por archivo. Cloudinary (plan gratuito) rechaza imágenes de más de
+// 10 MB; los videos llegan hasta el tope del parser multipart (80 MB).
+const MEDIA_MAX_BYTES = { image: 10 * 1024 * 1024, video: 80 * 1024 * 1024 };
+
+// Se valida ANTES de guardar la propiedad: si Cloudinary rechaza un archivo después,
+// los datos ya quedaron guardados y el usuario ve un 500 en vez de un mensaje claro.
+export function validateMediaSizes(files) {
+  for (const file of files) {
+    if (!file || !file.buffer) continue;
+    const type = detectMediaType(file.buffer);
+    if (!type || !(type.startsWith('image/') || type.startsWith('video/'))) continue;
+    const kind = type.startsWith('video/') ? 'video' : 'image';
+    const max = MEDIA_MAX_BYTES[kind];
+    if (file.buffer.length > max) {
+      const name = file.filename ? `"${file.filename}"` : (kind === 'video' ? 'El video' : 'La foto');
+      const mb = n => Math.round((n / 1024 / 1024) * 10) / 10;
+      fail(`${name} pesa ${mb(file.buffer.length)} MB y el máximo para ${kind === 'video' ? 'videos' : 'fotos'} es ${mb(max)} MB.`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tipo real de un archivo según sus primeros bytes ("magic bytes"). El
 // Content-Type que manda el navegador lo elige el cliente y no sirve para

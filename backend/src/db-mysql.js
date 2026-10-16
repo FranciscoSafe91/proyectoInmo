@@ -2000,6 +2000,70 @@ export async function addMemberToGrupo(grupoId, partnerId) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Notificaciones: una bandeja por agencia. read_at marca si ya se leyó.
+// ---------------------------------------------------------------------------
+async function ensureNotificacionesTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notificaciones (
+      id VARCHAR(36) PRIMARY KEY,
+      agency_id VARCHAR(36) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      message VARCHAR(500) NOT NULL,
+      related_id VARCHAR(36) DEFAULT NULL,
+      read_at DATETIME DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_notif_agency (agency_id, read_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+}
+
+export async function createNotificacion({ agencyId, type, message, relatedId = null }) {
+  await ensureNotificacionesTable();
+  await pool.query(
+    'INSERT INTO notificaciones (id, agency_id, type, message, related_id) VALUES (?,?,?,?,?)',
+    [uuid(), agencyId, type, String(message).slice(0, 500), relatedId]
+  );
+}
+
+export async function listNotificaciones(agencyId, limit = 50) {
+  await ensureNotificacionesTable();
+  const [rows] = await pool.query(
+    `SELECT id, type, message, related_id, read_at, created_at FROM notificaciones
+     WHERE agency_id=? ORDER BY created_at DESC LIMIT ${Number(limit) || 50}`,
+    [agencyId]
+  );
+  return rows.map(r => ({
+    id: r.id, type: r.type, message: r.message, relatedId: r.related_id,
+    read: Boolean(r.read_at), createdAt: r.created_at,
+  }));
+}
+
+export async function countUnreadNotificaciones(agencyId) {
+  await ensureNotificacionesTable();
+  const [rows] = await pool.query(
+    'SELECT COUNT(*) AS total FROM notificaciones WHERE agency_id=? AND read_at IS NULL',
+    [agencyId]
+  );
+  return Number(rows[0].total) || 0;
+}
+
+export async function markNotificacionRead(id, agencyId) {
+  await ensureNotificacionesTable();
+  await pool.query(
+    'UPDATE notificaciones SET read_at=NOW() WHERE id=? AND agency_id=? AND read_at IS NULL',
+    [id, agencyId]
+  );
+}
+
+export async function markAllNotificacionesRead(agencyId) {
+  await ensureNotificacionesTable();
+  await pool.query(
+    'UPDATE notificaciones SET read_at=NOW() WHERE agency_id=? AND read_at IS NULL',
+    [agencyId]
+  );
+}
+
 export async function removeMemberFromGrupo(grupoId, partnerId) {
   await ensureGruposSociosTable();
   await pool.query('DELETE FROM grupos_socios_members WHERE grupo_id=? AND partner_id=?', [grupoId, partnerId]);

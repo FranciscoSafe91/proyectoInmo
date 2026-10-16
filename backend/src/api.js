@@ -115,6 +115,13 @@ async function sendVerificationEmail(user) {
   return true;
 }
 
+// Avisa a una agencia. Nunca debe hacer fallar la operación que la dispara.
+function notify(agencyId, type, message, relatedId = null) {
+  if (!agencyId) return;
+  db.createNotificacion({ agencyId, type, message, relatedId })
+    .catch(e => console.error(`[notificaciones] No se pudo crear (${type}):`, e.message));
+}
+
 // Sube archivos a Cloudinary y devuelve los datos listos para guardar. No escribe en la base:
 // cada llamador decide dónde y en qué posición se guarda cada medio.
 // items: [{ file, sortOrder }]. Con forcedType ('image' | 'plano') solo se aceptan imágenes.
@@ -762,6 +769,11 @@ export function registerApiRoutes(router) {
     const media = await db.listPropertyMedia(property.id);
     notifyAlertMatches(updated, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(updated).catch(() => {});
+    // Avisar a las agencias con las que está compartida la propiedad
+    db.listSharesForProperty(property.id)
+      .then(shares => shares.filter(s => s.status === 'aceptada').forEach(s =>
+        notify(s.targetAgencyId, 'propiedad_modificada', `${session.agency.name} modificó la propiedad compartida "${updated.title}".`, property.id)))
+      .catch(() => {});
     json(res, { property: updated, media });
   });
 
@@ -805,6 +817,7 @@ export function registerApiRoutes(router) {
         const shareComment = comments[targetAgencyId] ?? null;
         const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId, percentage, percentageVendedor, percentageComprador, wholeBolsa, shareComment });
         if (authorizeWeb) await db.setSharePublishAuthorization(share.id, true);
+        notify(targetAgencyId, 'propiedad_compartida', `${session.agency.name} compartió la propiedad "${property.title}" contigo.`, property.id);
       }
     }));
     json(res, { ok: true });
@@ -1083,6 +1096,7 @@ export function registerApiRoutes(router) {
     const target = await db.getAgency(targetAgencyId);
     if (target && targetAgencyId !== session.agency.id && !await db.findPartnership(session.agency.id, targetAgencyId)) {
       await db.createPartnershipRequest({ fromAgencyId: session.agency.id, toAgencyId: targetAgencyId });
+      notify(targetAgencyId, 'solicitud_recibida', `${session.agency.name} te envió una solicitud de sociedad.`);
     }
     json(res, { ok: true });
   });
@@ -1094,6 +1108,7 @@ export function registerApiRoutes(router) {
     const partnership = await db.getPartnership(req.params.partnershipId);
     if (partnership && partnership.agencyBId === session.agency.id && partnership.status === 'pendiente') {
       await db.respondPartnership(partnership.id, 'aceptada');
+      notify(partnership.agencyAId, 'sociedad_aceptada', `${session.agency.name} aceptó tu solicitud de sociedad.`, partnership.id);
       // Notificar coincidencias entre ambas agencias ahora que son socias
       const agencyA = await db.getAgency(partnership.agencyAId);
       const agencyB = session.agency;
@@ -1126,13 +1141,40 @@ export function registerApiRoutes(router) {
     if (!partnership || partnership.status !== 'aceptada') return err(res, 'Sociedad no encontrada.', 404);
     const belongs = partnership.agencyAId === session.agency.id || partnership.agencyBId === session.agency.id;
     if (!belongs) return err(res, 'No tenés permiso para disolver esta sociedad.', 403);
+    const otherAgencyId = partnership.agencyAId === session.agency.id ? partnership.agencyBId : partnership.agencyAId;
     await db.dissolvePartnership(partnership.id);
+    notify(otherAgencyId, 'sociedad_disuelta', `${session.agency.name} dejó de ser tu socia.`, partnership.id);
     json(res, { ok: true });
   });
 
   // ---------------------------------------------------------------------------
   // Grupos de socios
   // ---------------------------------------------------------------------------
+  // Notificaciones de la agencia (campanita de la barra del panel)
+  router.get('/api/notificaciones', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    const [notificaciones, unread] = await Promise.all([
+      db.listNotificaciones(session.agency.id),
+      db.countUnreadNotificaciones(session.agency.id),
+    ]);
+    json(res, { notificaciones, unread });
+  });
+
+  router.post('/api/notificaciones/leer-todas', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    await db.markAllNotificacionesRead(session.agency.id);
+    json(res, { ok: true });
+  });
+
+  router.post('/api/notificaciones/:id/leer', async (req, res) => {
+    const session = await requireSession(req, res);
+    if (!session) return;
+    await db.markNotificacionRead(req.params.id, session.agency.id);
+    json(res, { ok: true });
+  });
+
   router.get('/api/grupos-socios', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;

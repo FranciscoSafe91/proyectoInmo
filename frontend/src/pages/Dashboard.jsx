@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { api } from '../api.js';
+import NotificationsBell from './NotificationsBell.jsx';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -81,12 +82,13 @@ export default function Dashboard() {
 
   return (
     <>
-      <section className="page-hero dashboard-hero">
+      <section className="page-hero dashboard-hero" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div>
           <span className="section-kicker">Panel de operaciones</span>
           <h1>{agency.name}</h1>
           <p className="subtitle">Resumen de tu inventario, red de socios y oportunidades activas.</p>
         </div>
+        <NotificationsBell />
       </section>
 
       <Link to="/alertas/nueva" className="btn btn-alerta-bar">

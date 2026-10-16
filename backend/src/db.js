@@ -131,3 +131,8 @@ export const createEmprendimientoMedia = (...args) => impl.createEmprendimientoM
 export const listEmprendimientoMedia = (...args) => impl.listEmprendimientoMedia(...args);
 export const setEmprendimientoMediaPositions = (...args) => impl.setEmprendimientoMediaPositions(...args);
 export const setPropertyMediaPositions = (...args) => impl.setPropertyMediaPositions(...args);
+export const createNotificacion = (...args) => impl.createNotificacion(...args);
+export const listNotificaciones = (...args) => impl.listNotificaciones(...args);
+export const countUnreadNotificaciones = (...args) => impl.countUnreadNotificaciones(...args);
+export const markNotificacionRead = (...args) => impl.markNotificacionRead(...args);
+export const markAllNotificacionesRead = (...args) => impl.markAllNotificacionesRead(...args);

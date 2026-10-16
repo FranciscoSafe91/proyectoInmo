@@ -246,6 +246,13 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const pathname = decodeURIComponent(url.pathname);
 
+    // Una sola versión canónica del dominio: www redirige al dominio sin www (301).
+    // Sin esto Google indexa dos copias de cada página.
+    if (req.headers.host === 'www.spyderconnect.com') {
+      res.writeHead(301, { Location: `https://spyderconnect.com${req.url}` });
+      return res.end();
+    }
+
     // CORS pre-flight
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {

@@ -107,6 +107,7 @@ function toProperty(r) {
     aptoCredito: Boolean(r.apto_credito),
     aptoProf: Boolean(r.apto_profesional),
     disposicion: r.disposicion || '',
+    emprendimientoId: r.emprendimiento_id || null,
     categoriaEdificio: r.categoria_edificio || '',
     pisosEdificio: r.pisos_edificio != null ? Number(r.pisos_edificio) : null,
     deptosPorPiso: r.deptos_por_piso != null ? Number(r.deptos_por_piso) : null,
@@ -588,6 +589,7 @@ async function ensurePropertyCharacteristicsColumns() {
     "ALTER TABLE propiedades ADD COLUMN ascensores_principales TINYINT DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN expensas DECIMAL(12,2) DEFAULT NULL",
     "ALTER TABLE propiedades ADD COLUMN expensas_moneda VARCHAR(5) NOT NULL DEFAULT 'ARS'",
+    "ALTER TABLE propiedades ADD COLUMN emprendimiento_id VARCHAR(36) DEFAULT NULL",
   ];
   for (const sql of cols) {
     await pool.query(sql).catch(e => { if (e.errno !== 1060) console.warn('ensurePropertyCharacteristicsColumns:', e.message); });
@@ -669,8 +671,8 @@ export async function createProperty(data) {
        servicios,instalaciones,servicios_edificio,amenities_edificio,
        apto_credito,apto_profesional,disposicion,categoria_edificio,
        pisos_edificio,deptos_por_piso,ascensores_principales,expensas,expensas_moneda,
-       youtube_url,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       youtube_url,emprendimiento_id,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
     [
       propId, data.agencyId, data.createdByUserId || null, data.title, data.description || '',
       data.operation, data.type, Number(data.price) || 0, data.currency || 'USD',
@@ -728,6 +730,7 @@ export async function createProperty(data) {
       data.expensas ? Number(data.expensas) : null,
       data.expensasMoneda || 'ARS',
       data.youtubeUrl || '',
+      data.emprendimientoId || null,
     ]
   );
   return getProperty(propId);
@@ -815,6 +818,7 @@ export async function updateProperty(propertyId, patch) {
     tipoCosta: 'tipo_costa', tipoVista: 'tipo_vista', tipoPendiente: 'tipo_pendiente',
     zonificacion: 'zonificacion',
     youtubeUrl: 'youtube_url',
+    emprendimientoId: 'emprendimiento_id',
     cocherasCubiertas: 'cocheras_cubiertas',
     cocherasDescubiertas: 'cocheras_descubiertas',
     cocherasSemicubiertas: 'cocheras_semicubiertas',

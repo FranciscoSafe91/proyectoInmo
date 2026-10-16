@@ -266,6 +266,8 @@ const EMPTY_PROPERTY = {
   tipoPendiente: '',
   zonificacion: '',
   necesitaReubicacion: false,
+  perteneceEmprendimiento: false,
+  emprendimientoId: '',
   cocherasCubiertas: '',
   cocherasDescubiertas: '',
   cocherasSemicubiertas: '',
@@ -347,6 +349,8 @@ function mapPropertyToForm(p) {
     tipoPendiente: p.tipoPendiente || '',
     zonificacion: p.zonificacion || '',
     necesitaReubicacion: p.necesitaReubicacion || false,
+    perteneceEmprendimiento: Boolean(p.emprendimientoId),
+    emprendimientoId: p.emprendimientoId || '',
     cocherasCubiertas: p.cocherasCubiertas != null ? String(p.cocherasCubiertas) : '',
     cocherasDescubiertas: p.cocherasDescubiertas != null ? String(p.cocherasDescubiertas) : '',
     cocherasSemicubiertas: p.cocherasSemicubiertas != null ? String(p.cocherasSemicubiertas) : '',
@@ -446,6 +450,7 @@ export default function PropertyForm() {
   );
   const [allMedia, setAllMedia] = useState([]);
   const [activePreview, setActivePreview] = useState(0);
+  const [emprendimientos, setEmprendimientos] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -454,6 +459,10 @@ export default function PropertyForm() {
   const dragIndexRef = useRef(null);
 
   const activeMedia = allMedia[activePreview] || null;
+
+  useEffect(() => {
+    api.get('/emprendimientos').then(data => setEmprendimientos(data.emprendimientos || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isDuplicate || !duplicarDe) return;
@@ -483,6 +492,8 @@ export default function PropertyForm() {
       setProperty(v => ({ ...v, zonaGeografica: val, partido: '', localidad: '' }));
     } else if (name === 'partido') {
       setProperty(v => ({ ...v, partido: val, localidad: '' }));
+    } else if (name === 'perteneceEmprendimiento') {
+      setProperty(v => ({ ...v, perteneceEmprendimiento: val, emprendimientoId: val ? v.emprendimientoId : '' }));
     } else {
       setProperty(v => ({ ...v, [name]: val }));
     }
@@ -674,6 +685,27 @@ export default function PropertyForm() {
               <input type="checkbox" id="necesitaReubicacion" name="necesitaReubicacion" checked={property.necesitaReubicacion} onChange={handleChange} />
               <label htmlFor="necesitaReubicacion" style={{ margin: 0, fontWeight: 'normal' }}>El propietario necesita reubicación</label>
             </div>
+
+            <div className="checkbox-row" style={{ marginTop: 10 }}>
+              <input type="checkbox" id="perteneceEmprendimiento" name="perteneceEmprendimiento" checked={property.perteneceEmprendimiento} onChange={handleChange} />
+              <label htmlFor="perteneceEmprendimiento" style={{ margin: 0, fontWeight: 'normal' }}>Pertenece a un emprendimiento</label>
+            </div>
+            {property.perteneceEmprendimiento && (
+              <div style={{ marginTop: 8 }}>
+                <label htmlFor="emprendimientoId">Emprendimiento</label>
+                <select id="emprendimientoId" name="emprendimientoId" value={property.emprendimientoId} onChange={handleChange}>
+                  <option value="">— Seleccioná un emprendimiento —</option>
+                  {emprendimientos.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+                {emprendimientos.length === 0 && (
+                  <p className="muted small" style={{ marginTop: 4 }}>
+                    No tenés emprendimientos cargados. <a href="/emprendimientos/nueva" target="_blank" rel="noopener noreferrer">Crear emprendimiento</a>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="form-panel">

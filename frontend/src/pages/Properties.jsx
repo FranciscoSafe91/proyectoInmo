@@ -42,6 +42,7 @@ const AMBIENTES_OPTIONS = [
 export default function Properties() {
   const { canDo, session } = useAuth();
   const [data, setData] = useState(null);
+  const [emprendimientosMap, setEmprendimientosMap] = useState({});
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +55,11 @@ export default function Properties() {
 
   useEffect(() => {
     api.get('/propiedades').then(setData).catch(e => setError(e.message));
+    api.get('/emprendimientos').then(d => {
+      const map = {};
+      (d.emprendimientos || []).forEach(e => { map[e.id] = e.nombre; });
+      setEmprendimientosMap(map);
+    }).catch(() => {});
   }, []);
 
   if (error) return <div className="banner banner-error">{error}</div>;
@@ -236,6 +242,15 @@ export default function Properties() {
                     <MapPin size={16} aria-hidden="true" />
                     <span>{p.city || 'Sin ciudad'}{p.province ? `, ${p.province}` : ''}</span>
                   </div>
+
+                  {p.emprendimientoId && emprendimientosMap[p.emprendimientoId] && (
+                    <div className="estate-location" style={{ marginTop: 4 }}>
+                      <Building2 size={14} aria-hidden="true" />
+                      <span style={{ fontSize: '0.82em', color: 'var(--app-accent, #2563eb)' }}>
+                        {emprendimientosMap[p.emprendimientoId]}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="estate-meta">
                     <span><BedDouble size={15} aria-hidden="true" />{p.bedrooms || 0} dorm.</span>

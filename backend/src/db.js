@@ -129,3 +129,5 @@ export const createEmprendimiento = (...args) => impl.createEmprendimiento(...ar
 export const updateEmprendimiento = (...args) => impl.updateEmprendimiento(...args);
 export const createEmprendimientoMedia = (...args) => impl.createEmprendimientoMedia(...args);
 export const listEmprendimientoMedia = (...args) => impl.listEmprendimientoMedia(...args);
+export const setEmprendimientoMediaPositions = (...args) => impl.setEmprendimientoMediaPositions(...args);
+export const setPropertyMediaPositions = (...args) => impl.setPropertyMediaPositions(...args);

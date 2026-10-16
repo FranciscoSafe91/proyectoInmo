@@ -756,6 +756,26 @@ export async function createPropertyMedia({ propertyId, url, type, filename, sor
   return toPropertyMedia(rows[0]);
 }
 
+// Reordena los medios de una propiedad según la lista final y borra los que el usuario quitó.
+// positions: [{ id, sortOrder }] con los medios que quedan.
+export async function setPropertyMediaPositions(propertyId, positions) {
+  await ensurePropertyMediaTable();
+  if (positions.length) {
+    await pool.query(
+      'DELETE FROM propiedad_media WHERE property_id=? AND id NOT IN (?)',
+      [propertyId, positions.map(p => p.id)]
+    );
+  } else {
+    await pool.query('DELETE FROM propiedad_media WHERE property_id=?', [propertyId]);
+  }
+  for (const p of positions) {
+    await pool.query(
+      'UPDATE propiedad_media SET sort_order=? WHERE id=? AND property_id=?',
+      [Number(p.sortOrder) || 0, p.id, propertyId]
+    );
+  }
+}
+
 export async function listPropertyMedia(propertyId) {
   await ensurePropertyMediaTable();
   const [rows] = await pool.query(
@@ -2218,12 +2238,31 @@ export async function updateEmprendimiento(id, data) {
   );
 }
 
-export async function createEmprendimientoMedia({ id, emprendimientoId, type, url, publicId }) {
+export async function createEmprendimientoMedia({ id, emprendimientoId, type, url, publicId, sortOrder }) {
   await ensureEmprendimientosTable();
   await pool.query(
-    'INSERT INTO emprendimientos_media (id, emprendimiento_id, type, url, public_id) VALUES (?,?,?,?,?)',
-    [id, emprendimientoId, type, url, publicId || null]
+    'INSERT INTO emprendimientos_media (id, emprendimiento_id, type, url, public_id, sort_order) VALUES (?,?,?,?,?,?)',
+    [id, emprendimientoId, type, url, publicId || null, Number(sortOrder) || 0]
   );
+}
+
+// Igual que setPropertyMediaPositions, pero para fotos ('image') o planos ('plano').
+export async function setEmprendimientoMediaPositions(emprendimientoId, type, positions) {
+  await ensureEmprendimientosTable();
+  if (positions.length) {
+    await pool.query(
+      'DELETE FROM emprendimientos_media WHERE emprendimiento_id=? AND type=? AND id NOT IN (?)',
+      [emprendimientoId, type, positions.map(p => p.id)]
+    );
+  } else {
+    await pool.query('DELETE FROM emprendimientos_media WHERE emprendimiento_id=? AND type=?', [emprendimientoId, type]);
+  }
+  for (const p of positions) {
+    await pool.query(
+      'UPDATE emprendimientos_media SET sort_order=? WHERE id=? AND emprendimiento_id=?',
+      [Number(p.sortOrder) || 0, p.id, emprendimientoId]
+    );
+  }
 }
 
 export async function listEmprendimientoMedia(emprendimientoId) {

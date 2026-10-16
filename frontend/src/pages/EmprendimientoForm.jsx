@@ -270,6 +270,10 @@ export default function EmprendimientoForm() {
       });
       setYoutubeUrl(e.youtubeUrl || '');
       if (e.logoUrl) setLogoPreview(e.logoUrl);
+      // Fotos y planos ya guardados: se muestran y se pueden quitar o reordenar como en propiedades.
+      const media = data.media || [];
+      setFotos(media.filter(m => m.type === 'image').map(m => ({ id: m.id, type: 'image', url: m.url, isNew: false })));
+      setPlanos(media.filter(m => m.type === 'plano').map(m => ({ id: m.id, url: m.url, isNew: false })));
     }).catch(err => setError(err.message));
   }, [id, isEdit]);
 
@@ -377,6 +381,7 @@ export default function EmprendimientoForm() {
       id: `${file.name}-${Date.now()}-${Math.random()}`,
       url: URL.createObjectURL(file),
       filename: file.name,
+      isNew: true,
       file,
     }));
     setPlanos(prev => [...prev, ...items]);
@@ -403,8 +408,15 @@ export default function EmprendimientoForm() {
       });
       formData.append('youtubeUrl', youtubeUrl);
       if (logoFile) formData.append('logo', logoFile);
+      // Orden final: "new:<i>" = archivo nuevo i (foto<i> / plano<i>), cualquier otro valor = foto o plano ya guardado.
+      const buildOrder = items => {
+        let n = 0;
+        return items.map(it => (it.isNew ? `new:${n++}` : it.id));
+      };
+      formData.append('fotoOrder', JSON.stringify(buildOrder(fotos)));
+      formData.append('planoOrder', JSON.stringify(buildOrder(planos)));
       fotos.filter(f => f.isNew).forEach((f, i) => formData.append(`foto${i}`, f.file));
-      planos.filter(p => p.file).forEach((p, i) => formData.append(`plano${i}`, p.file));
+      planos.filter(p => p.isNew).forEach((p, i) => formData.append(`plano${i}`, p.file));
 
       let empId;
       if (isEdit) {

@@ -115,49 +115,117 @@ async function sendVerificationEmail(user) {
   return true;
 }
 
-async function savePropertyMedia(propertyId, files, agencyId, startOrder = 0) {
-  // Se decide por el contenido real del archivo, no por el Content-Type del cliente.
-  const accepted = files
-    .map(file => file && { ...file, detectedType: v.detectMediaType(file.buffer) })
-    .filter(file => file && PROPERTY_MEDIA_CONTENT_TYPES.has(file.detectedType));
-
-  const created = [];
-  for (const [index, file] of accepted.entries()) {
+// Sube archivos a Cloudinary y devuelve los datos listos para guardar. No escribe en la base:
+// cada llamador decide dónde y en qué posición se guarda cada medio.
+// items: [{ file, sortOrder }]. Con forcedType ('image' | 'plano') solo se aceptan imágenes.
+async function uploadMediaItems(items, { folder, agencyId, forcedType = null }) {
+  const uploaded = [];
+  for (const { file, sortOrder } of items) {
+    // Se decide por el contenido real del archivo, no por el Content-Type del cliente.
+    const detectedType = v.detectMediaType(file.buffer);
+    if (!PROPERTY_MEDIA_CONTENT_TYPES.has(detectedType)) continue;
+    if (forcedType && !detectedType.startsWith('image/')) continue;
     // Cuota diaria por agencia: evita usar nuestra cuenta de Cloudinary como hosting gratuito.
     if (security.consume(`media:agency:${agencyId}`, security.LIMITS.mediaPerAgency)) {
       console.warn(`[media] Agencia ${agencyId} superó la cuota diaria de archivos.`);
       break;
     }
-    const mediaType = file.detectedType.startsWith('video/') ? 'video' : 'image';
-    const publicId = `spyderconnect/properties/${propertyId}/${randomUUID()}`;
+    const mediaType = forcedType || (detectedType.startsWith('video/') ? 'video' : 'image');
+    const publicId = `${folder}/${randomUUID()}`;
     const result = await uploadBuffer(file.buffer, {
       public_id: publicId,
-      resource_type: mediaType,
+      resource_type: mediaType === 'video' ? 'video' : 'image',
       // Cloudinary vuelve a validar el formato de su lado.
       allowed_formats: mediaType === 'video' ? ['mp4', 'webm', 'mov'] : ['jpg', 'png', 'webp', 'gif'],
     });
-    created.push(await db.createPropertyMedia({
-      propertyId,
+    uploaded.push({
       url: result.secure_url,
+      publicId: result.public_id,
       type: mediaType,
       filename: file.filename || publicId,
-      sortOrder: startOrder + index,
+      sortOrder,
+    });
+  }
+  return uploaded;
+}
+
+async function savePropertyMedia(propertyId, items, agencyId) {
+  const uploaded = await uploadMediaItems(items, { folder: `spyderconnect/properties/${propertyId}`, agencyId });
+  const created = [];
+  for (const m of uploaded) {
+    created.push(await db.createPropertyMedia({
+      propertyId,
+      url: m.url,
+      type: m.type,
+      filename: m.filename,
+      sortOrder: m.sortOrder,
     }));
   }
   return created;
 }
 
+// El form manda el orden final de los medios como lista de tokens:
+//  - "new:<i>"   archivo nuevo, que viaja en el campo <prefix><i>
+//  - "reuse:<j>" URL j de reuseMediaUrls (duplicar propiedad, sin volver a subirla)
+//  - cualquier otro valor es el id de un medio que ya existe
+function parseMediaOrder(rawOrder, files, prefix, reuseUrls = []) {
+  const plan = { newItems: [], reuse: [], existing: [] };
+  safeParseJson(rawOrder).forEach((token, pos) => {
+    if (typeof token !== 'string') return;
+    if (token.startsWith('new:')) {
+      const file = files.find(f => f.fieldname === `${prefix}${Number(token.slice(4))}`);
+      if (file) plan.newItems.push({ file, sortOrder: pos });
+    } else if (token.startsWith('reuse:')) {
+      const url = reuseUrls[Number(token.slice(6))];
+      if (url) plan.reuse.push({ url, sortOrder: pos });
+    } else {
+      plan.existing.push({ id: token, sortOrder: pos });
+    }
+  });
+  return plan;
+}
+
+// Guarda fotos o planos de un emprendimiento. Si el form mandó el orden, borra los medios
+// que el usuario quitó, reordena los que quedan y sube los nuevos en su posición.
+async function syncEmprendimientoMedia(emprendimientoId, { files, prefix, type, rawOrder, agencyId }) {
+  const hasOrder = rawOrder !== undefined;
+  const plan = parseMediaOrder(rawOrder, files, prefix);
+  if (hasOrder) await db.setEmprendimientoMediaPositions(emprendimientoId, type, plan.existing);
+  let newItems = plan.newItems;
+  if (!hasOrder) {
+    // Compatibilidad con un form sin orden: los archivos nuevos se agregan al final.
+    const current = (await db.listEmprendimientoMedia(emprendimientoId)).filter(m => m.type === type).length;
+    newItems = files
+      .filter(f => f.fieldname && f.fieldname.startsWith(prefix))
+      .map((file, i) => ({ file, sortOrder: current + i }));
+  }
+  const uploaded = await uploadMediaItems(newItems, {
+    folder: `emprendimientos/${emprendimientoId}/${type === 'plano' ? 'planos' : 'fotos'}`,
+    agencyId,
+    forcedType: type === 'plano' ? 'plano' : 'image',
+  });
+  for (const m of uploaded) {
+    await db.createEmprendimientoMedia({
+      id: randomUUID(),
+      emprendimientoId,
+      type,
+      url: m.url,
+      publicId: m.publicId,
+      sortOrder: m.sortOrder,
+    });
+  }
+}
+
 // Duplicar propiedad: reutiliza las fotos ya subidas (mismas URLs, sin volver a subirlas
 // a Cloudinary). Solo copia URLs que pertenezcan a la propiedad origen de la misma agencia.
-async function copyMediaFromProperty(body, targetPropertyId, agencyId) {
-  const sourceId = typeof body.duplicateFromPropertyId === 'string' ? body.duplicateFromPropertyId : '';
-  const urls = safeParseJson(body.reuseMediaUrls).filter(u => typeof u === 'string');
-  if (!sourceId || !urls.length) return [];
+// reuse: [{ url, sortOrder }] con las URLs a copiar en la posición indicada.
+async function copyMediaFromProperty(sourceId, reuse, targetPropertyId, agencyId) {
+  if (!sourceId || !reuse.length) return [];
   const source = await db.getProperty(sourceId);
   if (!source || source.agencyId !== agencyId) return [];
   const available = new Map((await db.listPropertyMedia(sourceId)).map(m => [m.url, m]));
   const created = [];
-  for (const [index, url] of urls.entries()) {
+  for (const { url, sortOrder } of reuse) {
     const m = available.get(url);
     if (!m) continue;
     created.push(await db.createPropertyMedia({
@@ -165,7 +233,7 @@ async function copyMediaFromProperty(body, targetPropertyId, agencyId) {
       url: m.url,
       type: m.type,
       filename: m.filename,
-      sortOrder: index,
+      sortOrder,
     }));
   }
   return created;
@@ -614,8 +682,16 @@ export function registerApiRoutes(router) {
     // Si falla, el handler global loguea el detalle y devuelve un código de error
     // genérico (antes se devolvía el mensaje de MySQL al cliente).
     const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
-    const copied = await copyMediaFromProperty(body, property.id, session.agency.id);
-    const media = [...copied, ...await savePropertyMedia(property.id, files, session.agency.id, copied.length)];
+    const reuseUrls = safeParseJson(body.reuseMediaUrls).filter(u => typeof u === 'string');
+    const sourceId = typeof body.duplicateFromPropertyId === 'string' ? body.duplicateFromPropertyId : '';
+    const plan = parseMediaOrder(body.mediaOrder, files, 'media', reuseUrls);
+    const hasOrder = body.mediaOrder !== undefined;
+    // Sin orden (form viejo): las copias van primero y los archivos nuevos después.
+    const reuse = hasOrder ? plan.reuse : reuseUrls.map((url, i) => ({ url, sortOrder: i }));
+    const newItems = hasOrder ? plan.newItems : files.map((file, i) => ({ file, sortOrder: reuse.length + i }));
+    const copied = await copyMediaFromProperty(sourceId, reuse, property.id, session.agency.id);
+    const created = newItems.length ? await savePropertyMedia(property.id, newItems, session.agency.id) : [];
+    const media = [...copied, ...created];
     notifyAlertMatches(property, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(property).catch(() => {});
     json(res, { property, media }, 201);
@@ -673,9 +749,17 @@ export function registerApiRoutes(router) {
       return err(res, 'No tenés permiso para publicar o despublicar propiedades.', 403);
     }
     const updated = await db.updateProperty(property.id, body);
-    const media = files.length
-      ? await savePropertyMedia(property.id, files, session.agency.id)
-      : await db.listPropertyMedia(property.id);
+    // Orden final de las fotos: se quitan las que no vienen y se reordenan las que quedan.
+    const plan = parseMediaOrder(body.mediaOrder, files, 'media');
+    const hasOrder = body.mediaOrder !== undefined;
+    if (hasOrder) await db.setPropertyMediaPositions(property.id, plan.existing);
+    let newItems = plan.newItems;
+    if (!hasOrder) {
+      const current = (await db.listPropertyMedia(property.id)).length;
+      newItems = files.map((file, i) => ({ file, sortOrder: current + i }));
+    }
+    if (newItems.length) await savePropertyMedia(property.id, newItems, session.agency.id);
+    const media = await db.listPropertyMedia(property.id);
     notifyAlertMatches(updated, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(updated).catch(() => {});
     json(res, { property: updated, media });
@@ -791,9 +875,7 @@ export function registerApiRoutes(router) {
       return err(res, e.message || 'Error al procesar la solicitud.');
     }
     const id = randomUUID();
-    const mediaFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('foto'));
     const logoFile = files.find(f => f.fieldname === 'logo');
-    const planoFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('plano'));
     v.validateMediaSizes(files);
 
     let logoUrl = null;
@@ -846,25 +928,9 @@ export function registerApiRoutes(router) {
       logoUrl,
     });
 
-    // Subir fotos
-    await Promise.all(mediaFiles.map(async (f) => {
-      try {
-        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/fotos/${randomUUID()}`, resource_type: 'image' });
-        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'image', url: up.secure_url, publicId: up.public_id });
-      } catch (e) {
-        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
-      }
-    }));
-
-    // Subir planos
-    await Promise.all(planoFiles.map(async (f) => {
-      try {
-        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/planos/${randomUUID()}`, resource_type: 'image' });
-        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'plano', url: up.secure_url, publicId: up.public_id });
-      } catch (e) {
-        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
-      }
-    }));
+    // Fotos y planos, en el orden que dejó el usuario
+    await syncEmprendimientoMedia(id, { files, prefix: 'foto', type: 'image', rawOrder: fields.fotoOrder, agencyId: session.agency.id });
+    await syncEmprendimientoMedia(id, { files, prefix: 'plano', type: 'plano', rawOrder: fields.planoOrder, agencyId: session.agency.id });
 
     json(res, { emprendimiento }, 201);
   });
@@ -892,9 +958,7 @@ export function registerApiRoutes(router) {
       return err(res, e.message || 'Error al procesar la solicitud.');
     }
     const id = req.params.id;
-    const mediaFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('foto'));
     const logoFile = files.find(f => f.fieldname === 'logo');
-    const planoFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('plano'));
     v.validateMediaSizes(files);
 
     let logoUrl = existing.logoUrl;
@@ -945,23 +1009,9 @@ export function registerApiRoutes(router) {
       logoUrl,
     });
 
-    await Promise.all(mediaFiles.map(async (f) => {
-      try {
-        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/fotos/${randomUUID()}`, resource_type: 'image' });
-        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'image', url: up.secure_url, publicId: up.public_id });
-      } catch (e) {
-        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
-      }
-    }));
-
-    await Promise.all(planoFiles.map(async (f) => {
-      try {
-        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/planos/${randomUUID()}`, resource_type: 'image' });
-        await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'plano', url: up.secure_url, publicId: up.public_id });
-      } catch (e) {
-        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
-      }
-    }));
+    // Fotos y planos: se quitan los que el usuario borró, se reordena y se suben los nuevos
+    await syncEmprendimientoMedia(id, { files, prefix: 'foto', type: 'image', rawOrder: fields.fotoOrder, agencyId: session.agency.id });
+    await syncEmprendimientoMedia(id, { files, prefix: 'plano', type: 'plano', rawOrder: fields.planoOrder, agencyId: session.agency.id });
 
     json(res, { ok: true });
   });

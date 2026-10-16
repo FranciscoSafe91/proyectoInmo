@@ -567,7 +567,8 @@ export default function PropertyForm() {
       isNew: true,
       file,
     }));
-    setAllMedia(prev => [...prev.filter(m => !m.isNew), ...newItems]);
+    // Se suman a las que ya estaban (fotos existentes y nuevas sin guardar).
+    setAllMedia(prev => [...prev, ...newItems]);
     setActivePreview(0);
   }
 
@@ -617,9 +618,13 @@ export default function PropertyForm() {
     setSubmitting(true);
     try {
       const orderedFiles = allMedia.filter(m => m.isNew).map(m => m.file);
+      // Orden final de las fotos: "new:<i>" = archivo nuevo i, "reuse:<j>" = copia de una existente (duplicar), id = foto existente.
+      let newIdx = 0;
+      let reuseIdx = 0;
+      const mediaOrder = allMedia.map(m => (m.isNew ? `new:${newIdx++}` : isDuplicate ? `reuse:${reuseIdx++}` : m.id));
       const payload = isDuplicate
-        ? { ...property, duplicateFromPropertyId: duplicarDe, reuseMediaUrls: allMedia.filter(m => !m.isNew).map(m => m.url) }
-        : property;
+        ? { ...property, duplicateFromPropertyId: duplicarDe, reuseMediaUrls: allMedia.filter(m => !m.isNew).map(m => m.url), mediaOrder }
+        : { ...property, mediaOrder };
       const body = orderedFiles.length ? buildPropertyFormData(payload, orderedFiles) : payload;
       let propertyId;
       if (isEdit) {

@@ -43,17 +43,15 @@ import Security from './pages/Security.jsx';
 function LoadingScreen() {
   return (
     <div style={{
-      position: 'fixed', inset: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg, #fff)',
-      zIndex: 9999,
+      minHeight: '60vh',
     }}>
       <img
         src="/logo.png"
         alt="SpiderConect"
         style={{
-          width: 260,
-          maxWidth: '70vw',
+          width: 220,
+          maxWidth: '55vw',
           animation: 'sc-pulse 1.6s ease-in-out infinite',
         }}
       />

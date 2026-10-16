@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Building2, MapPin, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowRight, Building2, Home, MapPin, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { api } from '../api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -36,7 +36,7 @@ export default function Emprendimientos() {
   if (error) return <div className="banner banner-error">{error}</div>;
   if (!data) return <p className="muted">Cargando...</p>;
 
-  const { emprendimientos, coverMediaByEmprendimiento = {} } = data;
+  const { emprendimientos, coverMediaByEmprendimiento = {}, propiedadesByEmprendimiento = {} } = data;
 
   const zonas = [...new Set(
     emprendimientos.flatMap(e => [e.ciudad, e.provincia].filter(Boolean))
@@ -169,6 +169,15 @@ export default function Emprendimientos() {
                   <div className="estate-location">
                     <MapPin size={16} aria-hidden="true" />
                     <span>{e.ciudad || 'Sin ciudad'}{e.provincia ? `, ${e.provincia}` : ''}</span>
+                  </div>
+
+                  <div className="estate-meta">
+                    <span>
+                      <Home size={15} aria-hidden="true" />
+                      {propiedadesByEmprendimiento[e.id]
+                        ? `${propiedadesByEmprendimiento[e.id]} propiedad${propiedadesByEmprendimiento[e.id] === 1 ? '' : 'es'}`
+                        : 'Sin propiedades'}
+                    </span>
                   </div>
 
                   <div className="estate-card-actions">

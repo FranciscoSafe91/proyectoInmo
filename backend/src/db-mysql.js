@@ -2116,6 +2116,19 @@ export async function listEmprendimientosByAgency(agencyId) {
   return rows.map(toEmprendimiento);
 }
 
+export async function countPropertiesByEmprendimiento(agencyId) {
+  const [rows] = await pool.query(
+    `SELECT emprendimiento_id, COUNT(*) AS total
+     FROM propiedades
+     WHERE agency_id=? AND emprendimiento_id IS NOT NULL
+     GROUP BY emprendimiento_id`,
+    [agencyId]
+  ).catch(() => [[]]);
+  const map = {};
+  rows.forEach(r => { map[r.emprendimiento_id] = Number(r.total); });
+  return map;
+}
+
 export async function getEmprendimiento(id) {
   await ensureEmprendimientosTable();
   const [rows] = await pool.query('SELECT * FROM emprendimientos WHERE id=? LIMIT 1', [id]);

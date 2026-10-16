@@ -746,7 +746,8 @@ export function registerApiRoutes(router) {
     await Promise.all(emprendimientos.map(async e => {
       coverMediaByEmprendimiento[e.id] = (await db.listEmprendimientoMedia(e.id))[0] || null;
     }));
-    json(res, { emprendimientos, coverMediaByEmprendimiento });
+    const propiedadesByEmprendimiento = await db.countPropertiesByEmprendimiento(session.agency.id);
+    json(res, { emprendimientos, coverMediaByEmprendimiento, propiedadesByEmprendimiento });
   });
 
   router.post('/api/emprendimientos', async (req, res) => {

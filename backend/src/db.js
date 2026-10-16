@@ -123,6 +123,7 @@ export const deleteGrupoSocios = (...args) => impl.deleteGrupoSocios(...args);
 export const addMemberToGrupo = (...args) => impl.addMemberToGrupo(...args);
 export const removeMemberFromGrupo = (...args) => impl.removeMemberFromGrupo(...args);
 export const listEmprendimientosByAgency = (...args) => impl.listEmprendimientosByAgency(...args);
+export const countPropertiesByEmprendimiento = (...args) => impl.countPropertiesByEmprendimiento(...args);
 export const getEmprendimiento = (...args) => impl.getEmprendimiento(...args);
 export const createEmprendimiento = (...args) => impl.createEmprendimiento(...args);
 export const updateEmprendimiento = (...args) => impl.updateEmprendimiento(...args);

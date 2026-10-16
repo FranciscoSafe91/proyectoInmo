@@ -47,7 +47,7 @@ function LoadingScreen() {
       minHeight: '60vh',
     }}>
       <img
-        src="/logo.png"
+        src="/logo.webp"
         alt="SpiderConect"
         style={{
           width: 220,

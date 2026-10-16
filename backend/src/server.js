@@ -176,7 +176,7 @@ const CSP = [
   "img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://img.youtube.com https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://*.mlstatic.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com",
   "media-src 'self' blob: https://res.cloudinary.com",
   "connect-src 'self' https://nominatim.openstreetmap.org https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://*.mlstatic.com",
-  "frame-src https://www.youtube.com https://*.mercadopago.com https://*.mercadolibre.com https://www.mercadolibre.com",
+  "frame-src https://www.youtube.com https://www.openstreetmap.org https://*.mercadopago.com https://*.mercadolibre.com https://www.mercadolibre.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://*.mercadopago.com",

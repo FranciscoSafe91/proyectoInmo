@@ -793,13 +793,16 @@ export function registerApiRoutes(router) {
     const mediaFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('foto'));
     const logoFile = files.find(f => f.fieldname === 'logo');
     const planoFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('plano'));
+    v.validateMediaSizes(files);
 
     let logoUrl = null;
     if (logoFile) {
       try {
-        const up = await uploadBuffer(logoFile.buffer, logoFile.mimetype, `emprendimientos/${id}/logo`, { resource_type: 'image' });
+        const up = await uploadBuffer(logoFile.buffer, { public_id: `emprendimientos/${id}/logo`, resource_type: 'image' });
         logoUrl = up.secure_url;
-      } catch {}
+      } catch (e) {
+        console.error(`[emprendimiento ${id}] no se pudo subir el logo:`, e.message);
+      }
     }
 
     const emprendimiento = await db.createEmprendimiento({
@@ -845,17 +848,21 @@ export function registerApiRoutes(router) {
     // Subir fotos
     await Promise.all(mediaFiles.map(async (f) => {
       try {
-        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/fotos/${randomUUID()}`, { resource_type: 'image' });
+        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/fotos/${randomUUID()}`, resource_type: 'image' });
         await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'image', url: up.secure_url, publicId: up.public_id });
-      } catch {}
+      } catch (e) {
+        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
+      }
     }));
 
     // Subir planos
     await Promise.all(planoFiles.map(async (f) => {
       try {
-        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/planos/${randomUUID()}`, { resource_type: 'image' });
+        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/planos/${randomUUID()}`, resource_type: 'image' });
         await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'plano', url: up.secure_url, publicId: up.public_id });
-      } catch {}
+      } catch (e) {
+        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
+      }
     }));
 
     json(res, { emprendimiento }, 201);
@@ -887,13 +894,16 @@ export function registerApiRoutes(router) {
     const mediaFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('foto'));
     const logoFile = files.find(f => f.fieldname === 'logo');
     const planoFiles = files.filter(f => f.fieldname && f.fieldname.startsWith('plano'));
+    v.validateMediaSizes(files);
 
     let logoUrl = existing.logoUrl;
     if (logoFile) {
       try {
-        const up = await uploadBuffer(logoFile.buffer, logoFile.mimetype, `emprendimientos/${id}/logo`, { resource_type: 'image' });
+        const up = await uploadBuffer(logoFile.buffer, { public_id: `emprendimientos/${id}/logo`, resource_type: 'image' });
         logoUrl = up.secure_url;
-      } catch {}
+      } catch (e) {
+        console.error(`[emprendimiento ${id}] no se pudo subir el logo:`, e.message);
+      }
     }
 
     await db.updateEmprendimiento(id, {
@@ -936,16 +946,20 @@ export function registerApiRoutes(router) {
 
     await Promise.all(mediaFiles.map(async (f) => {
       try {
-        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/fotos/${randomUUID()}`, { resource_type: 'image' });
+        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/fotos/${randomUUID()}`, resource_type: 'image' });
         await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'image', url: up.secure_url, publicId: up.public_id });
-      } catch {}
+      } catch (e) {
+        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
+      }
     }));
 
     await Promise.all(planoFiles.map(async (f) => {
       try {
-        const up = await uploadBuffer(f.buffer, f.mimetype, `emprendimientos/${id}/planos/${randomUUID()}`, { resource_type: 'image' });
+        const up = await uploadBuffer(f.buffer, { public_id: `emprendimientos/${id}/planos/${randomUUID()}`, resource_type: 'image' });
         await db.createEmprendimientoMedia({ id: randomUUID(), emprendimientoId: id, type: 'plano', url: up.secure_url, publicId: up.public_id });
-      } catch {}
+      } catch (e) {
+        console.error(`[emprendimiento ${id}] no se pudo subir un archivo:`, e.message);
+      }
     }));
 
     json(res, { ok: true });

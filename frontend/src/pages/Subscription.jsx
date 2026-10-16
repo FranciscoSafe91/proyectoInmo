@@ -113,6 +113,8 @@ export default function Subscription() {
   const [changingCard, setChangingCard] = useState(false);
   const [notice, setNotice] = useState('');
   const [resending, setResending] = useState(false);
+  const [mpEmail, setMpEmail] = useState('');
+  const [showMpForm, setShowMpForm] = useState(false);
 
   const reload = () => api.get('/suscripcion').then(setData).catch(e => setError(e.message));
 
@@ -144,10 +146,17 @@ export default function Subscription() {
     await reload();
   };
 
+  const handlePayClick = () => {
+    setError('');
+    setMpEmail(session?.user?.email || '');
+    setShowMpForm(true);
+  };
+
   const handlePay = async () => {
     setPaying(true);
+    setShowMpForm(false);
     try {
-      const res = await api.post('/suscripcion/pagar');
+      const res = await api.post('/suscripcion/pagar', { mpEmail });
       if (res.redirectUrl) {
         window.location.href = res.redirectUrl;
       } else {
@@ -156,6 +165,7 @@ export default function Subscription() {
       }
     } catch (e) {
       setError(e.message);
+      setShowMpForm(true);
     } finally {
       setPaying(false);
     }
@@ -200,18 +210,42 @@ export default function Subscription() {
         </div>
         {status !== 'activa' && (
           <>
-            <div className="btn-row">
-              <button className="btn" onClick={handlePay} disabled={paying || !paymentsAvailable}>
-                {paying ? 'Procesando...' : status === 'trial' ? 'Activar suscripción ahora' : 'Pagar y renovar'}
-              </button>
-            </div>
-            <p className="small muted" style={{ marginTop: 8 }}>
-              {mpConfigured
-                ? 'Vas a ser redirigido a Mercado Pago para completar el pago.'
-                : paymentsSimulated
-                  ? '⚠️ Modo de pago simulado (solo desarrollo): este botón registra un pago aprobado sin cobrar.'
-                  : 'Los pagos online todavía no están disponibles. Contactá a soporte para activar tu suscripción.'}
-            </p>
+            {showMpForm && mpConfigured ? (
+              <div style={{ marginTop: 16 }}>
+                <label htmlFor="mp-email"><strong>¿Cuál es tu email en Mercado Pago?</strong></label>
+                <p className="small muted" style={{ marginBottom: 8 }}>
+                  Es el email con el que iniciás sesión en mercadopago.com. Se usa para vincular el cobro automático mensual a tu cuenta.
+                </p>
+                <input
+                  id="mp-email" type="email" autoComplete="email"
+                  placeholder="ejemplo@gmail.com"
+                  value={mpEmail} onChange={e => setMpEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handlePay()}
+                  style={{ marginBottom: 10 }}
+                />
+                <div className="btn-row">
+                  <button className="btn" onClick={handlePay} disabled={paying || !mpEmail.trim()}>
+                    {paying ? 'Procesando...' : 'Continuar a Mercado Pago'}
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setShowMpForm(false)}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="btn-row">
+                  <button className="btn" onClick={mpConfigured ? handlePayClick : handlePay} disabled={paying || !paymentsAvailable}>
+                    {paying ? 'Procesando...' : status === 'trial' ? 'Activar suscripción ahora' : 'Pagar y renovar'}
+                  </button>
+                </div>
+                <p className="small muted" style={{ marginTop: 8 }}>
+                  {mpConfigured
+                    ? 'Vas a ser redirigido a Mercado Pago para completar el pago.'
+                    : paymentsSimulated
+                      ? '⚠️ Modo de pago simulado (solo desarrollo): este botón registra un pago aprobado sin cobrar.'
+                      : 'Los pagos online todavía no están disponibles. Contactá a soporte para activar tu suscripción.'}
+                </p>
+              </>
+            )}
           </>
         )}
       </div>

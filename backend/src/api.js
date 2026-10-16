@@ -1070,7 +1070,9 @@ export function registerApiRoutes(router) {
     const session = await requireSession(req, res);
     if (!session) return;
     const grupos = await db.listGruposSocios(session.agency.id);
-    json(res, { grupos });
+    // Solo se muestran miembros que siguen siendo socios (oculta datos viejos de sociedades ya disueltas).
+    const partners = new Set(await db.listPartnersOfAgency(session.agency.id));
+    json(res, { grupos: grupos.map(g => ({ ...g, members: g.members.filter(id => partners.has(id)) })) });
   });
 
   router.post('/api/grupos-socios', async (req, res) => {

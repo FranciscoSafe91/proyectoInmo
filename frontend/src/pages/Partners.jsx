@@ -339,9 +339,14 @@ export default function Partners() {
             placeholder="Buscar por nombre o ciudad..."
             value={q}
             onChange={e => setQ(e.target.value)}
-            style={{ flex: 1 }}
+            style={{ flex: '1 1 0', minWidth: 0 }}
           />
-          <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)} aria-label="Filtrar por tipo de socio">
+          <select
+            value={tipoFiltro}
+            onChange={e => setTipoFiltro(e.target.value)}
+            aria-label="Filtrar por tipo de socio"
+            style={{ flex: '1 1 0', minWidth: 0 }}
+          >
             <option value="todos">Todos los tipos</option>
             <option value="inmobiliaria">Inmobiliaria</option>
             <option value="agente_independiente">Agente independiente</option>

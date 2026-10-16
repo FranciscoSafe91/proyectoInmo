@@ -961,6 +961,14 @@ export async function dissolvePartnership(partnershipId) {
         OR (owner_agency_id=? AND alert_agency_id=?)`,
     [agencyAId, agencyBId, agencyBId, agencyAId]
   );
+  // Al dejar de ser socios, cada uno sale de los grupos del otro.
+  await ensureGruposSociosTable();
+  await pool.query(
+    `DELETE m FROM grupos_socios_members m
+     JOIN grupos_socios g ON g.id = m.grupo_id
+     WHERE (g.agency_id=? AND m.partner_id=?) OR (g.agency_id=? AND m.partner_id=?)`,
+    [agencyAId, agencyBId, agencyBId, agencyAId]
+  );
   await pool.query('DELETE FROM sociedades WHERE id=?', [partnershipId]);
 }
 

@@ -150,7 +150,7 @@ const INSTALACIONES_EMP = [
   'Cancha de tenis','Cerco perimetral','Circuito cerrado de TV','Cisterna',
   'Gimnasio','Grupo electrógeno','Hidromasaje','Jacuzzi','Jardín',
   'Juegos para chicos','Lavadero','Microcine','Parrilla','Pileta',
-  'Quincho','Quincho techado','Restaurant','Sauna','Solarium',
+  'Preinstalación de aire acondicionado','Quincho','Quincho techado','Restaurant','Sauna','Solarium',
   'SUM','Spa','Terraza','Vigilancia','Área comercial',
 ];
 

@@ -110,7 +110,7 @@ const INSTALACIONES = [
   'Cancha de tenis','Cocina equipada','Dependencia','Energía solar','Extractor aire',
   'Gimnasio','Grupo electrógeno','Hidromasaje','Hogar a leña','Jacuzzi','Jardín',
   'Jardín delantero','Jardín trasero','Juegos para chicos','Lavadero','Microcine',
-  'Parque','Parrilla','Patio','Pileta','Pileta climatizada','Piso radiante','Quincho techado','Radiadores',
+  'Parque','Parrilla','Patio','Pileta','Pileta climatizada','Piso radiante','Preinstalación de aire acondicionado','Quincho techado','Radiadores',
   'Reciclado','Sala de juegos','Salón de fiestas','Sauna','Solarium','Spa','Termotanque',
   'Terraza','Toilette','Vigilancia','Vivienda multifamiliar',
 ];

@@ -130,6 +130,14 @@ function toJsonField(val) {
   return null;
 }
 
+// El form manda '' para los campos vacíos; MySQL en modo estricto rechaza ''
+// en columnas numéricas, así que se normaliza a NULL (o 0 si la columna es NOT NULL).
+function toNullableNumber(val) {
+  if (val === '' || val === undefined || val === null) return null;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : null;
+}
+
 function toPropertyMedia(r) {
   if (!r) return null;
   return {
@@ -854,8 +862,21 @@ export async function updateProperty(propertyId, patch) {
     fields.push('necesita_reubicacion=?');
     vals.push(patch.necesitaReubicacion === 'true' || patch.necesitaReubicacion === true ? 1 : 0);
   }
+  // Mismas conversiones que createProperty: '' no entra en columnas numéricas.
+  const zeroDefault = new Set(['price', 'bedrooms', 'bathrooms', 'areaM2']); // columnas NOT NULL
+  const nullableNumeric = new Set([
+    'latitud', 'longitud', 'anchoTerreno', 'largoTerreno', 'superficieTerreno', 'superficieTotal',
+    'superficieCubierta', 'superficieDescubierta', 'superficieSemicubierta', 'fondoLibre', 'antiguedad',
+    'cocherasCubiertas', 'cocherasDescubiertas', 'cocherasSemicubiertas',
+    'pisosEdificio', 'deptosPorPiso', 'ascensoresPrincipales', 'expensas',
+  ]);
   for (const [key, col] of Object.entries(map)) {
-    if (patch[key] !== undefined) { fields.push(`${col}=?`); vals.push(patch[key]); }
+    if (patch[key] === undefined) continue;
+    let value = patch[key];
+    if (zeroDefault.has(key)) value = Number(value) || 0;
+    else if (nullableNumeric.has(key)) value = toNullableNumber(value);
+    else if (key === 'emprendimientoId') value = value || null;
+    fields.push(`${col}=?`); vals.push(value);
   }
   if (patch.barrioCerrado !== undefined) {
     fields.push('barrio_cerrado=?');

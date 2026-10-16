@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import logoImg from '../logo.png';
 import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Home, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
@@ -50,7 +49,7 @@ function LoadingScreen() {
       zIndex: 9999,
     }}>
       <img
-        src={logoImg}
+        src="/logo.png"
         alt="SpiderConect"
         style={{
           width: 260,

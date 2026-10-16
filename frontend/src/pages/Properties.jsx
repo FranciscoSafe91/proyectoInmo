@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BedDouble, Building2, MapPin, Plus, Ruler, Search, Share2, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowRight, BedDouble, Building2, Check, MapPin, Plus, Ruler, Search, Share2, SlidersHorizontal, X } from 'lucide-react';
 
 function WhatsAppIcon({ size = 14 }) {
   return (
@@ -52,6 +52,8 @@ export default function Properties() {
   const [filterAmbientes, setFilterAmbientes] = useState('');
   const [filterPrecioMin, setFilterPrecioMin] = useState('');
   const [filterPrecioMax, setFilterPrecioMax] = useState('');
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [seleccionadas, setSeleccionadas] = useState(new Set());
 
   useEffect(() => {
     api.get('/propiedades').then(setData).catch(e => setError(e.message));
@@ -111,6 +113,38 @@ export default function Properties() {
     return true;
   });
 
+  const publicadas = filteredProperties.filter(p => p.status === 'publicada');
+
+  function toggleSeleccion(id) {
+    setSeleccionadas(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function seleccionarTodas() {
+    setSeleccionadas(new Set(publicadas.map(p => p.id)));
+  }
+
+  function cancelarSeleccion() {
+    setModoSeleccion(false);
+    setSeleccionadas(new Set());
+  }
+
+  function compartirSeleccionadas() {
+    const via = session?.agency?.id ? `?via=${session.agency.id}` : '';
+    const props = publicadas.filter(p => seleccionadas.has(p.id));
+    const lines = props.map(p =>
+      `• ${p.title || typeLabel(p.type)}${p.city ? ` — ${p.city}` : ''}: ${window.location.origin}/public/propiedades/${p.id}${via}`
+    );
+    const text = `Mirá estas propiedades:\n\n${lines.join('\n')}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  const todasSeleccionadas = publicadas.length > 0 && publicadas.every(p => seleccionadas.has(p.id));
+
   return (
     <>
       <section className="page-hero compact-hero">
@@ -119,11 +153,18 @@ export default function Properties() {
           <h1>Mis propiedades</h1>
           <p className="subtitle">Gestioná tus publicaciones, su estado y con qué socios están circulando.</p>
         </div>
-        {canDo('crear_propiedades') && (
-          <Link className="btn" to="/propiedades/nueva">
-            <Plus size={17} aria-hidden="true" /> Nueva propiedad
-          </Link>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {!modoSeleccion && publicadas.length > 0 && (
+            <button className="btn btn-secondary" onClick={() => setModoSeleccion(true)}>
+              <Share2 size={16} aria-hidden="true" /> Compartir
+            </button>
+          )}
+          {canDo('crear_propiedades') && (
+            <Link className="btn" to="/propiedades/nueva">
+              <Plus size={17} aria-hidden="true" /> Nueva propiedad
+            </Link>
+          )}
+        </div>
       </section>
 
       <form className="search-bar" onSubmit={handleSearch}>
@@ -214,26 +255,54 @@ export default function Properties() {
           </Link>
         </div>
       ) : (
-        <div className="estate-grid">
+        <div className={`estate-grid${modoSeleccion ? ' estate-grid--seleccion' : ''}`}>
           {filteredProperties.map(p => {
             const shares = sharesByProperty[p.id] || [];
             const sharedCount = shares.filter(s => s.status !== 'rechazada').length;
             const cover = coverMediaByProperty[p.id];
+            const isPublicada = p.status === 'publicada';
+            const isSelected = seleccionadas.has(p.id);
+
             return (
-              <article key={p.id} className="estate-card">
-                <Link className="estate-card-media" to={`/propiedades/${p.id}`} aria-label={`Ver ${p.title}`}>
-                  <PropertyCover cover={cover} property={p} />
-                  <div className="estate-card-badges">
-                    <StatusBadge status={p.status} />
-                    <span className="badge badge-borrador">{operationLabel(p.operation)}</span>
+              <article
+                key={p.id}
+                className={`estate-card${modoSeleccion && isPublicada ? ' estate-card--selectable' : ''}${isSelected ? ' estate-card--selected' : ''}`}
+                onClick={modoSeleccion && isPublicada ? () => toggleSeleccion(p.id) : undefined}
+              >
+                {modoSeleccion && isPublicada && (
+                  <div className={`estate-card-check${isSelected ? ' estate-card-check--active' : ''}`}>
+                    {isSelected && <Check size={13} strokeWidth={3} />}
                   </div>
-                </Link>
+                )}
+
+                {modoSeleccion ? (
+                  <div className="estate-card-media">
+                    <PropertyCover cover={cover} property={p} />
+                    <div className="estate-card-badges">
+                      <StatusBadge status={p.status} />
+                      <span className="badge badge-borrador">{operationLabel(p.operation)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <Link className="estate-card-media" to={`/propiedades/${p.id}`} aria-label={`Ver ${p.title}`}>
+                    <PropertyCover cover={cover} property={p} />
+                    <div className="estate-card-badges">
+                      <StatusBadge status={p.status} />
+                      <span className="badge badge-borrador">{operationLabel(p.operation)}</span>
+                    </div>
+                  </Link>
+                )}
 
                 <div className="estate-card-body">
                   <div className="estate-card-top">
                     <div>
                       <span>{typeLabel(p.type)}</span>
-                      <h2><Link to={`/propiedades/${p.id}`}>{p.title}</Link></h2>
+                      <h2>
+                        {modoSeleccion
+                          ? p.title
+                          : <Link to={`/propiedades/${p.id}`}>{p.title}</Link>
+                        }
+                      </h2>
                     </div>
                     <strong>{money(p.price, p.currency)}</strong>
                   </div>
@@ -258,24 +327,55 @@ export default function Properties() {
                     <span><Share2 size={15} aria-hidden="true" />{sharedCount > 0 ? `${sharedCount} socio${sharedCount === 1 ? '' : 's'}` : 'Sin compartir'}</span>
                   </div>
 
-                  <div className="estate-card-actions">
-                    <Link to={`/propiedades/${p.id}`} className="btn btn-secondary btn-small">
-                      Gestionar <ArrowRight size={15} aria-hidden="true" />
-                    </Link>
-                    <a
-                      className="btn btn-small"
-                      style={{ background: '#25D366', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                      href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${p.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <WhatsAppIcon size={14} /> Enviar por WhatsApp
-                    </a>
-                  </div>
+                  {!modoSeleccion && (
+                    <div className="estate-card-actions">
+                      <Link to={`/propiedades/${p.id}`} className="btn btn-secondary btn-small">
+                        Gestionar <ArrowRight size={15} aria-hidden="true" />
+                      </Link>
+                      <a
+                        className="btn btn-small"
+                        style={{ background: '#25D366', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        href={`https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad: ${window.location.origin}/public/propiedades/${p.id}${session?.agency?.id ? `?via=${session.agency.id}` : ''}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <WhatsAppIcon size={14} /> Enviar por WhatsApp
+                      </a>
+                    </div>
+                  )}
                 </div>
               </article>
             );
           })}
+        </div>
+      )}
+
+      {modoSeleccion && (
+        <div className="share-bar">
+          <span className="share-bar-count">
+            {seleccionadas.size === 0
+              ? 'Seleccioná las propiedades a compartir'
+              : `${seleccionadas.size} propiedad${seleccionadas.size === 1 ? '' : 'es'} seleccionada${seleccionadas.size === 1 ? '' : 's'}`
+            }
+          </span>
+          <div className="share-bar-actions">
+            {!todasSeleccionadas && (
+              <button className="btn btn-secondary btn-small" onClick={seleccionarTodas}>
+                Seleccionar todas
+              </button>
+            )}
+            <button
+              className="btn btn-small"
+              style={{ background: seleccionadas.size === 0 ? undefined : '#25D366', color: seleccionadas.size === 0 ? undefined : '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              disabled={seleccionadas.size === 0}
+              onClick={compartirSeleccionadas}
+            >
+              <WhatsAppIcon size={14} /> Compartir por WhatsApp
+            </button>
+            <button className="btn btn-secondary btn-small" onClick={cancelarSeleccion}>
+              <X size={14} aria-hidden="true" /> Cancelar
+            </button>
+          </div>
         </div>
       )}
     </>

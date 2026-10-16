@@ -2632,6 +2632,7 @@
   }
 
   .estate-card {
+    position: relative;
     overflow: hidden;
     border: 1px solid var(--app-border);
     border-radius: 8px;
@@ -2775,6 +2776,76 @@
     justify-content: flex-end;
     padding-top: 4px;
     margin-top: auto;
+  }
+
+  /* Selección múltiple */
+  .estate-card--selectable {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .estate-card--selected {
+    border-color: var(--app-green, #22c55e);
+    box-shadow: 0 0 0 2px var(--app-green, #22c55e), 0 14px 36px rgba(16, 24, 32, 0.07);
+  }
+
+  .estate-card-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .estate-card-check--active {
+    background: var(--app-green, #22c55e);
+    border-color: var(--app-green, #22c55e);
+    color: #fff;
+  }
+
+  .estate-grid--seleccion .estate-card:not(.estate-card--selectable) {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Barra flotante de compartir */
+  .share-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--app-surface, #fff);
+    border: 1px solid var(--app-border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    white-space: nowrap;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .share-bar-count {
+    font-size: 0.9rem;
+    color: var(--app-muted);
+    font-weight: 500;
+  }
+
+  .share-bar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
   }
 
   .empty-state-card {

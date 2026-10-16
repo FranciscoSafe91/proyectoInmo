@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BedDouble, Building2, Check, MapPin, Plus, Ruler, Search, Share2, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowRight, BedDouble, Building2, Check, Loader2, MapPin, Plus, Ruler, Search, Share2, SlidersHorizontal, Users, X } from 'lucide-react';
 
 function WhatsAppIcon({ size = 14 }) {
   return (
@@ -21,7 +21,6 @@ function PropertyCover({ cover, property }) {
   if (cover?.type === 'image') {
     return <img src={cover.url} alt={property.title} />;
   }
-
   return (
     <div className="estate-card-placeholder">
       <Building2 size={34} aria-hidden="true" />
@@ -39,6 +38,223 @@ const AMBIENTES_OPTIONS = [
   { value: '5', label: '5+ ambientes' },
 ];
 
+function ModalCompartirSocios({ propiedadesIds, onClose, onDone }) {
+  const [socios, setSocios] = useState(null);
+  const [loadingError, setLoadingError] = useState('');
+  const [seleccionados, setSeleccionados] = useState([]);
+  const [pctVendedor, setPctVendedor] = useState('');
+  const [pctComprador, setPctComprador] = useState('');
+  const [wholeBolsa, setWholeBolsa] = useState(false);
+  const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState(null); // { ok, count, errores }
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    api.get('/socios?q=')
+      .then(d => setSocios(d.currentPartners || []))
+      .catch(e => setLoadingError(e.message));
+  }, []);
+
+  function toggleSocio(id) {
+    setSeleccionados(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }
+
+  async function handleEnviar(e) {
+    e.preventDefault();
+    setFormError('');
+
+    if (seleccionados.length === 0) {
+      setFormError('Seleccioná al menos un socio.');
+      return;
+    }
+    if (!wholeBolsa && pctVendedor === '' && pctComprador === '') {
+      setFormError('Completá los honorarios o marcá "Toda la bolsa".');
+      return;
+    }
+
+    setEnviando(true);
+
+    const percentagesVendedor = {};
+    const percentagesComprador = {};
+    const percentages = {};
+    const wholeBolsaObj = {};
+    const commentsObj = {};
+
+    for (const agId of seleccionados) {
+      if (pctVendedor !== '') {
+        percentagesVendedor[agId] = pctVendedor;
+        percentages[agId] = pctVendedor; // reutilizar para alquiler
+      }
+      if (pctComprador !== '') percentagesComprador[agId] = pctComprador;
+      wholeBolsaObj[agId] = wholeBolsa;
+      if (comentario.trim()) commentsObj[agId] = comentario.trim();
+    }
+
+    let exitosas = 0;
+    const errores = [];
+
+    await Promise.all(
+      propiedadesIds.map(async (propId) => {
+        try {
+          await api.post(`/propiedades/${propId}/compartir`, {
+            targetAgencyIds: seleccionados,
+            allowWebPublish: false,
+            percentages,
+            percentagesVendedor,
+            percentagesComprador,
+            wholeBolsa: wholeBolsaObj,
+            comments: commentsObj,
+          });
+          exitosas++;
+        } catch (err) {
+          errores.push(propId);
+        }
+      })
+    );
+
+    setEnviando(false);
+    setResultado({ exitosas, errores });
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-box" style={{ maxWidth: 520 }}>
+        <div className="modal-header">
+          <h3 style={{ margin: 0 }}>Compartir con socios</h3>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
+        </div>
+
+        {resultado ? (
+          <div style={{ padding: '24px 0 8px' }}>
+            <p style={{ fontWeight: 600, marginBottom: 8 }}>
+              {resultado.exitosas} propiedad{resultado.exitosas !== 1 ? 'es' : ''} compartida{resultado.exitosas !== 1 ? 's' : ''} con éxito.
+            </p>
+            {resultado.errores.length > 0 && (
+              <p className="muted" style={{ fontSize: '0.88rem' }}>
+                {resultado.errores.length} no pudieron compartirse (quizás ya estaban compartidas con esos socios).
+              </p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+              <button className="btn" onClick={() => { onDone(); onClose(); }}>Cerrar</button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleEnviar}>
+            <div style={{ padding: '16px 0 4px' }}>
+              <p className="muted" style={{ marginBottom: 12, fontSize: '0.9rem' }}>
+                Se compartirán <strong>{propiedadesIds.length} propiedad{propiedadesIds.length !== 1 ? 'es' : ''}</strong> con los socios que elijas, con los mismos honorarios y comentario.
+              </p>
+
+              {/* Lista de socios */}
+              <p style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.92rem' }}>Socios</p>
+              {loadingError ? (
+                <p className="banner banner-error">{loadingError}</p>
+              ) : socios === null ? (
+                <p className="muted"><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Cargando socios...</p>
+              ) : socios.length === 0 ? (
+                <p className="muted">No tenés socios disponibles. <Link to="/socios">Sumá socios primero →</Link></p>
+              ) : (
+                <div className="bulk-socios-list">
+                  {socios.map(s => (
+                    <label key={s.id} className="bulk-socio-row">
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.includes(s.id)}
+                        onChange={() => toggleSocio(s.id)}
+                      />
+                      <span className="bulk-socio-name">{s.name}</span>
+                      {s.city && <span className="muted" style={{ fontSize: '0.82rem' }}>{s.city}</span>}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Honorarios */}
+              <p style={{ fontWeight: 600, margin: '16px 0 8px', fontSize: '0.92rem' }}>Honorarios</p>
+              <div className="share-pct-cols" style={{ marginBottom: 8 }}>
+                <div className="share-pct-col">
+                  <label className="share-pct-label">Del vendedor</label>
+                  <div className="share-pct-field">
+                    <input
+                      type="number"
+                      min="0" max="100" step="0.01"
+                      placeholder="ej. 3"
+                      className="share-pct-input"
+                      value={pctVendedor}
+                      onChange={e => setPctVendedor(e.target.value)}
+                      disabled={wholeBolsa}
+                    />
+                    <span className="share-pct-unit">%</span>
+                  </div>
+                </div>
+                <div className="share-pct-col">
+                  <label className="share-pct-label">Del comprador</label>
+                  <div className="share-pct-field">
+                    <input
+                      type="number"
+                      min="0" max="100" step="0.01"
+                      placeholder="ej. 3"
+                      className="share-pct-input"
+                      value={pctComprador}
+                      onChange={e => setPctComprador(e.target.value)}
+                      disabled={wholeBolsa}
+                    />
+                    <span className="share-pct-unit">%</span>
+                  </div>
+                </div>
+                <div className="share-pct-bolsa">
+                  <label className="share-pct-label">&nbsp;</label>
+                  <label className="checkbox-row" style={{ margin: 0, gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={wholeBolsa}
+                      onChange={e => {
+                        setWholeBolsa(e.target.checked);
+                        if (e.target.checked) { setPctVendedor(''); setPctComprador(''); }
+                      }}
+                    />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Toda la bolsa</span>
+                  </label>
+                </div>
+              </div>
+              <p className="muted" style={{ fontSize: '0.8rem', marginBottom: 12 }}>
+                Para propiedades en alquiler se usa el % del vendedor.
+              </p>
+
+              {/* Comentario */}
+              <input
+                type="text"
+                placeholder="Comentario (opcional)"
+                className="share-comment-input"
+                style={{ width: '100%', marginBottom: 4 }}
+                value={comentario}
+                onChange={e => setComentario(e.target.value)}
+              />
+            </div>
+
+            {formError && <p className="banner banner-error" style={{ marginTop: 8 }}>{formError}</p>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={enviando}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn" disabled={enviando || socios === null || socios.length === 0}>
+                {enviando
+                  ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Compartiendo...</>
+                  : <><Users size={15} /> Compartir</>
+                }
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Properties() {
   const { canDo, session } = useAuth();
   const [data, setData] = useState(null);
@@ -54,6 +270,7 @@ export default function Properties() {
   const [filterPrecioMax, setFilterPrecioMax] = useState('');
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState(new Set());
+  const [modalSociosOpen, setModalSociosOpen] = useState(false);
 
   useEffect(() => {
     api.get('/propiedades').then(setData).catch(e => setError(e.message));
@@ -133,7 +350,7 @@ export default function Properties() {
     setSeleccionadas(new Set());
   }
 
-  function compartirSeleccionadas() {
+  function compartirWhatsApp() {
     const via = session?.agency?.id ? `?via=${session.agency.id}` : '';
     const props = publicadas.filter(p => seleccionadas.has(p.id));
     const lines = props.map(p =>
@@ -144,6 +361,7 @@ export default function Properties() {
   }
 
   const todasSeleccionadas = publicadas.length > 0 && publicadas.every(p => seleccionadas.has(p.id));
+  const propiedadesSeleccionadasIds = [...seleccionadas];
 
   return (
     <>
@@ -364,19 +582,40 @@ export default function Properties() {
                 Seleccionar todas
               </button>
             )}
+            {canDo('compartir_propiedades') && (
+              <button
+                className="btn btn-secondary btn-small"
+                disabled={seleccionadas.size === 0}
+                onClick={() => setModalSociosOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Users size={14} /> Compartir con socios
+              </button>
+            )}
             <button
               className="btn btn-small"
               style={{ background: seleccionadas.size === 0 ? undefined : '#25D366', color: seleccionadas.size === 0 ? undefined : '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               disabled={seleccionadas.size === 0}
-              onClick={compartirSeleccionadas}
+              onClick={compartirWhatsApp}
             >
-              <WhatsAppIcon size={14} /> Compartir por WhatsApp
+              <WhatsAppIcon size={14} /> WhatsApp
             </button>
             <button className="btn btn-secondary btn-small" onClick={cancelarSeleccion}>
               <X size={14} aria-hidden="true" /> Cancelar
             </button>
           </div>
         </div>
+      )}
+
+      {modalSociosOpen && (
+        <ModalCompartirSocios
+          propiedadesIds={propiedadesSeleccionadasIds}
+          onClose={() => setModalSociosOpen(false)}
+          onDone={() => {
+            cancelarSeleccion();
+            api.get('/propiedades').then(setData).catch(() => {});
+          }}
+        />
       )}
     </>
   );

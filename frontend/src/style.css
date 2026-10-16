@@ -2848,6 +2848,44 @@
     align-items: center;
   }
 
+  /* Modal socios bulk */
+  .bulk-socios-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    padding: 4px 0;
+    margin-bottom: 4px;
+  }
+
+  .bulk-socio-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.12s;
+  }
+
+  .bulk-socio-row:hover {
+    background: var(--app-surface-alt, rgba(0,0,0,0.04));
+  }
+
+  .bulk-socio-name {
+    font-weight: 500;
+    font-size: 0.92rem;
+    flex: 1;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
   .empty-state-card {
     display: grid;
     place-items: center;

@@ -216,6 +216,8 @@ const PROVINCIAS_AR = [
   'Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán',
 ];
 
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
 const EMPTY_PROPERTY = {
   title: '',
   description: '',
@@ -452,6 +454,7 @@ export default function PropertyForm() {
   const [activePreview, setActivePreview] = useState(0);
   const [emprendimientos, setEmprendimientos] = useState([]);
   const [error, setError] = useState('');
+  const [mediaError, setMediaError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeMsg, setGeocodeMsg] = useState('');
@@ -540,7 +543,14 @@ export default function PropertyForm() {
   }
 
   function handleMediaChange(e) {
-    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    const selected = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    // Mismo límite que valida el backend: si la foto es más grande, Cloudinary la rechaza al guardar.
+    const tooBig = selected.filter(f => f.size > MAX_PHOTO_BYTES);
+    const files = selected.filter(f => f.size <= MAX_PHOTO_BYTES);
+    setMediaError(tooBig.length
+      ? `${tooBig.map(f => `"${f.name}" (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ')}: superan el máximo de 10 MB por foto. Comprimilas o exportalas como JPG y volvé a elegirlas.`
+      : '');
+    if (!files.length) return;
     const newItems = files.map(file => ({
       id: `${file.name}-${file.lastModified}-${Date.now()}-${Math.random()}`,
       type: 'image',
@@ -1143,10 +1153,11 @@ export default function PropertyForm() {
             </div>
             <div>
               <h2>Fotos</h2>
-              <p>Subí fotos de la propiedad.</p>
+              <p>Subí fotos de la propiedad (máximo 10 MB cada una).</p>
             </div>
             <input id="property-media" type="file" multiple accept="image/*" onChange={handleMediaChange} />
             <label className="btn btn-secondary" htmlFor="property-media">Elegir archivos</label>
+            {mediaError && <div className="banner banner-error">{mediaError}</div>}
           </div>
 
           <article className="upload-preview-card">

@@ -83,7 +83,8 @@ async function parsePropertyRequest(req) {
   const slot = await security.withUploadSlot(() => parseMultipartFormData(req, { maxBytes: 80 * 1024 * 1024 }));
   if (!slot) throw Object.assign(new Error('Servidor ocupado procesando otras subidas'), { code: 'BUSY' });
   const parsed = slot.value;
-  return { fields: parsed.fields, files: Object.values(parsed.files || {}) };
+  // Se conserva el nombre del campo ("foto0", "plano0", "logo"): las rutas de emprendimientos lo usan para separar fotos, planos y logo.
+  return { fields: parsed.fields, files: Object.entries(parsed.files || {}).map(([fieldname, f]) => ({ ...f, fieldname })) };
 }
 
 function uploadError(res, e) {

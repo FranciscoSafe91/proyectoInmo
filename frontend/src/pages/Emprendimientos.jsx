@@ -168,7 +168,7 @@ export default function Emprendimientos() {
 
                   <div className="estate-location">
                     <MapPin size={16} aria-hidden="true" />
-                    <span>{e.ciudad || 'Sin ciudad'}{e.provincia ? `, ${e.provincia}` : ''}</span>
+                    <span>{e.partido || 'Sin ciudad'}{e.zonaGeografica ? `, ${e.zonaGeografica}` : ''}</span>
                   </div>
 
                   <div className="estate-meta">

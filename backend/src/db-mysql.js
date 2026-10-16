@@ -2088,6 +2088,7 @@ async function ensureEmprendimientosTable() {
     ['administra', 'VARCHAR(255)'],
     ['youtube_url', 'VARCHAR(500)'],
     ['logo_url', 'TEXT'],
+    ['cocheras_disponibles', 'TINYINT(1) NOT NULL DEFAULT 0'],
   ];
   for (const [col, type] of alterColumns) {
     await pool.query(`ALTER TABLE emprendimientos ADD COLUMN IF NOT EXISTS ${col} ${type}`).catch(() => {});
@@ -2129,6 +2130,7 @@ function toEmprendimiento(row) {
     latitud: row.latitud,
     longitud: row.longitud,
     conFinanciacion: Boolean(row.con_financiacion),
+    cocherasDisponibles: Boolean(row.cocheras_disponibles),
     anticipo: row.anticipo,
     cuotas: row.cuotas,
     financia: row.financia,
@@ -2194,8 +2196,8 @@ export async function createEmprendimiento(data) {
       con_financiacion, anticipo, cuotas, financia, descripcion_financiacion,
       dptos_por_piso, cantidad_pisos, cantidad_dptos, cantidad_ascensores,
       servicios, instalaciones, construye, comercializa, dirige, administra,
-      descripcion, youtube_url, logo_url
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      descripcion, youtube_url, logo_url, cocheras_disponibles
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       data.id, data.agencyId, data.nombre, data.paginaWeb, data.leyendaComercial,
       data.estado, data.etapaObra, data.fechaEntrega || null,
@@ -2205,7 +2207,7 @@ export async function createEmprendimiento(data) {
       data.dptosPorPiso, data.cantidadPisos, data.cantidadDptos, data.cantidadAscensores,
       JSON.stringify(data.servicios || []), JSON.stringify(data.instalaciones || []),
       data.construye, data.comercializa, data.dirige, data.administra,
-      data.descripcion, data.youtubeUrl, data.logoUrl,
+      data.descripcion, data.youtubeUrl, data.logoUrl, data.cocherasDisponibles ? 1 : 0,
     ]
   );
   return getEmprendimiento(data.id);
@@ -2221,7 +2223,7 @@ export async function updateEmprendimiento(id, data) {
       con_financiacion=?, anticipo=?, cuotas=?, financia=?, descripcion_financiacion=?,
       dptos_por_piso=?, cantidad_pisos=?, cantidad_dptos=?, cantidad_ascensores=?,
       servicios=?, instalaciones=?, construye=?, comercializa=?, dirige=?, administra=?,
-      descripcion=?, youtube_url=?, logo_url=?
+      descripcion=?, youtube_url=?, logo_url=?, cocheras_disponibles=?
     WHERE id=?`,
     [
       data.nombre, data.paginaWeb, data.leyendaComercial,
@@ -2232,7 +2234,7 @@ export async function updateEmprendimiento(id, data) {
       data.dptosPorPiso, data.cantidadPisos, data.cantidadDptos, data.cantidadAscensores,
       JSON.stringify(data.servicios || []), JSON.stringify(data.instalaciones || []),
       data.construye, data.comercializa, data.dirige, data.administra,
-      data.descripcion, data.youtubeUrl, data.logoUrl,
+      data.descripcion, data.youtubeUrl, data.logoUrl, data.cocherasDisponibles ? 1 : 0,
       id,
     ]
   );

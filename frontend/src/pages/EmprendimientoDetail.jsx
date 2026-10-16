@@ -241,6 +241,7 @@ export default function EmprendimientoDetail() {
                 {e.cercaDe && <tr><th>Cerca de</th><td>{e.cercaDe}</td></tr>}
                 {e.dptosPorPiso && <tr><th>Dptos. por piso</th><td>{e.dptosPorPiso}</td></tr>}
                 {e.cantidadPisos && <tr><th>Pisos</th><td>{e.cantidadPisos}</td></tr>}
+                {e.cocherasDisponibles && <tr><th>Cocheras</th><td>Disponibles</td></tr>}
                 {e.cantidadDptos && <tr><th>Departamentos</th><td>{e.cantidadDptos}</td></tr>}
                 {e.cantidadAscensores && <tr><th>Ascensores</th><td>{e.cantidadAscensores}</td></tr>}
                 {e.paginaWeb && (

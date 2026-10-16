@@ -184,6 +184,7 @@ const EMPTY = {
   cantidadPisos: '',
   cantidadDptos: '',
   cantidadAscensores: '',
+  cocherasDisponibles: false,
   // listas
   servicios: [],
   instalaciones: [],
@@ -260,6 +261,7 @@ export default function EmprendimientoForm() {
         cantidadPisos: e.cantidadPisos ?? '',
         cantidadDptos: e.cantidadDptos ?? '',
         cantidadAscensores: e.cantidadAscensores ?? '',
+        cocherasDisponibles: e.cocherasDisponibles || false,
         servicios: Array.isArray(e.servicios) ? e.servicios : [],
         instalaciones: Array.isArray(e.instalaciones) ? e.instalaciones : [],
         construye: e.construye || '',
@@ -684,6 +686,10 @@ export default function EmprendimientoForm() {
                 <label htmlFor="cantidadAscensores">Cantidad ascensores</label>
                 <input type="number" id="cantidadAscensores" name="cantidadAscensores" min="0" value={form.cantidadAscensores} onChange={handleChange} />
               </div>
+              <div className="checkbox-row" style={{ alignSelf: 'end' }}>
+                <input type="checkbox" id="cocherasDisponibles" name="cocherasDisponibles" checked={form.cocherasDisponibles} onChange={handleChange} />
+                <label htmlFor="cocherasDisponibles" style={{ margin: 0, fontWeight: 'normal' }}>Hay cocheras disponibles</label>
+              </div>
             </div>
           </div>
 
@@ -804,7 +810,7 @@ export default function EmprendimientoForm() {
                 <span>Emprendimiento</span>
                 <h3>{form.nombre || 'Nombre del emprendimiento'}</h3>
               </div>
-              {form.localidad && <p>{form.localidad}{form.partido ? `, ${form.partido}` : ''}</p>}
+              {form.partido && <p>{form.partido}{form.zonaGeografica ? `, ${form.zonaGeografica}` : ''}</p>}
             </div>
           </article>
 

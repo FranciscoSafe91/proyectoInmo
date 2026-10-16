@@ -116,9 +116,9 @@ async function sendVerificationEmail(user) {
 }
 
 // Avisa a una agencia. Nunca debe hacer fallar la operación que la dispara.
-function notify(agencyId, type, message, relatedId = null) {
+function notify(agencyId, type, message, relatedId = null, { once = false } = {}) {
   if (!agencyId) return;
-  db.createNotificacion({ agencyId, type, message, relatedId })
+  db.createNotificacion({ agencyId, type, message, relatedId, once })
     .catch(e => console.error(`[notificaciones] No se pudo crear (${type}):`, e.message));
 }
 
@@ -323,10 +323,14 @@ async function requirePlatformAdmin(req, res) {
 }
 
 async function notifyAlertMatches(property, ownerAgency) {
-  if (!mail.isConfigured()) return;
   try {
     const matches = await db.findMatchingAlertsForProperty(property, ownerAgency.id);
     for (const { alert, requestingAgencyId } of matches) {
+      // Aviso dentro de la app (aunque no haya email configurado). No se repite por cada guardado.
+      notify(requestingAgencyId, 'alerta_coincidencia',
+        `Coincidencia con tu alerta "${alert.title}": ${ownerAgency.name} tiene "${property.title}".`,
+        `${property.id}:${alert.id}`, { once: true });
+      if (!mail.isConfigured()) continue;
       const requestingAgency = await db.getAgency(requestingAgencyId);
       if (!requestingAgency) continue;
       mail.sendAlertMatch(requestingAgency.email, {
@@ -1129,6 +1133,7 @@ export function registerApiRoutes(router) {
     const partnership = await db.getPartnership(req.params.partnershipId);
     if (partnership && partnership.agencyBId === session.agency.id && partnership.status === 'pendiente') {
       await db.respondPartnership(partnership.id, 'rechazada');
+      notify(partnership.agencyAId, 'sociedad_rechazada', `${session.agency.name} rechazó tu solicitud de sociedad.`, partnership.id);
     }
     json(res, { ok: true });
   });
@@ -1276,6 +1281,8 @@ export function registerApiRoutes(router) {
       const body = await parseJson(req);
       v.maxLen(body.comment, 1000, 'Comentario');
       await db.respondPropertyShare(share.id, 'aceptada', null, body.comment || '');
+      const sharedProperty = await db.getProperty(share.propertyId);
+      notify(share.ownerAgencyId, 'compartida_aceptada', `${session.agency.name} aceptó la propiedad compartida "${sharedProperty?.title || ''}".`, share.propertyId);
     }
     json(res, { ok: true });
   });
@@ -1289,6 +1296,8 @@ export function registerApiRoutes(router) {
       const body = await parseJson(req);
       v.maxLen(body.reason, 1000, 'Motivo');
       await db.respondPropertyShare(share.id, 'rechazada', body.reason || '');
+      const sharedProperty = await db.getProperty(share.propertyId);
+      notify(share.ownerAgencyId, 'compartida_rechazada', `${session.agency.name} rechazó la propiedad compartida "${sharedProperty?.title || ''}".`, share.propertyId);
     }
     json(res, { ok: true });
   });

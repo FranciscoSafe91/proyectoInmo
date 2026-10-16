@@ -2003,27 +2003,44 @@ export async function addMemberToGrupo(grupoId, partnerId) {
 // ---------------------------------------------------------------------------
 // Notificaciones: una bandeja por agencia. read_at marca si ya se leyó.
 // ---------------------------------------------------------------------------
+let _notificacionesReady = false;
 async function ensureNotificacionesTable() {
+  if (_notificacionesReady) return;
   await pool.query(`
     CREATE TABLE IF NOT EXISTS notificaciones (
       id VARCHAR(36) PRIMARY KEY,
       agency_id VARCHAR(36) NOT NULL,
       type VARCHAR(50) NOT NULL,
       message VARCHAR(500) NOT NULL,
-      related_id VARCHAR(36) DEFAULT NULL,
+      related_id VARCHAR(120) DEFAULT NULL,
       read_at DATETIME DEFAULT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_notif_agency (agency_id, read_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  // Tablas creadas antes con related_id más corto
+  await pool.query('ALTER TABLE notificaciones MODIFY related_id VARCHAR(120) DEFAULT NULL').catch(() => {});
+  _notificacionesReady = true;
 }
 
-export async function createNotificacion({ agencyId, type, message, relatedId = null }) {
+// once: no crea el aviso si la agencia ya tiene uno igual (mismo tipo y mismo related_id).
+export async function createNotificacion({ agencyId, type, message, relatedId = null, once = false }) {
   await ensureNotificacionesTable();
-  await pool.query(
-    'INSERT INTO notificaciones (id, agency_id, type, message, related_id) VALUES (?,?,?,?,?)',
-    [uuid(), agencyId, type, String(message).slice(0, 500), relatedId]
-  );
+  const id = uuid();
+  const text = String(message).slice(0, 500);
+  if (once) {
+    await pool.query(
+      `INSERT INTO notificaciones (id, agency_id, type, message, related_id)
+       SELECT ?, ?, ?, ?, ? FROM DUAL
+       WHERE NOT EXISTS (SELECT 1 FROM notificaciones WHERE agency_id=? AND type=? AND related_id<=>?)`,
+      [id, agencyId, type, text, relatedId, agencyId, type, relatedId]
+    );
+  } else {
+    await pool.query(
+      'INSERT INTO notificaciones (id, agency_id, type, message, related_id) VALUES (?,?,?,?,?)',
+      [id, agencyId, type, text, relatedId]
+    );
+  }
 }
 
 export async function listNotificaciones(agencyId, limit = 50) {

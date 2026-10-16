@@ -1227,7 +1227,7 @@ export async function getMatchRequest(matchRequestId) {
 
 export async function cancelAcceptedMatchRequest(matchRequestId) {
   await pool.query(
-    `DELETE FROM match_requests WHERE id=? AND status='aceptado'`,
+    `DELETE FROM match_requests WHERE id=?`,
     [matchRequestId]
   );
 }

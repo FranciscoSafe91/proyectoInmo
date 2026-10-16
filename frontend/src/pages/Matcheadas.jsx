@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Bell, Building2, Check, MapPin, Send, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Bell, Building2, Check, MapPin, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { api } from '../api.js';
 import { money, typeLabel, operationLabel } from '../utils.js';
 
@@ -35,6 +35,7 @@ function MatchRequestsReceived() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [responding, setResponding] = useState({});
+  const [deleting, setDeleting] = useState({});
   const [sortBy, setSortBy] = useState('recientes');
   const [acceptModal, setAcceptModal] = useState(null);
   const [acceptComment, setAcceptComment] = useState('');
@@ -89,6 +90,19 @@ function MatchRequestsReceived() {
       setAcceptPctVendedor('');
       setAcceptPctComprador('');
       setAcceptTodaBolsa(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('¿Eliminar esta solicitud de match?')) return;
+    setDeleting(d => ({ ...d, [id]: true }));
+    try {
+      await api.delete(`/match-requests/${id}`);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDeleting(d => ({ ...d, [id]: false }));
     }
   };
 
@@ -193,17 +207,25 @@ function MatchRequestsReceived() {
               <Link to={`/propiedades/${property.id}`} className="btn btn-secondary btn-sm">Ver</Link>
               <button
                 className="btn btn-success btn-sm"
-                disabled={responding[matchRequest.id]}
+                disabled={responding[matchRequest.id] || deleting[matchRequest.id]}
                 onClick={() => respond(matchRequest.id, 'aceptar')}
               >
                 <Check size={14} /> Aceptar
               </button>
               <button
                 className="btn btn-danger btn-sm"
-                disabled={responding[matchRequest.id]}
+                disabled={responding[matchRequest.id] || deleting[matchRequest.id]}
                 onClick={() => respond(matchRequest.id, 'rechazar')}
               >
                 <X size={14} /> Rechazar
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={responding[matchRequest.id] || deleting[matchRequest.id]}
+                onClick={() => handleDelete(matchRequest.id)}
+                title="Eliminar esta solicitud"
+              >
+                {deleting[matchRequest.id] ? '…' : <Trash2 size={14} />}
               </button>
             </div>
           </div>

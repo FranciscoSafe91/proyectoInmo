@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logoImg from '../logo.png';
 import { BrowserRouter, Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Home, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
@@ -40,16 +41,43 @@ import ResetPassword from './pages/ResetPassword.jsx';
 import VerifyEmail from './pages/VerifyEmail.jsx';
 import Security from './pages/Security.jsx';
 
+function LoadingScreen() {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg, #fff)',
+      zIndex: 9999,
+    }}>
+      <img
+        src={logoImg}
+        alt="SpiderConect"
+        style={{
+          width: 260,
+          maxWidth: '70vw',
+          animation: 'sc-pulse 1.6s ease-in-out infinite',
+        }}
+      />
+      <style>{`
+        @keyframes sc-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(0.96); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function PrivateRoute({ children }) {
   const { session } = useAuth();
-  if (session === undefined) return <p className="muted" style={{ padding: '40px 20px' }}>Cargando...</p>;
+  if (session === undefined) return <LoadingScreen />;
   if (!session) return <Navigate to="/login" replace />;
   return children;
 }
 
 function PublicOnly({ children }) {
   const { session } = useAuth();
-  if (session === undefined) return null;
+  if (session === undefined) return <LoadingScreen />;
   if (session) return <Navigate to="/dashboard" replace />;
   return children;
 }

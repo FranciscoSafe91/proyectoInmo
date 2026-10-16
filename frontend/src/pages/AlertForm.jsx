@@ -12,8 +12,8 @@ const SERVICIOS = [
 ];
 
 const INSTALACIONES = [
-  'Aire acondicionado','Alarma','Amueblado','Ascensor','Balcón terraza','Baulera',
-  'Caballeriza','Calefacción','Calefacción por aire caliente','Calefacción tiro balanceado',
+  'Aire acondicionado','Alarma','Amueblado','Ascensor','Balcón','Balcón corrido','Balcón francés',
+  'Balcón terraza','Baulera','Caballeriza','Calefacción','Calefacción por aire caliente','Calefacción tiro balanceado',
   'Calefón','Cancha de básquetbol','Cancha de deportes','Cancha de fútbol','Cancha de paddle',
   'Cancha de tenis','Cocina equipada','Dependencia','Energía solar','Extractor aire',
   'Gimnasio','Grupo electrógeno','Hidromasaje','Hogar a leña','Jacuzzi','Jardín',

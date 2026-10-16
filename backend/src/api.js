@@ -114,7 +114,7 @@ async function sendVerificationEmail(user) {
   return true;
 }
 
-async function savePropertyMedia(propertyId, files, agencyId) {
+async function savePropertyMedia(propertyId, files, agencyId, startOrder = 0) {
   // Se decide por el contenido real del archivo, no por el Content-Type del cliente.
   const accepted = files
     .map(file => file && { ...file, detectedType: v.detectMediaType(file.buffer) })
@@ -140,6 +140,30 @@ async function savePropertyMedia(propertyId, files, agencyId) {
       url: result.secure_url,
       type: mediaType,
       filename: file.filename || publicId,
+      sortOrder: startOrder + index,
+    }));
+  }
+  return created;
+}
+
+// Duplicar propiedad: reutiliza las fotos ya subidas (mismas URLs, sin volver a subirlas
+// a Cloudinary). Solo copia URLs que pertenezcan a la propiedad origen de la misma agencia.
+async function copyMediaFromProperty(body, targetPropertyId, agencyId) {
+  const sourceId = typeof body.duplicateFromPropertyId === 'string' ? body.duplicateFromPropertyId : '';
+  const urls = safeParseJson(body.reuseMediaUrls).filter(u => typeof u === 'string');
+  if (!sourceId || !urls.length) return [];
+  const source = await db.getProperty(sourceId);
+  if (!source || source.agencyId !== agencyId) return [];
+  const available = new Map((await db.listPropertyMedia(sourceId)).map(m => [m.url, m]));
+  const created = [];
+  for (const [index, url] of urls.entries()) {
+    const m = available.get(url);
+    if (!m) continue;
+    created.push(await db.createPropertyMedia({
+      propertyId: targetPropertyId,
+      url: m.url,
+      type: m.type,
+      filename: m.filename,
       sortOrder: index,
     }));
   }
@@ -589,7 +613,8 @@ export function registerApiRoutes(router) {
     // Si falla, el handler global loguea el detalle y devuelve un código de error
     // genérico (antes se devolvía el mensaje de MySQL al cliente).
     const property = await db.createProperty({ ...body, agencyId: session.agency.id, createdByUserId: session.user.id });
-    const media = await savePropertyMedia(property.id, files, session.agency.id);
+    const copied = await copyMediaFromProperty(body, property.id, session.agency.id);
+    const media = [...copied, ...await savePropertyMedia(property.id, files, session.agency.id, copied.length)];
     notifyAlertMatches(property, session.agency).catch(() => {});
     db.syncMatchRequestsForProperty(property).catch(() => {});
     json(res, { property, media }, 201);

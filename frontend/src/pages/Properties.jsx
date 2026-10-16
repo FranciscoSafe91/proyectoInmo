@@ -530,12 +530,23 @@ export default function Properties() {
                     <span>{p.city || 'Sin ciudad'}{p.province ? `, ${p.province}` : ''}</span>
                   </div>
 
+                  {p.type === 'departamento' && (p.piso || p.depto) && (
+                    <div className="estate-location" style={{ marginTop: 4 }}>
+                      <span style={{ fontSize: '0.82em' }}>
+                        {[p.piso && `Piso ${p.piso}`, p.depto && `Depto ${p.depto}`].filter(Boolean).join(' · ')}
+                      </span>
+                    </div>
+                  )}
+
                   {p.emprendimientoId && emprendimientosMap[p.emprendimientoId] && (
                     <div className="estate-location" style={{ marginTop: 4 }}>
                       <Building2 size={14} aria-hidden="true" />
-                      <span style={{ fontSize: '0.82em', color: 'var(--app-accent, #2563eb)' }}>
+                      <Link
+                        to={`/emprendimientos/${p.emprendimientoId}`}
+                        style={{ fontSize: '0.82em', color: 'var(--app-accent, #2563eb)' }}
+                      >
                         {emprendimientosMap[p.emprendimientoId]}
-                      </span>
+                      </Link>
                     </div>
                   )}
 

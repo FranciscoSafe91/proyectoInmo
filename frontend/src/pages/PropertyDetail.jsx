@@ -352,7 +352,7 @@ export default function PropertyDetail() {
 
           <div className="card">
             <h3>{money(property.price, property.currency)}</h3>
-            <p>{property.description || <span className="muted">Sin descripción.</span>}</p>
+            <p style={{ whiteSpace: 'pre-line' }}>{property.description || <span className="muted">Sin descripción.</span>}</p>
             <table>
               <tbody>
                 <tr><th>Dirección</th><td>{property.address || '-'}</td></tr>

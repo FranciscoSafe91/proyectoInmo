@@ -104,8 +104,8 @@ const SERVICIOS = [
 ];
 
 const INSTALACIONES = [
-  'Aire acondicionado','Alarma','Amueblado','Ascensor','Balcón terraza','Baulera',
-  'Caballeriza','Calefacción','Calefacción por aire caliente','Calefacción tiro balanceado',
+  'Aire acondicionado','Alarma','Amueblado','Ascensor','Balcón','Balcón corrido','Balcón francés',
+  'Balcón terraza','Baulera','Caballeriza','Calefacción','Calefacción por aire caliente','Calefacción tiro balanceado',
   'Calefón','Cancha de básquetbol','Cancha de deportes','Cancha de fútbol','Cancha de paddle',
   'Cancha de tenis','Cocina equipada','Dependencia','Energía solar','Extractor aire',
   'Gimnasio','Grupo electrógeno','Hidromasaje','Hogar a leña','Jacuzzi','Jardín',
@@ -471,6 +471,14 @@ export default function PropertyForm() {
     if (!isDuplicate || !duplicarDe) return;
     api.get(`/propiedades/${duplicarDe}`).then(data => {
       setProperty(mapPropertyToForm(data.property));
+      // Las fotos existentes se reutilizan por URL: el backend las copia sin volver a subirlas.
+      setAllMedia((data.media || []).map(m => ({
+        id: m.id,
+        type: m.type,
+        url: m.url,
+        filename: m.filename || '',
+        isNew: false,
+      })));
     }).catch(e => setError(e.message));
   }, [duplicarDe, isDuplicate]);
 
@@ -609,7 +617,10 @@ export default function PropertyForm() {
     setSubmitting(true);
     try {
       const orderedFiles = allMedia.filter(m => m.isNew).map(m => m.file);
-      const body = orderedFiles.length ? buildPropertyFormData(property, orderedFiles) : property;
+      const payload = isDuplicate
+        ? { ...property, duplicateFromPropertyId: duplicarDe, reuseMediaUrls: allMedia.filter(m => !m.isNew).map(m => m.url) }
+        : property;
+      const body = orderedFiles.length ? buildPropertyFormData(payload, orderedFiles) : payload;
       let propertyId;
       if (isEdit) {
         await api.put(`/propiedades/${id}`, body);

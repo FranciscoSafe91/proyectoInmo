@@ -265,7 +265,7 @@ export default function PublicProperty() {
             {property.expensasMoneda === 'USD' ? 'U$D' : '$'} {Number(property.expensas).toLocaleString('es-AR')} expensas
           </p>
         )}
-        {property.description && <p style={{ marginTop: 10 }}>{property.description}</p>}
+        {property.description && <p style={{ marginTop: 10, whiteSpace: 'pre-line' }}>{property.description}</p>}
 
         <table style={{ marginTop: 12 }}>
           <tbody>

@@ -1159,8 +1159,10 @@ export function registerApiRoutes(router) {
   router.get('/api/notificaciones', async (req, res) => {
     const session = await requireSession(req, res);
     if (!session) return;
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200);
     const [notificaciones, unread] = await Promise.all([
-      db.listNotificaciones(session.agency.id),
+      db.listNotificaciones(session.agency.id, limit),
       db.countUnreadNotificaciones(session.agency.id),
     ]);
     json(res, { notificaciones, unread });

@@ -20,6 +20,7 @@ import Partners from './pages/Partners.jsx';
 import Invitations from './pages/Invitations.jsx';
 import Alerts from './pages/Alerts.jsx';
 import AlertForm from './pages/AlertForm.jsx';
+import Notificaciones from './pages/Notificaciones.jsx';
 import Matcheadas from './pages/Matcheadas.jsx';
 import Emprendimientos from './pages/Emprendimientos.jsx';
 import EmprendimientoForm from './pages/EmprendimientoForm.jsx';
@@ -162,6 +163,7 @@ function AppRoutes() {
           <Route path="/invitaciones" element={<PrivateRoute><Invitations /></PrivateRoute>} />
           <Route path="/alertas" element={<PrivateRoute><Alerts /></PrivateRoute>} />
           <Route path="/alertas/nueva" element={<PrivateRoute><AlertForm /></PrivateRoute>} />
+          <Route path="/notificaciones" element={<PrivateRoute><Notificaciones /></PrivateRoute>} />
           <Route path="/matcheadas" element={<PrivateRoute><Matcheadas /></PrivateRoute>} />
           <Route path="/matcheadas/:alertId" element={<PrivateRoute><Matcheadas /></PrivateRoute>} />
           <Route path="/emprendimientos" element={<PrivateRoute><Emprendimientos /></PrivateRoute>} />

@@ -63,6 +63,7 @@ export default function Navbar() {
     canSee('buscar_match') && { type: 'subtitle', label: 'Alertas' },
     canSee('buscar_match') && { to: '/alertas/nueva', label: 'Crear alerta', icon: Bell, className: activeExact('/alertas/nueva') },
     canSee('buscar_match') && { to: '/alertas', label: 'Ver mis alertas', icon: Search, className: activeExact('/alertas') },
+    canSee('buscar_match') && { to: '/notificaciones', label: 'Notificaciones', icon: Bell, className: activeExact('/notificaciones') },
   ].filter(Boolean);
 
   const networkLinks = [

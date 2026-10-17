@@ -116,9 +116,9 @@ async function sendVerificationEmail(user) {
 }
 
 // Avisa a una agencia. Nunca debe hacer fallar la operación que la dispara.
-function notify(agencyId, type, message, relatedId = null, { once = false } = {}) {
+function notify(agencyId, type, message, relatedId = null, { once = false, detail = null } = {}) {
   if (!agencyId) return;
-  db.createNotificacion({ agencyId, type, message, relatedId, once })
+  db.createNotificacion({ agencyId, type, message, relatedId, detail, once })
     .catch(e => console.error(`[notificaciones] No se pudo crear (${type}):`, e.message));
 }
 
@@ -821,7 +821,8 @@ export function registerApiRoutes(router) {
         const shareComment = comments[targetAgencyId] ?? null;
         const share = await db.createPropertyShare({ propertyId: property.id, ownerAgencyId: session.agency.id, targetAgencyId, percentage, percentageVendedor, percentageComprador, wholeBolsa, shareComment });
         if (authorizeWeb) await db.setSharePublishAuthorization(share.id, true);
-        notify(targetAgencyId, 'propiedad_compartida', `${session.agency.name} compartió la propiedad "${property.title}" contigo.`, property.id);
+        notify(targetAgencyId, 'propiedad_compartida', `${session.agency.name} compartió la propiedad "${property.title}" contigo.`, property.id,
+          { detail: shareComment ? `Comentario: ${shareComment}` : null });
       }
     }));
     json(res, { ok: true });
@@ -1284,7 +1285,8 @@ export function registerApiRoutes(router) {
       v.maxLen(body.comment, 1000, 'Comentario');
       await db.respondPropertyShare(share.id, 'aceptada', null, body.comment || '');
       const sharedProperty = await db.getProperty(share.propertyId);
-      notify(share.ownerAgencyId, 'compartida_aceptada', `${session.agency.name} aceptó la propiedad compartida "${sharedProperty?.title || ''}".`, share.propertyId);
+      notify(share.ownerAgencyId, 'compartida_aceptada', `${session.agency.name} aceptó la propiedad compartida "${sharedProperty?.title || ''}".`, share.propertyId,
+        { detail: body.comment ? `Comentario: ${body.comment}` : null });
     }
     json(res, { ok: true });
   });
@@ -1299,7 +1301,8 @@ export function registerApiRoutes(router) {
       v.maxLen(body.reason, 1000, 'Motivo');
       await db.respondPropertyShare(share.id, 'rechazada', body.reason || '');
       const sharedProperty = await db.getProperty(share.propertyId);
-      notify(share.ownerAgencyId, 'compartida_rechazada', `${session.agency.name} rechazó la propiedad compartida "${sharedProperty?.title || ''}".`, share.propertyId);
+      notify(share.ownerAgencyId, 'compartida_rechazada', `${session.agency.name} rechazó la propiedad compartida "${sharedProperty?.title || ''}".`, share.propertyId,
+        { detail: body.reason ? `Motivo: ${body.reason}` : null });
     }
     json(res, { ok: true });
   });

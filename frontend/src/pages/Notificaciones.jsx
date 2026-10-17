@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Bell, CheckCircle2, Handshake, Pencil, Share2, Sparkles, UserMinus, UserPlus, XCircle,
+  Bell, CheckCircle2, Handshake, Pencil, Share2, Sparkles, UserMinus, UserPlus, X, XCircle,
 } from 'lucide-react';
 import { api } from '../api.js';
+import { formatDateTime } from '../utils.js';
 
 // Tipo de aviso -> ícono y etiqueta corta para el listado
 const TIPOS = {
@@ -18,6 +19,22 @@ const TIPOS = {
   alerta_coincidencia: { label: 'Coincidencia de alerta', icon: Sparkles, tone: '#0d9488' },
 };
 const TIPO_DEFAULT = { label: 'Aviso', icon: Bell, tone: '#6b7280' };
+
+// Pantalla donde se ve lo que trata cada aviso
+function destinoDe(n) {
+  switch (n.type) {
+    case 'solicitud_recibida': return { to: '/invitaciones', label: 'Ver solicitudes' };
+    case 'sociedad_aceptada':
+    case 'sociedad_rechazada':
+    case 'sociedad_disuelta': return { to: '/socios', label: 'Ver socios' };
+    case 'propiedad_compartida':
+    case 'propiedad_modificada': return { to: '/compartidas', label: 'Ver compartidas' };
+    case 'compartida_aceptada':
+    case 'compartida_rechazada': return n.relatedId ? { to: `/propiedades/${n.relatedId}`, label: 'Ver propiedad' } : { to: '/propiedades', label: 'Ver propiedades' };
+    case 'alerta_coincidencia': return { to: '/matcheadas', label: 'Ver matcheadas' };
+    default: return { to: '/notificaciones', label: 'Cerrar' };
+  }
+}
 
 function dayLabel(iso) {
   const d = new Date(iso);
@@ -37,6 +54,7 @@ export default function Notificaciones() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [soloSinLeer, setSoloSinLeer] = useState(false);
+  const [abierta, setAbierta] = useState(null);
 
   function load() {
     api.get('/notificaciones?limit=200')
@@ -50,6 +68,12 @@ export default function Notificaciones() {
     if (n.read) return;
     setItems(prev => prev.map(x => (x.id === n.id ? { ...x, read: true } : x)));
     api.post(`/notificaciones/${n.id}/leer`).catch(load);
+  }
+
+  // Abre el detalle del aviso y lo marca como leído
+  function abrir(n) {
+    setAbierta(n);
+    markRead(n);
   }
 
   function markAll() {
@@ -131,7 +155,7 @@ export default function Notificaciones() {
                 <button
                   key={n.id}
                   type="button"
-                  onClick={() => markRead(n)}
+                  onClick={() => abrir(n)}
                   style={{
                     display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%', textAlign: 'left',
                     padding: '14px 16px', border: 'none', cursor: 'pointer', color: 'inherit',
@@ -166,6 +190,34 @@ export default function Notificaciones() {
           </div>
         </section>
       ))}
+
+      {abierta && (() => {
+        const tipo = TIPOS[abierta.type] || TIPO_DEFAULT;
+        const destino = destinoDe(abierta);
+        return (
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setAbierta(null); }}>
+            <div className="modal-box" style={{ maxWidth: 520 }}>
+              <div className="modal-header">
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: tipo.tone }}>{tipo.label}</span>
+                <button className="modal-close" onClick={() => setAbierta(null)} aria-label="Cerrar"><X size={18} /></button>
+              </div>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '1.05rem', overflowWrap: 'anywhere' }}>{abierta.message}</p>
+              <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>{formatDateTime(abierta.createdAt)}</p>
+              {abierta.detail ? (
+                <div style={{ border: '1px solid var(--app-border, #e5e7eb)', borderRadius: 8, padding: 12, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                  {abierta.detail}
+                </div>
+              ) : (
+                <p className="muted" style={{ margin: 0, fontSize: '0.88rem' }}>Este aviso no tiene más detalle.</p>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setAbierta(null)}>Cerrar</button>
+                <Link className="btn" to={destino.to} onClick={() => setAbierta(null)}>{destino.label}</Link>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }

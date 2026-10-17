@@ -2013,6 +2013,7 @@ async function ensureNotificacionesTable() {
       type VARCHAR(50) NOT NULL,
       message VARCHAR(500) NOT NULL,
       related_id VARCHAR(120) DEFAULT NULL,
+      detail TEXT DEFAULT NULL,
       read_at DATETIME DEFAULT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_notif_agency (agency_id, read_at)
@@ -2020,25 +2021,28 @@ async function ensureNotificacionesTable() {
   `);
   // Tablas creadas antes con related_id más corto
   await pool.query('ALTER TABLE notificaciones MODIFY related_id VARCHAR(120) DEFAULT NULL').catch(() => {});
+  // Detalle del aviso (motivo de rechazo, comentario). Tablas creadas antes no lo tienen.
+  await pool.query('ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS detail TEXT DEFAULT NULL').catch(() => {});
   _notificacionesReady = true;
 }
 
 // once: no crea el aviso si la agencia ya tiene uno igual (mismo tipo y mismo related_id).
-export async function createNotificacion({ agencyId, type, message, relatedId = null, once = false }) {
+export async function createNotificacion({ agencyId, type, message, relatedId = null, detail = null, once = false }) {
   await ensureNotificacionesTable();
   const id = uuid();
   const text = String(message).slice(0, 500);
+  const extra = detail ? String(detail).slice(0, 2000) : null;
   if (once) {
     await pool.query(
-      `INSERT INTO notificaciones (id, agency_id, type, message, related_id)
-       SELECT ?, ?, ?, ?, ? FROM DUAL
+      `INSERT INTO notificaciones (id, agency_id, type, message, related_id, detail)
+       SELECT ?, ?, ?, ?, ?, ? FROM DUAL
        WHERE NOT EXISTS (SELECT 1 FROM notificaciones WHERE agency_id=? AND type=? AND related_id<=>?)`,
-      [id, agencyId, type, text, relatedId, agencyId, type, relatedId]
+      [id, agencyId, type, text, relatedId, extra, agencyId, type, relatedId]
     );
   } else {
     await pool.query(
-      'INSERT INTO notificaciones (id, agency_id, type, message, related_id) VALUES (?,?,?,?,?)',
-      [id, agencyId, type, text, relatedId]
+      'INSERT INTO notificaciones (id, agency_id, type, message, related_id, detail) VALUES (?,?,?,?,?,?)',
+      [id, agencyId, type, text, relatedId, extra]
     );
   }
 }
@@ -2046,12 +2050,12 @@ export async function createNotificacion({ agencyId, type, message, relatedId = 
 export async function listNotificaciones(agencyId, limit = 50) {
   await ensureNotificacionesTable();
   const [rows] = await pool.query(
-    `SELECT id, type, message, related_id, read_at, created_at FROM notificaciones
+    `SELECT id, type, message, detail, related_id, read_at, created_at FROM notificaciones
      WHERE agency_id=? ORDER BY created_at DESC LIMIT ${Number(limit) || 50}`,
     [agencyId]
   );
   return rows.map(r => ({
-    id: r.id, type: r.type, message: r.message, relatedId: r.related_id,
+    id: r.id, type: r.type, message: r.message, detail: r.detail || null, relatedId: r.related_id,
     read: Boolean(r.read_at), createdAt: r.created_at,
   }));
 }

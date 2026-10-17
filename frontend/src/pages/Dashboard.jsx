@@ -149,22 +149,6 @@ export default function Dashboard() {
               </div>
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <Link to="/alertas" className="task-row task-success">
-              <span>{stats.alertMatches}</span>
-              <div>
-                <strong>Alertas pendientes</strong>
-                <p>Coincidencias de alertas de colegas pendientes de aprobar o rechazar.</p>
-              </div>
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link to="/matcheadas" className="task-row task-success">
-              <span>{(stats.myAlertMatchCount ?? 0) + (stats.acceptedAsOwner ?? 0)}</span>
-              <div>
-                <strong>Matcheadas</strong>
-                <p>Propiedades de colegas que coinciden con tus alertas y matches que aceptaste.</p>
-              </div>
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
           </div>
         </article>
 

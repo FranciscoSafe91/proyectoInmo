@@ -36,13 +36,18 @@ export default function NotificationsBell() {
       const inPanel = panelRef.current && panelRef.current.contains(e.target);
       if (!inButton && !inPanel) setOpen(false);
     }
+    // El scroll dentro del propio panel no lo cierra (si no, no se puede recorrer la lista)
+    function onScroll(e) {
+      if (panelRef.current && panelRef.current.contains(e.target)) return;
+      setOpen(false);
+    }
     function close() { setOpen(false); }
     document.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', close);
     return () => {
       document.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', close);
     };
   }, [open]);
